@@ -4691,7 +4691,7 @@ function doLogin() {
   const input = document.getElementById('loginInput');
   const stored = localStorage.getItem('app_password') || DEFAULT_PASSWORD;
   if (input.value === stored) {
-    localStorage.setItem('app_authed', '1');
+    sessionStorage.setItem('app_authed', '1');
     document.getElementById('loginOverlay').style.display = 'none';
     setSyncStatus('ok');
     showToast('Acesso liberado. Seus dados serão salvos localmente e sincronizados com a planilha.');
@@ -4706,7 +4706,9 @@ function checkLogin() {
     document.getElementById('loginOverlay').style.display = 'none';
     return;
   }
-  if (localStorage.getItem('app_authed') === '1') {
+  // Remove sessões antigas que antes ficavam persistidas no navegador.
+  localStorage.removeItem('app_authed');
+  if (sessionStorage.getItem('app_authed') === '1') {
     document.getElementById('loginOverlay').style.display = 'none';
   } else {
     setTimeout(() => document.getElementById('loginInput').focus(), 100);
@@ -4721,6 +4723,7 @@ function resetLocalPasswordToDefault() {
   const ok = confirm('Redefinir a senha salva neste navegador para a senha padrão?\n\nIsso NÃO apaga seus dados do sistema. Apenas remove a senha local antiga desta máquina.');
   if (!ok) return;
   localStorage.removeItem('app_password');
+  sessionStorage.removeItem('app_authed');
   localStorage.removeItem('app_authed');
   alert('Senha local redefinida. Entre com: ' + DEFAULT_PASSWORD);
   location.reload();
@@ -4758,6 +4761,7 @@ function saveNewPassword() {
 }
 
 function doLogout() {
+  sessionStorage.removeItem('app_authed');
   localStorage.removeItem('app_authed');
   location.reload();
 }
