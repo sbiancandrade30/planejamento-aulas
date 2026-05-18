@@ -5499,7 +5499,10 @@ async function syncFromSheets(options = {}) {
       return;
     }
 
+    const viewBeforeCloudLoad = state.view || 'inicio';
     state = { ...state, ...cloudState };
+    // Dados da planilha nunca devem decidir qual aba o usuário está vendo.
+    state.view = viewBeforeCloudLoad;
     if (!state.eadModules) state.eadModules = {};
     if (!state.freq) state.freq = {};
     if (!state.notasEad) state.notasEad = {};
@@ -5552,10 +5555,13 @@ function loadState() {
     if (saved) {
       const parsed = JSON.parse(saved);
       state = { ...state, ...parsed };
+      // O sistema sempre abre na tela inicial, independentemente da última aba usada.
+      state.view = 'inicio';
       normalizeLoadedState();
     } else {
       state.alunos = [];
       state.ocorrencias = [];
+      state.view = 'inicio';
       ensureTaskCategories();
     }
   } catch(e) {}
@@ -10548,34 +10554,12 @@ scheduleTaskNotifications();
 // Ao abrir, confere a planilha com cuidado. Dados locais mais recentes não são substituídos automaticamente.
 setTimeout(() => syncFromSheets({ startup:true, silent:true }), 700);
 
-// Ativar aba correta conforme state.view salvo
+// Ao abrir o sistema, começar sempre pela página Início.
 (function() {
-  const v = state.view || 'inicio';
-  // Mapear view para seletor do botão
-  const map = {
-    inicio: '[onclick*="inicio"]',
-    presencial: '[onclick*="presencial"]',
-    ead: '[onclick*="\'ead\'"]',
-    frequencia: '[onclick*="frequencia"]',
-    notasead: '[onclick*="notasead"]',
-    notaspres: '[onclick*="notaspres"]',
-    calendario: '[onclick*="calendario"]',
-    tarefas: '[onclick*="tarefas"]',
-    alunos: '[onclick*="alunos"]',
-    ocorrencias: '[onclick*="ocorrencias"]',
-    disciplinas: '[onclick*="disciplinas"]',
-    configuracoes: '[onclick*="configuracoes"]',
-  };
-  const sel = map[v] || map.inicio;
-  const btn = document.querySelector(`.sidebar-item${sel}`);
-  if (btn) {
-    setView(v, btn);
-  } else {
-    // fallback: mostrar início
-    const btnInicio = document.querySelector('.sidebar-item[onclick*="inicio"]');
-    if (btnInicio) setView('inicio', btnInicio);
-    else renderInicio();
-  }
+  state.view = 'inicio';
+  const btnInicio = document.querySelector('.sidebar-item[onclick*="inicio"]');
+  if (btnInicio) setView('inicio', btnInicio);
+  else renderInicio();
 })();
 
 checkLogin();
