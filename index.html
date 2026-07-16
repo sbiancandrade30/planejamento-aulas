@@ -963,6 +963,23 @@
   body.professor-mode .professor-readonly-note { display:inline-flex; align-items:center; gap:5px; font-size:10px; color:var(--text3); margin-top:4px; }
   body.professor-mode #neadBtnConfig,
   body.professor-mode #npBtnConfig { display:none !important; }
+  .active-class-picker { display:flex; align-items:center; gap:8px; padding:6px 9px; border:1px solid rgba(255,255,255,.28); border-radius:10px; background:rgba(255,255,255,.12); color:#fff; }
+  .active-class-picker-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; opacity:.78; white-space:nowrap; }
+  .active-class-picker select { min-width:190px; max-width:310px; border:0; border-radius:7px; padding:7px 30px 7px 9px; background:#fff; color:#1f2937; font-family:inherit; font-size:12px; font-weight:600; line-height:1.2; cursor:pointer; }
+  .class-config-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .class-config-full { grid-column:1/-1; }
+  .class-schedule-box { border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  .class-schedule-row { display:grid; grid-template-columns:105px 70px 1fr 1fr; gap:8px; align-items:center; padding:8px 10px; border-bottom:1px solid var(--border); }
+  .class-schedule-row:last-child { border-bottom:0; }
+  .class-schedule-row .form-input { padding:7px 8px; min-width:0; }
+  .class-active-pill { display:inline-flex; align-items:center; gap:5px; margin-left:7px; padding:3px 7px; border-radius:20px; background:var(--green-bg); color:var(--green); font-size:10px; font-weight:700; }
+  @media (max-width:760px) {
+    .active-class-picker-label { display:none; }
+    .active-class-picker select { min-width:130px; max-width:180px; }
+    .class-config-grid { grid-template-columns:1fr; }
+    .class-schedule-row { grid-template-columns:82px 60px 1fr; }
+    .class-schedule-row .class-end-time { display:none; }
+  }
   @media (max-width: 1024px) {
     .professor-mode-banner { flex-direction:column; align-items:flex-start; }
   }
@@ -1182,6 +1199,10 @@
       </div>
     </div>
     <div class="brand-right">
+      <div class="active-class-picker" title="Tudo o que for cadastrado será vinculado à turma ativa">
+        <span class="active-class-picker-label">Turma ativa</span>
+        <select id="activeClassSelect" onchange="changeActiveClass(this.value)"></select>
+      </div>
       <button class="brand-shortcut-btn" onclick="openMaterialsLibrary()" title="Abrir Biblioteca de Materiais em nova aba">📚 <span>Biblioteca</span></button>
     </div>
   </div>
@@ -2450,18 +2471,56 @@
   </div>
 </div>
 
-<!-- MODAL TURMA PARA OCORRÊNCIAS -->
+<!-- MODAL DE CONFIGURAÇÃO DA TURMA -->
 <div class="ead-modal-overlay" id="occClassModalOverlay">
-  <div class="modal" style="width:480px">
+  <div class="modal" style="width:760px;max-width:95vw">
     <div class="modal-head">
       <h2 id="occClassModalTitle">Nova turma</h2>
       <button class="close-btn" onclick="closeOccurrenceClassModal()"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 1l12 12M13 1L1 13"/></svg></button>
     </div>
-    <div class="modal-body">
+    <div class="modal-body" style="max-height:72vh;overflow:auto">
       <input type="hidden" id="occClassEditId">
-      <div class="form-group">
-        <label class="form-label">Nome da turma *</label>
-        <input type="text" class="form-input" id="occClassName" placeholder="ex: Moldador de Plástico — Turma 2026">
+      <div class="class-config-grid">
+        <div class="form-group">
+          <label class="form-label">Nome da turma *</label>
+          <input type="text" class="form-input" id="occClassName" placeholder="ex: AI-MPC-2026/1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Curso</label>
+          <input type="text" class="form-input" id="occClassCourse" placeholder="Nome completo do curso">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Modalidade</label>
+          <select class="form-input" id="occClassMode"><option>Presencial</option><option>Híbrida</option><option>EaD</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Situação</label>
+          <select class="form-input" id="occClassStatus"><option value="ativa">Ativa</option><option value="arquivada">Arquivada</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data de início</label>
+          <input type="date" class="form-input" id="occClassStart">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data de término</label>
+          <input type="date" class="form-input" id="occClassEnd">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Duração padrão do módulo (minutos)</label>
+          <input type="number" min="1" class="form-input" id="occClassModuleMinutes" value="45">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Média mínima</label>
+          <input type="number" min="0" step="0.1" class="form-input" id="occClassAverage" value="60">
+        </div>
+        <div class="form-group class-config-full">
+          <label class="form-label">Módulos e horários por dia</label>
+          <div class="class-schedule-box" id="occClassSchedule"></div>
+        </div>
+        <div class="form-group class-config-full">
+          <label class="form-label">Observações</label>
+          <textarea class="form-input" id="occClassNotes" placeholder="Informações específicas desta turma"></textarea>
+        </div>
       </div>
     </div>
     <div class="modal-foot">
@@ -2576,6 +2635,7 @@
 <script>
 // ─── LOGIN ────────────────────────────────────────────────
 const DEFAULT_PASSWORD = 'senai2026';
+const SENAI_PLANNER_VERSION = 'Etapa 26.0 — Estrutura de múltiplas turmas';
 
 // ═══════════════════════════════════════════════════════
 // TIPOS DE AULA EDITÁVEIS
@@ -3064,19 +3124,106 @@ function saveOccurrenceOptionsFromModal() {
 function getDefaultOccurrenceClasses() {
   return [{
     id:'turma_ai_mpc_2026_1',
-    nome:'AI-MPC-2026/1'
+    nome:'AI-MPC-2026/1',
+    curso:'Aprendizagem Industrial em Moldador de Plástico por Compressão',
+    modalidade:'Presencial',
+    status:'ativa',
+    dataInicio:'',
+    dataFim:'',
+    duracaoModulo:45,
+    mediaMinima:60,
+    horarios:createDefaultClassSchedule(),
+    observacoes:'',
+    schemaVersion:26
   }];
 }
+function createDefaultClassSchedule() {
+  return [
+    { dia:1, nome:'Segunda', ativo:true, modulos:6, inicio:'13:00', fim:'17:45' },
+    { dia:2, nome:'Terça', ativo:true, modulos:6, inicio:'13:00', fim:'17:45' },
+    { dia:3, nome:'Quarta', ativo:true, modulos:6, inicio:'13:00', fim:'17:45' },
+    { dia:4, nome:'Quinta', ativo:true, modulos:6, inicio:'13:00', fim:'17:45' },
+    { dia:5, nome:'Sexta', ativo:true, modulos:6, inicio:'13:00', fim:'17:45' },
+    { dia:6, nome:'Sábado', ativo:false, modulos:0, inicio:'', fim:'' }
+  ];
+}
+function normalizeClassConfig(turma) {
+  const base = getDefaultOccurrenceClasses()[0];
+  const source = turma && typeof turma === 'object' ? turma : {};
+  return {
+    ...base,
+    ...source,
+    id: source.id || ('turma_' + Date.now().toString(36)),
+    nome: source.nome || 'Turma sem nome',
+    horarios: Array.isArray(source.horarios) && source.horarios.length
+      ? source.horarios.map((h, i) => ({ ...createDefaultClassSchedule()[i], ...h }))
+      : createDefaultClassSchedule(),
+    schemaVersion:26
+  };
+}
 function getOccurrenceClasses() {
-  try { const s = localStorage.getItem('oficial_app_occurrence_classes'); if (s) return JSON.parse(s); } catch(e) {}
+  try {
+    const s = localStorage.getItem('oficial_app_occurrence_classes');
+    if (s) {
+      const parsed = JSON.parse(s);
+      if (Array.isArray(parsed) && parsed.length) return parsed.map(normalizeClassConfig);
+    }
+  } catch(e) {}
   return getDefaultOccurrenceClasses();
 }
 function saveOccurrenceClasses(arr) {
-  localStorage.setItem('oficial_app_occurrence_classes', JSON.stringify(arr));
+  const normalized = (arr || []).map(normalizeClassConfig);
+  localStorage.setItem('oficial_app_occurrence_classes', JSON.stringify(normalized));
   rebuildOccurrenceClassSelects();
   rebuildAlunoTurmaFilter();
+  rebuildActiveClassSelect();
   populateAlunoTurmaSelect(document.getElementById('alTurma')?.value || '');
   renderAlunos();
+}
+function migrateClassConfigurationV26() {
+  const turmas = getOccurrenceClasses().map(normalizeClassConfig);
+  if (!turmas.length) turmas.push(...getDefaultOccurrenceClasses());
+  localStorage.setItem('oficial_app_occurrence_classes', JSON.stringify(turmas));
+  if (!turmas.some(t => t.id === localStorage.getItem('oficial_app_active_class_id'))) {
+    localStorage.setItem('oficial_app_active_class_id', turmas[0].id);
+  }
+  // Todo o conteúdo legado permanece associado à turma original. A migração
+  // por área será feita nas próximas etapas sem renomear nem apagar registros.
+  if (Array.isArray(state?.alunos)) {
+    state.alunos.forEach(a => { if (!a.turmaId) a.turmaId = turmas[0].id; });
+  }
+}
+function getActiveClassId() {
+  const turmas = getOccurrenceClasses();
+  const stored = localStorage.getItem('oficial_app_active_class_id') || '';
+  return turmas.some(t => t.id === stored) ? stored : (turmas.find(t => t.status !== 'arquivada')?.id || turmas[0]?.id || '');
+}
+function getActiveClass() {
+  const id = getActiveClassId();
+  return getOccurrenceClasses().find(t => t.id === id) || getOccurrenceClasses()[0] || null;
+}
+function rebuildActiveClassSelect() {
+  const select = document.getElementById('activeClassSelect');
+  if (!select) return;
+  const turmas = getOccurrenceClasses();
+  const activeId = getActiveClassId();
+  select.innerHTML = turmas.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.nome)}${t.status === 'arquivada' ? ' (arquivada)' : ''}</option>`).join('');
+  select.value = activeId;
+}
+function changeActiveClass(id) {
+  const turmas = getOccurrenceClasses();
+  if (!turmas.some(t => t.id === id)) return;
+  localStorage.setItem('oficial_app_active_class_id', id);
+  const alunoFiltro = document.getElementById('alunoTurmaFiltro');
+  if (alunoFiltro) alunoFiltro.value = id;
+  const occFiltro = document.getElementById('occFilterTurma');
+  if (occFiltro) occFiltro.value = id;
+  const occModal = document.getElementById('occTurma');
+  if (occModal) occModal.value = id;
+  renderAlunos();
+  renderOcorrencias();
+  if (state?.view === 'configuracoes') renderConfiguracoes();
+  showToast(`Turma ativa: ${occurrenceClassName(id)}`);
 }
 function occurrenceClassName(id, fallback='') {
   const turma = getOccurrenceClasses().find(x => x.id === id);
@@ -3095,7 +3242,8 @@ function rebuildAlunoTurmaFilter() {
   const old = sel.value;
   const turmas = getOccurrenceClasses();
   sel.innerHTML = `<option value="">Todas as turmas</option>` + turmas.map(t => `<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('');
-  if ([...sel.options].some(o => o.value === old)) sel.value = old;
+  const preferred = old || getActiveClassId();
+  if ([...sel.options].some(o => o.value === preferred)) sel.value = preferred;
 }
 function alunoTurmaNome(aluno) {
   return aluno?.turmaId ? occurrenceClassName(aluno.turmaId, '') : '';
@@ -3112,7 +3260,8 @@ function rebuildOccurrenceClassSelects() {
   if (filterSel) {
     const old = filterSel.value;
     filterSel.innerHTML = `<option value="">Todas as turmas</option>` + turmas.map(t => `<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('');
-    if ([...filterSel.options].some(o => o.value === old)) filterSel.value = old;
+    const preferred = old || getActiveClassId();
+    if ([...filterSel.options].some(o => o.value === preferred)) filterSel.value = preferred;
   }
 }
 function rebuildOccurrenceStudentFilter() {
@@ -3581,13 +3730,13 @@ function renderConfiguracoes() {
         <div class="config-section">
           <div class="config-section-head">
             <div>
-              <div class="config-section-title">Turmas para ocorrências</div>
-              <div class="config-section-sub">Usadas no formulário e nos filtros do registro</div>
+              <div class="config-section-title">Turmas e horários</div>
+              <div class="config-section-sub">Configure curso, modalidade, período, módulos e horários de cada turma</div>
             </div>
           </div>
           ${occurrenceClasses.map(t => `
             <div class="config-item-row">
-              <span class="config-item-label">${escapeHtml(t.nome)}</span>
+              <span class="config-item-label">${escapeHtml(t.nome)}${t.id === getActiveClassId() ? '<span class="class-active-pill">● Turma ativa</span>' : ''}<small style="display:block;color:var(--text3);margin-top:3px">${escapeHtml(t.modalidade || 'Presencial')} · ${Math.max(...(t.horarios || []).map(h => Number(h.modulos)||0), 0)} módulo(s) no maior dia</small></span>
               <div style="display:flex;gap:4px">
                 <button class="config-action-btn" onclick="openOccurrenceClassModal('${t.id}')">Editar</button>
                 <button class="config-action-btn danger" onclick="removeOccurrenceClass('${t.id}')">×</button>
@@ -5014,11 +5163,43 @@ function removeLibraryUrl() {
 function openOccurrenceClassModal(editId='') {
   const turmas = getOccurrenceClasses();
   const turma = editId ? turmas.find(t => t.id === editId) : null;
+  const config = normalizeClassConfig(turma || { id:'', nome:'', curso:'', horarios:createDefaultClassSchedule() });
   document.getElementById('occClassEditId').value = editId || '';
   document.getElementById('occClassModalTitle').textContent = editId ? 'Editar turma' : 'Nova turma';
-  document.getElementById('occClassName').value = turma ? turma.nome : '';
+  document.getElementById('occClassName').value = turma ? config.nome : '';
+  document.getElementById('occClassCourse').value = turma ? config.curso : '';
+  document.getElementById('occClassMode').value = config.modalidade || 'Presencial';
+  document.getElementById('occClassStatus').value = config.status || 'ativa';
+  document.getElementById('occClassStart').value = config.dataInicio || '';
+  document.getElementById('occClassEnd').value = config.dataFim || '';
+  document.getElementById('occClassModuleMinutes').value = config.duracaoModulo || 45;
+  document.getElementById('occClassAverage').value = config.mediaMinima ?? 60;
+  document.getElementById('occClassNotes').value = config.observacoes || '';
+  renderClassScheduleEditor(config.horarios);
   document.getElementById('occClassModalOverlay').classList.add('open');
   setTimeout(() => document.getElementById('occClassName')?.focus(), 60);
+}
+function renderClassScheduleEditor(schedule) {
+  const wrap = document.getElementById('occClassSchedule');
+  if (!wrap) return;
+  const rows = Array.isArray(schedule) && schedule.length ? schedule : createDefaultClassSchedule();
+  wrap.innerHTML = rows.map((h, i) => `
+    <div class="class-schedule-row" data-schedule-index="${i}" data-day="${h.dia}">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600"><input type="checkbox" class="class-day-active" ${h.ativo ? 'checked' : ''}> ${escapeHtml(h.nome)}</label>
+      <input class="form-input class-day-modules" type="number" min="0" max="12" value="${Number(h.modulos) || 0}" title="Quantidade de módulos">
+      <input class="form-input class-start-time" type="time" value="${escapeHtml(h.inicio || '')}" title="Horário inicial">
+      <input class="form-input class-end-time" type="time" value="${escapeHtml(h.fim || '')}" title="Horário final">
+    </div>`).join('');
+}
+function readClassScheduleEditor() {
+  return [...document.querySelectorAll('#occClassSchedule .class-schedule-row')].map(row => ({
+    dia:Number(row.dataset.day),
+    nome:row.querySelector('label')?.textContent.trim() || '',
+    ativo:Boolean(row.querySelector('.class-day-active')?.checked),
+    modulos:Math.max(0, Number(row.querySelector('.class-day-modules')?.value) || 0),
+    inicio:row.querySelector('.class-start-time')?.value || '',
+    fim:row.querySelector('.class-end-time')?.value || ''
+  }));
 }
 function closeOccurrenceClassModal() {
   document.getElementById('occClassModalOverlay').classList.remove('open');
@@ -5028,14 +5209,29 @@ function saveOccurrenceClass() {
   if (!nome) { alert('Digite o nome da turma.'); return; }
   const editId = document.getElementById('occClassEditId').value;
   const turmas = getOccurrenceClasses();
+  const dados = {
+    nome,
+    curso:document.getElementById('occClassCourse').value.trim(),
+    modalidade:document.getElementById('occClassMode').value,
+    status:document.getElementById('occClassStatus').value,
+    dataInicio:document.getElementById('occClassStart').value,
+    dataFim:document.getElementById('occClassEnd').value,
+    duracaoModulo:Math.max(1, Number(document.getElementById('occClassModuleMinutes').value) || 45),
+    mediaMinima:Number(document.getElementById('occClassAverage').value) || 0,
+    horarios:readClassScheduleEditor(),
+    observacoes:document.getElementById('occClassNotes').value.trim(),
+    schemaVersion:26
+  };
   if (editId) {
     const idx = turmas.findIndex(t => t.id === editId);
-    if (idx !== -1) turmas[idx].nome = nome;
+    if (idx !== -1) turmas[idx] = { ...turmas[idx], ...dados };
   } else {
-    turmas.push({
+    const nova = {
       id: 'turma_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
-      nome
-    });
+      ...dados
+    };
+    turmas.push(nova);
+    localStorage.setItem('oficial_app_active_class_id', nova.id);
   }
   saveOccurrenceClasses(turmas);
   closeOccurrenceClassModal();
@@ -5047,9 +5243,9 @@ function removeOccurrenceClass(id) {
   const turmas = getOccurrenceClasses();
   const turma = turmas.find(t => t.id === id);
   if (!turma) return;
-  const usadas = (state.ocorrencias || []).some(o => o.turmaId === id);
+  const usadas = (state.ocorrencias || []).some(o => o.turmaId === id) || (state.alunos || []).some(a => a.turmaId === id);
   if (usadas) {
-    alert('Essa turma já tem ocorrências vinculadas. Para preservar o histórico, ela não pode ser excluída.');
+    alert('Essa turma já tem alunos ou ocorrências vinculados. Para preservar o histórico, arquive a turma em vez de excluí-la.');
     return;
   }
   if (!confirm(`Excluir a turma "${turma.nome}"?`)) return;
@@ -5059,6 +5255,7 @@ function removeOccurrenceClass(id) {
     return;
   }
   saveOccurrenceClasses(novas);
+  if (getActiveClassId() === id) localStorage.setItem('oficial_app_active_class_id', novas[0].id);
   renderConfiguracoes();
   renderOcorrencias();
   showToast('Turma removida.');
@@ -6202,7 +6399,7 @@ function openOccurrenceModal(id='', duplicate=false) {
   document.getElementById('occurrenceModalTitle').textContent = duplicate ? 'Duplicar ocorrência' : (occ ? 'Editar ocorrência' : 'Nova ocorrência');
 
   const alunoAtualPainel = !occ && currentAlunoId ? getAlunos().find(a => a.id === currentAlunoId) : null;
-  document.getElementById('occTurma').value = occ?.turmaId || alunoAtualPainel?.turmaId || getOccurrenceClasses()[0]?.id || '';
+  document.getElementById('occTurma').value = occ?.turmaId || alunoAtualPainel?.turmaId || getActiveClassId() || getOccurrenceClasses()[0]?.id || '';
   populateOccurrenceAlunoSuggestions(document.getElementById('occTurma').value);
   document.getElementById('occAluno').value = occ ? occurrenceStudentName(occ) : (alunoAtualPainel?.nome || '');
   document.getElementById('occData').value = occ?.data || now.toISOString().slice(0,10);
@@ -11394,8 +11591,10 @@ function seedCompleteMenuTestSettings() {
 applyProfessorExportSettings();
 loadBrandTitle();
 loadState();
+migrateClassConfigurationV26();
 loadLogo();
 applyProfessorModeUi();
+rebuildActiveClassSelect();
 rebuildAllDiscSelects();
 rebuildTagButtons();
 rebuildLegendaPresencial();
