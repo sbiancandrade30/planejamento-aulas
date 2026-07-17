@@ -825,8 +825,25 @@
   .disc-mini-pill.adjust { background:var(--amber-bg); color:var(--amber); border-color:rgba(154,98,0,.22); }
   .disc-mini-pill.alert { background:var(--red-bg); color:var(--red); border-color:rgba(185,50,50,.22); }
   .disc-strategy-note { margin-top:10px; font-size:11px; line-height:1.5; color:var(--text2); background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:8px 10px; }
+  .disc-view-toolbar { display:flex; justify-content:flex-end; gap:7px; margin:-8px 0 12px; }
+  .disc-compact-item { display:block; padding:0; }
+  .disc-compact-summary { display:grid; grid-template-columns:minmax(240px,1.7fr) minmax(180px,1fr) auto; gap:14px; align-items:center; padding:10px 14px; min-height:58px; }
+  .disc-compact-main { min-width:0; }
+  .disc-compact-title-row { display:flex; align-items:center; gap:8px; min-width:0; }
+  .disc-compact-title-row .disc-item-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .disc-compact-meta { display:flex; gap:10px; flex-wrap:wrap; margin-top:4px; color:var(--text3); font-size:10px; }
+  .disc-compact-progress { min-width:0; }
+  .disc-compact-progress-label { display:flex; justify-content:space-between; gap:8px; font-size:10px; color:var(--text2); margin-bottom:4px; }
+  .disc-compact-bar { height:5px; background:var(--border); border-radius:999px; overflow:hidden; }
+  .disc-compact-bar > span { display:block; height:100%; border-radius:999px; }
+  .disc-expand-btn { min-width:82px; }
+  .disc-details { display:none; padding:0 14px 13px; border-top:1px dashed var(--border); background:rgba(247,246,242,.45); }
+  .disc-compact-item.expanded .disc-details { display:block; animation:fadeIn .15s ease; }
+  .disc-compact-item.expanded .disc-compact-summary { background:var(--surface2); }
+  .disc-details .disc-metrics-grid { margin-top:12px; }
   @media (max-width:1100px) { .disc-overview { grid-template-columns:repeat(2,minmax(150px,1fr)); } .disc-metrics-grid { grid-template-columns:repeat(2,minmax(120px,1fr)); } }
-  @media (max-width:700px) { .disc-overview { grid-template-columns:1fr; } .disc-metrics-grid { grid-template-columns:1fr 1fr; } }
+  @media (max-width:800px) { .disc-compact-summary { grid-template-columns:1fr auto; } .disc-compact-progress { grid-column:1/-1; grid-row:2; } }
+  @media (max-width:700px) { .disc-overview { grid-template-columns:1fr 1fr; } .disc-overview-card { padding:10px 11px; } .disc-overview-value { font-size:19px; } .disc-metrics-grid { grid-template-columns:1fr 1fr; } }
 
   @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
 
@@ -1541,6 +1558,10 @@
       <div style="margin-bottom:20px">
         <h2 style="font-size:17px;font-weight:600;color:var(--text);margin-bottom:4px">Disciplinas</h2>
         <p class="disc-admin-description" style="font-size:13px;color:var(--text2)">Adicione, renomeie ou remova disciplinas. Todos os selects do sistema são atualizados automaticamente.</p>
+      </div>
+      <div class="disc-view-toolbar">
+        <button class="btn btn-outline" style="font-size:11px;padding:6px 10px" onclick="setAllDisciplinesExpanded(true)">Expandir todas</button>
+        <button class="btn btn-outline" style="font-size:11px;padding:6px 10px" onclick="setAllDisciplinesExpanded(false)">Recolher todas</button>
       </div>
       <div class="disc-overview" id="discOverview"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" id="discManagerGrid"></div>
@@ -2635,7 +2656,7 @@
 <script>
 // ─── LOGIN ────────────────────────────────────────────────
 const DEFAULT_PASSWORD = 'senai2026';
-const SENAI_PLANNER_VERSION = 'Etapa 26.0 — Estrutura de múltiplas turmas';
+const SENAI_PLANNER_VERSION = 'Etapa 26.2 — Disciplinas compactas';
 
 // ═══════════════════════════════════════════════════════
 // TIPOS DE AULA EDITÁVEIS
@@ -2863,7 +2884,8 @@ function sincronizarSuspensaoOcorrencia(occ) {
   const freqDisc = occ.disciplinaId || occ.disciplinaNome || '';
   if (freqDisc) {
     const entry = getFreqEntry(freqDisc, occ.data);
-    if (!entry.alunos[occ.alunoNome]) entry.alunos[occ.alunoNome] = { mods:['CJ','CJ','CJ','CJ','CJ','CJ'], obs:'', link:'', afastamentoTipo:'', afastamentoDias:'', afastamentoRetorno:'' };
+    const occurrenceMods = Array.from({length:getClassModuleCountForDate(occ.data)}, () => 'CJ');
+    if (!entry.alunos[occ.alunoNome]) entry.alunos[occ.alunoNome] = { mods:occurrenceMods, obs:'', link:'', afastamentoTipo:'', afastamentoDias:'', afastamentoRetorno:'' };
     const alunoFreq = entry.alunos[occ.alunoNome];
     alunoFreq.afastamentoTipo = 'suspensao';
     alunoFreq.afastamentoDias = String(dias);
@@ -2874,7 +2896,7 @@ function sincronizarSuspensaoOcorrencia(occ) {
     if (Array.isArray(alunoFreq.mods)) {
       alunoFreq.mods = alunoFreq.mods.map(() => 'CJ');
     } else {
-      alunoFreq.mods = ['CJ','CJ','CJ','CJ','CJ','CJ'];
+      alunoFreq.mods = occurrenceMods;
     }
   }
 }
@@ -3162,6 +3184,9 @@ function normalizeClassConfig(turma) {
   };
 }
 function getOccurrenceClasses() {
+  if (state && Array.isArray(state.classConfigs) && state.classConfigs.length) {
+    return state.classConfigs.map(normalizeClassConfig);
+  }
   try {
     const s = localStorage.getItem('oficial_app_occurrence_classes');
     if (s) {
@@ -3173,6 +3198,7 @@ function getOccurrenceClasses() {
 }
 function saveOccurrenceClasses(arr) {
   const normalized = (arr || []).map(normalizeClassConfig);
+  if (state && typeof state === 'object') state.classConfigs = classClone(normalized, normalized);
   localStorage.setItem('oficial_app_occurrence_classes', JSON.stringify(normalized));
   rebuildOccurrenceClassSelects();
   rebuildAlunoTurmaFilter();
@@ -3184,6 +3210,7 @@ function migrateClassConfigurationV26() {
   const turmas = getOccurrenceClasses().map(normalizeClassConfig);
   if (!turmas.length) turmas.push(...getDefaultOccurrenceClasses());
   localStorage.setItem('oficial_app_occurrence_classes', JSON.stringify(turmas));
+  state.classConfigs = classClone(turmas, turmas);
   if (!turmas.some(t => t.id === localStorage.getItem('oficial_app_active_class_id'))) {
     localStorage.setItem('oficial_app_active_class_id', turmas[0].id);
   }
@@ -3202,6 +3229,20 @@ function getActiveClass() {
   const id = getActiveClassId();
   return getOccurrenceClasses().find(t => t.id === id) || getOccurrenceClasses()[0] || null;
 }
+function getClassScheduleForDate(dateOrKey) {
+  const date = dateOrKey instanceof Date ? dateOrKey : new Date(String(dateOrKey || '') + 'T12:00:00');
+  if (Number.isNaN(date.getTime())) return null;
+  const day = date.getDay();
+  return (getActiveClass()?.horarios || []).find(h => Number(h.dia) === day) || null;
+}
+function getClassModuleCountForDate(dateOrKey) {
+  const schedule = getClassScheduleForDate(dateOrKey);
+  if (!schedule || !schedule.ativo) return 0;
+  return Math.max(0, Number(schedule.modulos) || 0);
+}
+function getClassMaxModuleCount() {
+  return Math.max(0, ...(getActiveClass()?.horarios || []).filter(h => h.ativo).map(h => Number(h.modulos) || 0));
+}
 function rebuildActiveClassSelect() {
   const select = document.getElementById('activeClassSelect');
   if (!select) return;
@@ -3213,7 +3254,10 @@ function rebuildActiveClassSelect() {
 function changeActiveClass(id) {
   const turmas = getOccurrenceClasses();
   if (!turmas.some(t => t.id === id)) return;
+  captureCurrentClassData();
   localStorage.setItem('oficial_app_active_class_id', id);
+  activateClassData(id);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   const alunoFiltro = document.getElementById('alunoTurmaFiltro');
   if (alunoFiltro) alunoFiltro.value = id;
   const occFiltro = document.getElementById('occFilterTurma');
@@ -3222,8 +3266,98 @@ function changeActiveClass(id) {
   if (occModal) occModal.value = id;
   renderAlunos();
   renderOcorrencias();
+  renderAllClassDependentViews();
   if (state?.view === 'configuracoes') renderConfiguracoes();
   showToast(`Turma ativa: ${occurrenceClassName(id)}`);
+}
+
+const CLASS_DATA_OBJECT_KEYS = ['modules','eadModules','freq','notasEad','notasPres'];
+const CLASS_DATA_ARRAY_KEYS = ['eventos','afastamentos'];
+
+function classClone(value, fallback) {
+  try { return JSON.parse(JSON.stringify(value)); } catch(e) { return fallback; }
+}
+function readLegacyDiscs(tipo) {
+  const key = 'oficial_app_discs_' + tipo;
+  try { const saved = localStorage.getItem(key); if (saved) return JSON.parse(saved); } catch(e) {}
+  return [...(DISC_DEFAULTS?.[tipo] || [])];
+}
+function collectLegacyDiscExtras(discLists) {
+  const extras = {};
+  const names = new Set(Object.values(discLists || {}).flat());
+  names.forEach(nome => {
+    try {
+      const raw = localStorage.getItem('oficial_disc_extra_' + nome);
+      if (raw) extras[nome] = JSON.parse(raw);
+    } catch(e) {}
+  });
+  return extras;
+}
+function createEmptyClassData() {
+  return {
+    modules:{}, eadModules:{}, freq:{}, notasEad:{}, notasPres:{},
+    eventos:[], afastamentos:[],
+    discs:{ presencial:[], ead:[], presEad:[] },
+    discExtras:{}, schemaVersion:1
+  };
+}
+function snapshotLegacyClassData() {
+  const discs = {
+    presencial:readLegacyDiscs('presencial'),
+    ead:readLegacyDiscs('ead'),
+    presEad:readLegacyDiscs('presEad')
+  };
+  const data = createEmptyClassData();
+  CLASS_DATA_OBJECT_KEYS.forEach(key => { data[key] = classClone(state?.[key], {}); });
+  CLASS_DATA_ARRAY_KEYS.forEach(key => { data[key] = classClone(state?.[key], []); });
+  data.discs = discs;
+  data.discExtras = collectLegacyDiscExtras(discs);
+  return data;
+}
+function ensureClassDataStore() {
+  if (!state.classData || typeof state.classData !== 'object' || Array.isArray(state.classData)) state.classData = {};
+  const turmas = getOccurrenceClasses();
+  const activeId = getActiveClassId() || turmas[0]?.id;
+  if (!Object.keys(state.classData).length && activeId) {
+    state.classData[activeId] = snapshotLegacyClassData();
+    state._classDataMigration = { version:1, migratedAt:new Date().toISOString(), sourceClassId:activeId };
+  }
+  turmas.forEach(t => {
+    if (!state.classData[t.id]) state.classData[t.id] = createEmptyClassData();
+  });
+  return activeId;
+}
+function captureCurrentClassData() {
+  if (!state || typeof state !== 'object') return;
+  ensureClassDataStore();
+  const id = state._activeClassDataId || getActiveClassId();
+  if (!id) return;
+  const current = state.classData[id] || createEmptyClassData();
+  CLASS_DATA_OBJECT_KEYS.forEach(key => { current[key] = classClone(state[key], {}); });
+  CLASS_DATA_ARRAY_KEYS.forEach(key => { current[key] = classClone(state[key], []); });
+  current.discs = current.discs || { presencial:[], ead:[], presEad:[] };
+  current.discExtras = current.discExtras || {};
+  current.schemaVersion = 1;
+  state.classData[id] = current;
+}
+function activateClassData(id = getActiveClassId()) {
+  ensureClassDataStore();
+  if (!state.classData[id]) state.classData[id] = createEmptyClassData();
+  const data = state.classData[id];
+  CLASS_DATA_OBJECT_KEYS.forEach(key => { state[key] = classClone(data[key], {}); });
+  CLASS_DATA_ARRAY_KEYS.forEach(key => { state[key] = classClone(data[key], []); });
+  state._activeClassDataId = id;
+  rebuildAllDiscSelects();
+}
+function renderAllClassDependentViews() {
+  render();
+  renderInicio();
+  if (state.view === 'ead') renderEad();
+  if (state.view === 'frequencia') renderFreq();
+  if (state.view === 'notasead') onNeadDiscChange();
+  if (state.view === 'notaspres') onNpDiscChange();
+  if (state.view === 'calendario') { renderCal(); startCountdown(); }
+  if (state.view === 'disciplinas') renderDiscManager();
 }
 function occurrenceClassName(id, fallback='') {
   const turma = getOccurrenceClasses().find(x => x.id === id);
@@ -3864,13 +3998,18 @@ const DISC_DEFAULTS = {
 };
 
 function getDiscs(tipo) {
-  const key = 'oficial_app_discs_' + tipo;
-  try { const s = localStorage.getItem(key); if (s) return JSON.parse(s); } catch(e) {}
-  return [...DISC_DEFAULTS[tipo]];
+  const classId = state?._activeClassDataId || getActiveClassId();
+  const classDiscs = state?.classData?.[classId]?.discs?.[tipo];
+  if (Array.isArray(classDiscs)) return [...classDiscs];
+  return readLegacyDiscs(tipo);
 }
 
 function saveDiscs(tipo, arr) {
-  localStorage.setItem('oficial_app_discs_' + tipo, JSON.stringify(arr));
+  ensureClassDataStore();
+  const classId = state._activeClassDataId || getActiveClassId();
+  if (!state.classData[classId]) state.classData[classId] = createEmptyClassData();
+  if (!state.classData[classId].discs) state.classData[classId].discs = { presencial:[], ead:[], presEad:[] };
+  state.classData[classId].discs[tipo] = [...arr];
   rebuildAllDiscSelects();
 }
 
@@ -3930,7 +4069,7 @@ function calcModulosLecionados(disc) {
     const alunos = Object.values(entry.alunos || {});
     if (!alunos.length) return;
     // Para cada slot de módulo (0–5), checar se alguém estava presente
-    for (let m = 0; m < 6; m++) {
+    for (let m = 0; m < getClassMaxModuleCount(); m++) {
       const algumPresente = alunos.some(a => (a.mods || [])[m] === 'P');
       if (algumPresente) count++;
     }
@@ -3953,6 +4092,13 @@ const DISC_CARGAS_PADRAO = {
 };
 
 function getDiscExtra(nome) {
+  const classId = state?._activeClassDataId || getActiveClassId();
+  const classStore = state?.classData?.[classId];
+  const classExtra = classStore?.discExtras?.[nome];
+  if (classExtra) return classClone(classExtra, {});
+  if (classStore) {
+    return { cargaHoras:DISC_CARGAS_PADRAO[nome] || '', dataInicio:'', dataFim:'', modRealizados:'' };
+  }
   try {
     const s = localStorage.getItem('oficial_disc_extra_' + nome);
     if (s) return JSON.parse(s);
@@ -3965,7 +4111,15 @@ function getDiscExtra(nome) {
   };
 }
 function saveDiscExtra(nome, obj) {
-  localStorage.setItem('oficial_disc_extra_' + nome, JSON.stringify(obj));
+  ensureClassDataStore();
+  const classId = state._activeClassDataId || getActiveClassId();
+  if (!state.classData[classId]) state.classData[classId] = createEmptyClassData();
+  if (!state.classData[classId].discExtras) state.classData[classId].discExtras = {};
+  state.classData[classId].discExtras[nome] = classClone(obj, {});
+}
+function removeDiscExtra(nome) {
+  const classId = state?._activeClassDataId || getActiveClassId();
+  if (state?.classData?.[classId]?.discExtras) delete state.classData[classId].discExtras[nome];
 }
 
 function calcModulos(cargaHoras) {
@@ -4061,6 +4215,30 @@ function renderDiscOverview(allSummaries) {
     </div>`;
 }
 
+function discExpansionStorageKey() {
+  return 'oficial_disc_expanded_' + (getActiveClassId() || 'default');
+}
+function getExpandedDisciplines() {
+  try { return new Set(JSON.parse(localStorage.getItem(discExpansionStorageKey()) || '[]')); }
+  catch(e) { return new Set(); }
+}
+function discExpansionId(tipo, nome) { return `${tipo}::${nome}`; }
+function toggleDiscDetails(tipo, nome) {
+  const expanded = getExpandedDisciplines();
+  const id = discExpansionId(tipo, nome);
+  if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
+  localStorage.setItem(discExpansionStorageKey(), JSON.stringify([...expanded]));
+  renderDiscManager();
+}
+function setAllDisciplinesExpanded(open) {
+  const expanded = new Set();
+  if (open) {
+    ['presencial','ead','presEad'].forEach(tipo => getDiscs(tipo).forEach(nome => expanded.add(discExpansionId(tipo, nome))));
+  }
+  localStorage.setItem(discExpansionStorageKey(), JSON.stringify([...expanded]));
+  renderDiscManager();
+}
+
 function renderDiscManager() {
   const grid = document.getElementById('discManagerGrid');
   if (!grid) return;
@@ -4126,39 +4304,48 @@ function renderDiscManager() {
       const labelsAtivEad = summary.notasEadAtividades === 1 ? 'atividade EaD' : 'atividades EaD';
       const labelsAvalPres = summary.notasPresAvaliacoes === 1 ? 'avaliação presencial' : 'avaliações presenciais';
 
-      return `<div class="disc-item" style="flex-direction:column;align-items:stretch;gap:4px;padding:14px 18px">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
-          <div style="display:flex;flex-direction:column;gap:6px;min-width:0;flex:1">
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      const expansionId = discExpansionId(t.key, d);
+      const isExpanded = getExpandedDisciplines().has(expansionId);
+      const compactProgress = totalMod
+        ? `<div class="disc-compact-progress-label"><span>${realizados} de ${totalMod} módulos</span><span>${pct}%</span></div><div class="disc-compact-bar"><span style="width:${pct}%;background:${pct>=100?'var(--green)':pct>=70?'var(--accent)':'var(--amber)'}"></span></div>`
+        : `<div class="disc-compact-progress-label"><span>Carga horária não configurada</span></div><div class="disc-compact-bar"><span style="width:0"></span></div>`;
+
+      return `<div class="disc-item disc-compact-item ${isExpanded?'expanded':''}">
+        <div class="disc-compact-summary">
+          <div class="disc-compact-main">
+            <div class="disc-compact-title-row">
               <span class="disc-item-name" style="font-weight:600;font-size:13px">${escapeHtml(d)}</span>
               <span class="disc-status-pill ${strategy.cls}">${strategy.label}</span>
             </div>
-            <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text3);margin-top:2px">
+            <div class="disc-compact-meta">
               ${horasInfo?`<span>⏱ ${horasInfo}</span>`:''}
               ${modInfo?`<span>📚 ${modInfo}</span>`:''}
               ${periodoInfo?`<span>📅 ${periodoInfo}</span>`:''}
-              ${!horasInfo&&!modInfo&&!periodoInfo&&!isProfessorMode()?'<span style="font-style:italic">Clique em Configurar para definir carga horária e datas</span>':''}
+              <span>${summary.notasPresAvaliacoes + summary.notasEadAtividades} avaliação${summary.notasPresAvaliacoes + summary.notasEadAtividades === 1 ? '' : 'ões'}</span>
             </div>
           </div>
-          <div class="disc-item-actions" style="flex-shrink:0">
-            <button class="disc-action-btn" onclick="openDiscModal('${t.key}',${i})">✎ Configurar</button>
-            <button class="disc-action-btn danger" onclick="removeDisc('${t.key}',${i})">Excluir</button>
+          <div class="disc-compact-progress">${compactProgress}</div>
+          <div class="disc-item-actions">
+            <button class="disc-action-btn disc-expand-btn" onclick="toggleDiscDetails('${t.key}','${escapeJsString(d)}')">${isExpanded?'▴ Recolher':'▾ Expandir'}</button>
+            ${isProfessorMode() ? '' : `<button class="disc-action-btn" onclick="openDiscModal('${t.key}',${i})">✎</button><button class="disc-action-btn danger" onclick="removeDisc('${t.key}',${i})">×</button>`}
           </div>
         </div>
-        <div class="disc-metrics-grid">
+        <div class="disc-details">
+          <div class="disc-metrics-grid">
           <div class="disc-metric"><div class="disc-metric-value">${summary.planejPres}</div><div class="disc-metric-label">${labelsPres} planejado${summary.planejPres===1?'':'s'}</div></div>
           <div class="disc-metric"><div class="disc-metric-value">${summary.eadPlanej}</div><div class="disc-metric-label">${labelsEad} planejado${summary.eadPlanej===1?'':'s'}</div></div>
           <div class="disc-metric"><div class="disc-metric-value">${summary.notasPresAvaliacoes}</div><div class="disc-metric-label">${labelsAvalPres} cadastrada${summary.notasPresAvaliacoes===1?'':'s'}</div></div>
           <div class="disc-metric"><div class="disc-metric-value">${summary.notasEadAtividades}</div><div class="disc-metric-label">${labelsAtivEad} cadastrada${summary.notasEadAtividades===1?'':'s'}</div></div>
+          </div>
+          <div class="disc-exec-breakdown">
+            <span class="disc-mini-pill">⏳ ${summary.exec.planejada} planejada${summary.exec.planejada===1?'':'s'}</span>
+            <span class="disc-mini-pill ok">✓ ${summary.exec.realizada} conforme</span>
+            <span class="disc-mini-pill adjust">↺ ${summary.exec.ajustes} com ajuste${summary.exec.ajustes===1?'':'s'}</span>
+            <span class="disc-mini-pill alert">! ${summary.exec.nao_realizada} não realizada${summary.exec.nao_realizada===1?'':'s'}</span>
+          </div>
+          ${progressBar}
+          <div class="disc-strategy-note">${escapeHtml(strategy.note)}</div>
         </div>
-        <div class="disc-exec-breakdown">
-          <span class="disc-mini-pill">⏳ ${summary.exec.planejada} planejada${summary.exec.planejada===1?'':'s'}</span>
-          <span class="disc-mini-pill ok">✓ ${summary.exec.realizada} conforme</span>
-          <span class="disc-mini-pill adjust">↺ ${summary.exec.ajustes} com ajuste${summary.exec.ajustes===1?'':'s'}</span>
-          <span class="disc-mini-pill alert">! ${summary.exec.nao_realizada} não realizada${summary.exec.nao_realizada===1?'':'s'}</span>
-        </div>
-        ${progressBar}
-        <div class="disc-strategy-note">${escapeHtml(strategy.note)}</div>
       </div>`;
     }).join('');
     return `<div class="disc-manager" style="margin-bottom:20px">
@@ -4226,7 +4413,7 @@ function saveDisc() {
   // Se renomeou, copiar extras para novo nome e limpar antigo
   if (nomeAntigo && nomeAntigo !== nome) {
     saveDiscExtra(nome, ex);
-    localStorage.removeItem('oficial_disc_extra_' + nomeAntigo);
+    removeDiscExtra(nomeAntigo);
   }
 
   closeDiscModal();
@@ -4246,7 +4433,7 @@ function removeDisc(tipo, idx) {
   if (isProfessorMode()) { showToast('Não é possível excluir disciplinas na versão do professor.'); return; }
   const arr = getDiscs(tipo);
   if (!confirm(`Excluir "${arr[idx]}"?\n\nIso não apaga dados já lançados, mas a disciplina não aparecerá mais nos selects.`)) return;
-  localStorage.removeItem('oficial_disc_extra_' + arr[idx]);
+  removeDiscExtra(arr[idx]);
   arr.splice(idx, 1);
   saveDiscs(tipo, arr);
   renderDiscManager();
@@ -5231,9 +5418,10 @@ function saveOccurrenceClass() {
       ...dados
     };
     turmas.push(nova);
-    localStorage.setItem('oficial_app_active_class_id', nova.id);
   }
   saveOccurrenceClasses(turmas);
+  ensureClassDataStore();
+  captureCurrentClassData();
   closeOccurrenceClassModal();
   renderConfiguracoes();
   renderOcorrencias();
@@ -5254,8 +5442,12 @@ function removeOccurrenceClass(id) {
     alert('Mantenha pelo menos uma turma cadastrada.');
     return;
   }
+  const wasActive = getActiveClassId() === id;
+  captureCurrentClassData();
+  if (state.classData) delete state.classData[id];
+  if (wasActive) localStorage.setItem('oficial_app_active_class_id', novas[0].id);
   saveOccurrenceClasses(novas);
-  if (getActiveClassId() === id) localStorage.setItem('oficial_app_active_class_id', novas[0].id);
+  if (wasActive) activateClassData(novas[0].id);
   renderConfiguracoes();
   renderOcorrencias();
   showToast('Turma removida.');
@@ -5380,7 +5572,7 @@ function exportarDados() {
     const stamp = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
     const payload = {
       _exportado_em: now.toISOString(),
-      _versao: '22_github_sheets',
+      _versao: '26_2_disciplinas_compactas',
       state,
       // localStorage extras
       app_logo:            localStorage.getItem('oficial_app_logo')            || null,
@@ -5727,7 +5919,10 @@ function normalizeLoadedState() {
   if (!state.ocorrencias) state.ocorrencias = [];
   if (!state.alunos) state.alunos = [];
   ensureTaskCategories();
+  const activeClassId = ensureClassDataStore();
+  activateClassData(activeClassId);
   if (limparFrequenciasFantasmasSuspensaoSemDisciplina()) {
+    captureCurrentClassData();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }
 }
@@ -5786,11 +5981,15 @@ function safeJsonForInlineScript(value) {
 }
 
 function collectProfessorExportSettings() {
+  const activeClassId = getActiveClassId();
+  const activeClass = getOccurrenceClasses().find(t => t.id === activeClassId);
   return {
-    brand_title: localStorage.getItem('oficial_brand_title') || '',
-    teacher_name: localStorage.getItem('oficial_teacher_name') || '',
-    app_logo: localStorage.getItem('oficial_app_logo') || '',
-    materials_library_url: localStorage.getItem('oficial_materials_library_url') || ''
+    oficial_brand_title: localStorage.getItem('oficial_brand_title') || '',
+    oficial_teacher_name: localStorage.getItem('oficial_teacher_name') || '',
+    oficial_app_logo: localStorage.getItem('oficial_app_logo') || '',
+    oficial_materials_library_url: localStorage.getItem('oficial_materials_library_url') || '',
+    oficial_app_occurrence_classes: JSON.stringify(activeClass ? [activeClass] : getDefaultOccurrenceClasses()),
+    oficial_app_active_class_id: activeClassId
   };
 }
 
@@ -5804,7 +6003,14 @@ function applyProfessorExportSettings() {
 
 function gerarVersaoProfessor() {
   if (PROFESSOR_EXPORT_MODE) return;
+  captureCurrentClassData();
   const exportedState = clonePlain(state);
+  const activeClassId = getActiveClassId();
+  if (exportedState.classData) {
+    exportedState.classData = { [activeClassId]: clonePlain(exportedState.classData[activeClassId] || createEmptyClassData()) };
+  }
+  exportedState.alunos = (exportedState.alunos || []).filter(a => a.turmaId === activeClassId);
+  exportedState.ocorrencias = (exportedState.ocorrencias || []).filter(o => o.turmaId === activeClassId);
   Object.values(exportedState.modules || {}).forEach(mod => {
     if (mod && typeof mod === 'object') delete mod._professorAdded;
   });
@@ -5901,6 +6107,7 @@ function saveData() {
     return;
   }
 
+  captureCurrentClassData();
   markStateUpdated();
   const payload = JSON.stringify(state);
   const storageKey = PROFESSOR_EXPORT_MODE ? professorLocalStorageKey() : STORAGE_KEY;
@@ -6112,7 +6319,25 @@ async function _pushProfessorMergedToSheets() {
   }
   try {
     const cloudState = await fetchCloudStateForMerge();
-    const { merged, conflicts } = mergeProfessorContributions(cloudState, state, PROFESSOR_BASE_STATE || {});
+    captureCurrentClassData();
+    const classId = state._activeClassDataId || getActiveClassId();
+    const cloudClass = cloudState?.classData?.[classId] || createEmptyClassData();
+    const professorClass = state?.classData?.[classId] || snapshotLegacyClassData();
+    const baseClass = PROFESSOR_BASE_STATE?.classData?.[classId] || createEmptyClassData();
+    const cloudProjected = { ...cloudState, ...classClone(cloudClass, createEmptyClassData()) };
+    const professorProjected = { ...state, ...classClone(professorClass, createEmptyClassData()) };
+    const baseProjected = { ...(PROFESSOR_BASE_STATE || {}), ...classClone(baseClass, createEmptyClassData()) };
+    const { merged:mergedClassFields, conflicts } = mergeProfessorContributions(cloudProjected, professorProjected, baseProjected);
+    const merged = classClone(cloudState, {});
+    if (!merged.classData || typeof merged.classData !== 'object') merged.classData = {};
+    const finalClass = classClone(cloudClass, createEmptyClassData());
+    CLASS_DATA_OBJECT_KEYS.forEach(key => { finalClass[key] = classClone(mergedClassFields[key], {}); });
+    CLASS_DATA_ARRAY_KEYS.forEach(key => { finalClass[key] = classClone(mergedClassFields[key], []); });
+    merged.classData[classId] = finalClass;
+    if (merged._activeClassDataId === classId) {
+      CLASS_DATA_OBJECT_KEYS.forEach(key => { merged[key] = classClone(finalClass[key], {}); });
+      CLASS_DATA_ARRAY_KEYS.forEach(key => { merged[key] = classClone(finalClass[key], []); });
+    }
     // A base mesclada recebe um timestamp novo para que o painel completo reconheça
     // imediatamente que há dados mais recentes vindos da versão do professor.
     const mergedMeta = ensureSyncMeta(merged);
@@ -6201,17 +6426,9 @@ async function syncFromSheets(options = {}) {
     state = { ...state, ...cloudState };
     // Dados da planilha nunca devem decidir qual aba o usuário está vendo.
     state.view = viewBeforeCloudLoad;
-    if (!state.eadModules) state.eadModules = {};
-    if (!state.freq) state.freq = {};
-    if (!state.notasEad) state.notasEad = {};
-    if (!state.notasPres) state.notasPres = {};
-    if (!state.eventos) state.eventos = [];
-    if (!state.afastamentos) state.afastamentos = [];
-    if (!state.tarefas) state.tarefas = [];
-    if (!state.ocorrencias) state.ocorrencias = [];
-    if (!state.alunos) state.alunos = [];
-    ensureTaskCategories();
+    normalizeLoadedState();
     const cleanupChangedAfterCloudLoad = limparFrequenciasFantasmasSuspensaoSemDisciplina();
+    captureCurrentClassData();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     if (cleanupChangedAfterCloudLoad) {
       _pushToSheets(JSON.stringify(state));
@@ -6905,7 +7122,7 @@ function renderInicio() {
   // ── Módulos de hoje ────────────────────────────────────
   const tiposAula = getTiposAula();
   const modsHoje = [];
-  for (let m = 1; m <= 6; m++) {
+  for (let m = 1; m <= getClassModuleCountForDate(now); m++) {
     const key = `${todayKey}_${m}`;
     const mod = state.modules[key];
     if (mod) modsHoje.push({ m, key, mod });
@@ -7574,7 +7791,8 @@ function render() {
     </div>`;
 
     const dateKey = fmtDateKey(date);
-    for (let m = 1; m <= 6; m++) {
+    const dayModuleCount = getClassModuleCountForDate(date);
+    for (let m = 1; m <= dayModuleCount; m++) {
       const key = `${dateKey}_${m}`;
       const mod = state.modules[key];
       const card = document.createElement('div');
@@ -8252,7 +8470,9 @@ const ALUNOS_LEGADO = [
 // Retorna a lista de nomes dos alunos: usa state.alunos se tiver, senão fallback legado
 function getNomesAlunos() {
   const al = state.alunos || [];
-  return al.length > 0 ? al.map(a => a.nome.toUpperCase()) : ALUNOS_LEGADO;
+  const activeClassId = getActiveClassId();
+  if (al.length > 0) return al.filter(a => a.turmaId === activeClassId).map(a => a.nome.toUpperCase());
+  return activeClassId === 'turma_ai_mpc_2026_1' ? ALUNOS_LEGADO : [];
 }
 
 // Para compatibilidade com código de notas que usa a constante ALUNOS diretamente
@@ -8401,7 +8621,8 @@ function getFreqEntry(disc, data) {
   if (!state.freq[disc]) state.freq[disc] = {};
   if (!state.freq[disc][data]) {
     state.freq[disc][data] = { alunos: {} };
-    ALUNOS.forEach(n => { state.freq[disc][data].alunos[n] = { mods:['P','P','P','P','P','P'], obs:'', link:'', afastamentoTipo:'', afastamentoDias:'', afastamentoRetorno:'' }; });
+    const defaultMods = Array.from({length:getClassModuleCountForDate(data)}, () => 'P');
+    ALUNOS.forEach(n => { state.freq[disc][data].alunos[n] = { mods:[...defaultMods], obs:'', link:'', afastamentoTipo:'', afastamentoDias:'', afastamentoRetorno:'' }; });
   }
   return state.freq[disc][data];
 }
@@ -8441,17 +8662,20 @@ function renderFreq() {
     { k:'SJ', label:'SJ', cls:'ms-semjust',  title:'Falta s/ justificativa' },
   ];
 
+  const moduleCount = getClassModuleCountForDate(data);
+  const moduleHeaders = Array.from({length:moduleCount}, (_,i) => `<th>M${i+1}</th>`).join('');
   let html = `<div class="freq-table-wrap"><table class="freq-table"><thead><tr>
     <th class="th-left" style="min-width:170px">Aluno</th>
-    <th>M1</th><th>M2</th><th>M3</th><th>M4</th><th>M5</th><th>M6</th>
+    ${moduleHeaders}
     <th class="th-left" style="min-width:140px">Observação</th>
     <th class="th-left" style="min-width:140px">Link doc.</th>
     <th class="th-left" style="min-width:200px">Afastamento</th>
   </tr></thead><tbody>`;
 
   ALUNOS.forEach((nome, i) => {
-    const a = entry.alunos[nome] || (entry.alunos[nome] = { mods:['P','P','P','P','P','P'], obs:'', link:'', afastamentoTipo:'', afastamentoDias:'', afastamentoRetorno:'' });
-    if (!Array.isArray(a.mods)) a.mods = ['P','P','P','P','P','P'];
+    const defaultMods = Array.from({length:moduleCount}, () => 'P');
+    const a = entry.alunos[nome] || (entry.alunos[nome] = { mods:defaultMods, obs:'', link:'', afastamentoTipo:'', afastamentoDias:'', afastamentoRetorno:'' });
+    if (!Array.isArray(a.mods)) a.mods = defaultMods;
     if (a.afastamentoTipo == null) a.afastamentoTipo = '';
     if (a.afastamentoDias == null) a.afastamentoDias = '';
     if (a.afastamentoRetorno == null) a.afastamentoRetorno = '';
@@ -8464,8 +8688,8 @@ function renderFreq() {
     const nomeShort = nome;
 
     let modCols = '';
-    const modsVisual = suspensaoOcorrencia ? ['CJ','CJ','CJ','CJ','CJ','CJ'] : a.mods;
-    for (let m = 0; m < 6; m++) {
+    const modsVisual = suspensaoOcorrencia ? Array.from({length:moduleCount}, () => 'CJ') : a.mods;
+    for (let m = 0; m < moduleCount; m++) {
       const cur = modsVisual[m] || 'P';
       const lockedByOccurrence = !!suspensaoOcorrencia;
       const canEditMod = lockedByOccurrence ? false : professorCanEditFreq(disc, data, nome, 'mods', m);
