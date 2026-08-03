@@ -2042,7 +2042,7 @@
   .week-label {
     min-width:150px!important;
     text-align:center!important;
-    font-weight:850!important;
+    font-weight:600!important;
     color:var(--text)!important;
   }
   .planning-summary-grid {
@@ -2095,7 +2095,7 @@
   }
   .day-name {
     font-size:13px!important;
-    font-weight:900!important;
+    font-weight:700!important;
     letter-spacing:.08em!important;
     color:var(--text)!important;
     text-transform:uppercase!important;
@@ -2104,6 +2104,20 @@
     font-size:12px!important;
     color:var(--text3)!important;
     margin-top:3px!important;
+  }
+  .day-modules-btn {
+    margin-top:7px!important;
+    border:1px solid var(--border)!important;
+    background:#fff!important;
+    border-radius:999px!important;
+    padding:3px 8px!important;
+    font-size:10px!important;
+    color:var(--text2)!important;
+    cursor:pointer!important;
+  }
+  .day-modules-btn:hover {
+    border-color:var(--accent)!important;
+    color:var(--accent)!important;
   }
   .mod-card {
     border-radius:12px!important;
@@ -5112,9 +5126,40 @@ function getClassScheduleForDate(dateOrKey) {
   return (getActiveClass()?.horarios || []).find(h => Number(h.dia) === day) || null;
 }
 function getClassModuleCountForDate(dateOrKey) {
+  const turma = getActiveClass();
+  const dateKey = dateOrKey instanceof Date ? fmtDateKey(dateOrKey) : String(dateOrKey || '');
+  const override = turma?.modulosPorData && turma.modulosPorData[dateKey];
+  if (override !== undefined && override !== null && override !== '') {
+    return Math.max(0, Number(override) || 0);
+  }
   const schedule = getClassScheduleForDate(dateOrKey);
   if (!schedule || !schedule.ativo) return 0;
   return Math.max(0, Number(schedule.modulos) || 0);
+}
+function setClassModuleCountForDate(dateKey, currentCount) {
+  if (isProfessorMode()) {
+    showToast('Apenas o painel administrativo pode ajustar os módulos do dia.');
+    return;
+  }
+  const turma = getActiveClass();
+  if (!turma) return;
+  const entrada = prompt('Quantos módulos presenciais neste dia? Deixe em branco para voltar ao padrão da turma.', String(currentCount || ''));
+  if (entrada === null) return;
+  if (!turma.modulosPorData || typeof turma.modulosPorData !== 'object') turma.modulosPorData = {};
+  if (!entrada.trim()) {
+    delete turma.modulosPorData[dateKey];
+    showToast('Dia voltou ao padrão da turma.');
+  } else {
+    const n = Number(entrada);
+    if (!Number.isFinite(n) || n < 0) {
+      showToast('Informe um número válido.');
+      return;
+    }
+    turma.modulosPorData[dateKey] = Math.min(12, Math.round(n));
+    showToast('Quantidade de módulos do dia ajustada.');
+  }
+  saveData();
+  render();
 }
 function getClassMaxModuleCount() {
   return Math.max(0, ...(getActiveClass()?.horarios || []).filter(h => h.ativo).map(h => Number(h.modulos) || 0));
@@ -9796,13 +9841,14 @@ function render() {
     const col = document.createElement('div');
     col.className = 'day-col';
     const isT = isToday(date);
+    const dateKey = fmtDateKey(date);
+    const dayModuleCount = getClassModuleCountForDate(date);
     col.innerHTML = `<div class="day-head ${isT?'day-today':''}">
       <div class="day-name">${DAY_NAMES[di]}</div>
       <div class="day-date">${fmtDate(date)}</div>
+      <button type="button" class="day-modules-btn" onclick="event.stopPropagation();setClassModuleCountForDate('${dateKey}', ${dayModuleCount})">${dayModuleCount} módulos</button>
     </div>`;
 
-    const dateKey = fmtDateKey(date);
-    const dayModuleCount = getClassModuleCountForDate(date);
     for (let m = 1; m <= dayModuleCount; m++) {
       const key = `${dateKey}_${m}`;
       const mod = state.modules[key];
