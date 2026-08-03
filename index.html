@@ -2390,6 +2390,131 @@
     font-size:12px!important;
     font-weight:700!important;
   }
+  .freq-insights-grid {
+    display:grid;
+    grid-template-columns:1.1fr 1fr 1fr;
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .freq-insight-card,
+  .freq-empty-card {
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    padding:14px;
+  }
+  .freq-insight-title {
+    font-size:12px;
+    font-weight:800;
+    color:var(--text);
+    margin-bottom:8px;
+  }
+  .freq-insight-sub {
+    font-size:12px;
+    color:var(--text2);
+    line-height:1.4;
+  }
+  .freq-metric-row {
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:8px;
+  }
+  .freq-mini-metric {
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:10px;
+    background:#f8fafc;
+  }
+  .freq-mini-value {
+    font-size:22px;
+    font-weight:800;
+    color:var(--text);
+    line-height:1;
+  }
+  .freq-mini-label {
+    margin-top:6px;
+    font-size:10px;
+    font-weight:800;
+    color:var(--text3);
+    text-transform:uppercase;
+    letter-spacing:.04em;
+  }
+  .freq-bar-row {
+    display:grid;
+    grid-template-columns:minmax(90px,1fr) 2fr auto;
+    gap:8px;
+    align-items:center;
+    font-size:12px;
+    color:var(--text2);
+    margin:7px 0;
+  }
+  .freq-bar-track {
+    height:8px;
+    border-radius:999px;
+    background:#eef2f7;
+    overflow:hidden;
+  }
+  .freq-bar-fill {
+    height:100%;
+    border-radius:999px;
+    background:var(--accent);
+  }
+  .freq-alert-list {
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+  }
+  .freq-alert-item {
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    border:1px solid var(--border);
+    background:#f8fafc;
+    border-radius:12px;
+    padding:8px 10px;
+    font-size:12px;
+  }
+  .freq-alert-name {
+    font-weight:700;
+    color:var(--text);
+  }
+  .freq-alert-chip {
+    white-space:nowrap;
+    color:#b42318;
+    font-weight:800;
+  }
+  .freq-empty-card {
+    min-height:260px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+  }
+  .freq-empty-inner {
+    max-width:540px;
+  }
+  .freq-empty-title {
+    font-size:18px;
+    font-weight:800;
+    color:var(--text);
+    margin-bottom:8px;
+  }
+  .freq-empty-actions {
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:14px;
+  }
+  .freq-empty-pill {
+    border:1px solid var(--border);
+    background:#f8fafc;
+    color:var(--text2);
+    border-radius:999px;
+    padding:7px 10px;
+    font-size:12px;
+    font-weight:700;
+  }
   @media(max-width:720px){
     .freq-toolbar {
       display:grid!important;
@@ -2407,6 +2532,16 @@
       margin-left:-4px!important;
       margin-right:-4px!important;
       padding:6px!important;
+    }
+    .freq-insights-grid {
+      grid-template-columns:1fr!important;
+    }
+    .freq-metric-row {
+      grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+    .freq-bar-row {
+      grid-template-columns:1fr;
+      gap:4px;
     }
   }
 
@@ -3357,6 +3492,7 @@
         <button class="btn btn-outline" id="btnResumo" onclick="setFreqView('resumo')">Ver resumo</button>
         <button class="btn btn-outline" id="btnChamada" onclick="setFreqView('chamada')" style="display:none">← Chamada</button>
       </div>
+      <div id="freqInsightWrap"></div>
       <div id="freqChamadaView">
         <div id="freqTableWrap"></div>
       </div>
@@ -10916,13 +11052,121 @@ function getAfastamentoOcorrenciaParaFrequencia(data, nome) {
   ) || null;
 }
 
+function getFreqInsights() {
+  const alunos = getNomesAlunos();
+  const resumo = {
+    chamadas:0,
+    disciplinas:0,
+    presentes:0,
+    comJust:0,
+    semJust:0,
+    docs:0,
+    porDisc:{},
+    porAluno:{}
+  };
+  alunos.forEach(nome => { resumo.porAluno[nome] = { faltas:0, semJust:0, comJust:0 }; });
+  Object.entries(state.freq || {}).forEach(([disc, datas]) => {
+    let discTemRegistro = false;
+    const discTotal = resumo.porDisc[disc] || { faltas:0, semJust:0, comJust:0 };
+    Object.values(datas || {}).forEach(entry => {
+      resumo.chamadas++;
+      discTemRegistro = true;
+      Object.entries(entry.alunos || {}).forEach(([nome, aluno]) => {
+        (aluno.mods || []).forEach(status => {
+          if (status === 'P') resumo.presentes++;
+          if (status === 'CJ' || status === 'SJ') {
+            discTotal.faltas++;
+            if (!resumo.porAluno[nome]) resumo.porAluno[nome] = { faltas:0, semJust:0, comJust:0 };
+            resumo.porAluno[nome].faltas++;
+          }
+          if (status === 'CJ') { resumo.comJust++; discTotal.comJust++; resumo.porAluno[nome].comJust++; }
+          if (status === 'SJ') { resumo.semJust++; discTotal.semJust++; resumo.porAluno[nome].semJust++; }
+        });
+        if ((aluno.link || '').trim()) resumo.docs++;
+      });
+    });
+    if (discTemRegistro) resumo.disciplinas++;
+    resumo.porDisc[disc] = discTotal;
+  });
+  return resumo;
+}
+
+function renderFreqInsights() {
+  const wrap = document.getElementById('freqInsightWrap');
+  if (!wrap) return;
+  const r = getFreqInsights();
+  const discs = Object.entries(r.porDisc)
+    .filter(([,v]) => v.faltas > 0)
+    .sort((a,b) => b[1].faltas - a[1].faltas)
+    .slice(0,4);
+  const maxFaltas = Math.max(1, ...discs.map(([,v]) => v.faltas));
+  const alunos = Object.entries(r.porAluno)
+    .filter(([,v]) => v.faltas > 0)
+    .sort((a,b) => b[1].faltas - a[1].faltas)
+    .slice(0,4);
+
+  const bars = discs.length
+    ? discs.map(([disc, v]) => `
+      <div class="freq-bar-row">
+        <div title="${escapeHtml(disc)}">${escapeHtml(disc.length > 24 ? disc.slice(0,22) + '...' : disc)}</div>
+        <div class="freq-bar-track"><div class="freq-bar-fill" style="width:${Math.max(8, Math.round((v.faltas / maxFaltas) * 100))}%"></div></div>
+        <strong>${v.faltas}</strong>
+      </div>`).join('')
+    : '<div class="freq-insight-sub">As faltas por disciplina aparecerão aqui depois das primeiras chamadas.</div>';
+
+  const alerts = alunos.length
+    ? alunos.map(([nome, v]) => `
+      <div class="freq-alert-item">
+        <span class="freq-alert-name">${escapeHtml(nome.length > 32 ? nome.slice(0,30) + '...' : nome)}</span>
+        <span class="freq-alert-chip">${v.faltas} falta${v.faltas === 1 ? '' : 's'}</span>
+      </div>`).join('')
+    : '<div class="freq-insight-sub">Nenhum aluno com falta registrada ainda.</div>';
+
+  wrap.innerHTML = `
+    <div class="freq-insights-grid">
+      <div class="freq-insight-card">
+        <div class="freq-insight-title">Resumo da frequência</div>
+        <div class="freq-metric-row">
+          <div class="freq-mini-metric"><div class="freq-mini-value">${r.chamadas}</div><div class="freq-mini-label">Chamadas</div></div>
+          <div class="freq-mini-metric"><div class="freq-mini-value">${r.semJust}</div><div class="freq-mini-label">Sem justificativa</div></div>
+          <div class="freq-mini-metric"><div class="freq-mini-value">${r.comJust}</div><div class="freq-mini-label">Justificadas</div></div>
+          <div class="freq-mini-metric"><div class="freq-mini-value">${r.docs}</div><div class="freq-mini-label">Documentos</div></div>
+        </div>
+      </div>
+      <div class="freq-insight-card">
+        <div class="freq-insight-title">Faltas por disciplina</div>
+        ${bars}
+      </div>
+      <div class="freq-insight-card">
+        <div class="freq-insight-title">Alunos para acompanhar</div>
+        <div class="freq-alert-list">${alerts}</div>
+      </div>
+    </div>`;
+}
+
+function renderFreqEmptyState() {
+  return `<div class="freq-empty-card">
+    <div class="freq-empty-inner">
+      <div class="freq-empty-title">Escolha a data e a disciplina para iniciar a chamada</div>
+      <div class="freq-insight-sub">Depois da seleção, a lista de alunos aparece aqui com presença, falta, justificativa e campo para link de atestado ou documento.</div>
+      <div class="freq-empty-actions">
+        <span class="freq-empty-pill">Presença</span>
+        <span class="freq-empty-pill">Falta justificada</span>
+        <span class="freq-empty-pill">Atestado ou suspensão</span>
+        <span class="freq-empty-pill">Link do documento</span>
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderFreq() {
   const data = document.getElementById('freqData').value;
   const disc = document.getElementById('freqDisc').value;
   const wrap = document.getElementById('freqTableWrap');
+  renderFreqInsights();
 
   if (!data || !disc) {
-    wrap.innerHTML = '<p style="color:var(--text3);font-size:13px;padding:20px 0">Selecione a data e a disciplina para registrar a chamada.</p>';
+    wrap.innerHTML = renderFreqEmptyState();
     return;
   }
 
