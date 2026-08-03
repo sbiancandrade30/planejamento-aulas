@@ -2169,6 +2169,48 @@
     opacity:1!important;
     box-shadow:0 0 0 2px rgba(22,65,148,.08)!important;
   }
+  .ead-type-options {
+    display:flex!important;
+    gap:8px!important;
+    flex-wrap:wrap!important;
+  }
+  .ead-type-toggle {
+    border:1px solid var(--border)!important;
+    border-radius:999px!important;
+    padding:7px 13px!important;
+    font-size:12px!important;
+    font-weight:800!important;
+    cursor:pointer!important;
+    opacity:.72!important;
+  }
+  .ead-type-toggle.active {
+    opacity:1!important;
+    box-shadow:0 0 0 2px rgba(22,65,148,.08)!important;
+  }
+  .tag-leitura,
+  .ead-type-toggle[data-tipo="leitura"] {
+    background:#e8f0fe!important;
+    color:#1a56c4!important;
+    border-color:#c8d8ff!important;
+  }
+  .tag-video,
+  .ead-type-toggle[data-tipo="video"] {
+    background:#fce8ff!important;
+    color:#8b24b8!important;
+    border-color:#efc8f8!important;
+  }
+  .tag-resumo,
+  .ead-type-toggle[data-tipo="resumo"] {
+    background:#fff3d8!important;
+    color:#9a6200!important;
+    border-color:#f5d99b!important;
+  }
+  .tag-avaliativa,
+  .ead-type-toggle[data-tipo="avaliativa"] {
+    background:#fde8e8!important;
+    color:#b93232!important;
+    border-color:#f3bcbc!important;
+  }
   .mod-card {
     border-radius:12px!important;
     padding:9px 10px!important;
@@ -3827,13 +3869,13 @@
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Tipo de tarefa</label>
-          <select class="form-input" id="efTipo">
-            <option value="leitura">Leitura</option>
-            <option value="video">Vídeo</option>
-            <option value="resumo">Resumo</option>
-            <option value="avaliativa">Atividade avaliativa</option>
-          </select>
+          <label class="form-label">Tipos de tarefa</label>
+          <div class="ead-type-options" id="efTipoOptions">
+            <button type="button" class="ead-type-toggle tag-leitura" data-tipo="leitura" onclick="toggleEadTipo(this)">Leitura</button>
+            <button type="button" class="ead-type-toggle tag-video" data-tipo="video" onclick="toggleEadTipo(this)">Vídeo</button>
+            <button type="button" class="ead-type-toggle tag-resumo" data-tipo="resumo" onclick="toggleEadTipo(this)">Resumo</button>
+            <button type="button" class="ead-type-toggle tag-avaliativa" data-tipo="avaliativa" onclick="toggleEadTipo(this)">Atividade avaliativa</button>
+          </div>
         </div>
       </div>
       <div class="form-group">
@@ -9263,19 +9305,19 @@ function renderInicio() {
 
   const modsEadHtml = modsEadHoje.length
     ? modsEadHoje.map(({m, mod}) => {
-        const tipoEad = { leitura:'Leitura', video:'V deo', resumo:'Resumo', avaliativa:'Avaliativa' };
-        const tipoLabel = tipoEad[mod.tipo] || mod.tipo || '';
-        const tipoColor = { leitura:'#1a56c4', video:'#8b24b8', resumo:'#9a6200', avaliativa:'#b93232' }[mod.tipo] || '#888';
+        const tipoEad = { leitura:'Leitura', video:'Vídeo', resumo:'Resumo', avaliativa:'Avaliativa' };
+        const tipoColor = { leitura:'#1a56c4', video:'#8b24b8', resumo:'#9a6200', avaliativa:'#b93232' };
+        const tagList = getEadTipos(mod);
         return `<div class="dash-mod-item">
           <div class="dash-mod-num" style="background:rgba(26,86,196,.1);color:#1a56c4;border-color:rgba(26,86,196,.2)">EaD ${m}</div>
           <div class="dash-mod-info">
-            <div class="dash-mod-title">${escapeHtml(mod.title||'Sem t tulo')}</div>
+            <div class="dash-mod-title">${escapeHtml(mod.aula||'EaD')}</div>
             <div class="dash-mod-disc">${escapeHtml(mod.disc||'')}</div>
-            ${tipoLabel ? `<div class="dash-mod-tags"><span class="dash-mod-tag" style="background:${tipoColor}">${tipoLabel}</span></div>` : ''}
+            <div class="dash-mod-tags">${tagList.map(tipo => `<span class="dash-mod-tag" style="background:${tipoColor[tipo] || '#888'}">${tipoEad[tipo] || tipo}</span>`).join('')}</div>
           </div>
         </div>`;
       }).join('')
-    : `<div class="dash-empty">Nenhum m dulo EaD hoje</div>`;
+    : `<div class="dash-empty">Nenhum módulo EaD hoje</div>`;
 
   const tasksHtml = tarefasHoje.length
     ? tarefasHoje.map(t => {
@@ -9770,8 +9812,9 @@ function countPlanningWeek(kind = 'presencial') {
       if (!mod) continue;
       result.total++;
       if (kind === 'ead') {
-        const tipo = mod.tipo || 'leitura';
-        if (result[tipo] !== undefined) result[tipo]++;
+        getEadTipos(mod).forEach(tipo => {
+          if (result[tipo] !== undefined) result[tipo]++;
+        });
       } else {
         const exec = mod.executionStatus || 'planejada';
         if (result[exec] !== undefined) result[exec]++;
@@ -9787,7 +9830,7 @@ function planningModuleMatches(kind, mod) {
   const f = planningConsultFilters[kind];
   if (f.disc && (mod.disc || '') !== f.disc) return false;
   if (kind === 'ead') {
-    if (f.tipo && (mod.tipo || '') !== f.tipo) return false;
+    if (f.tipo && !getEadTipos(mod).includes(f.tipo)) return false;
   } else {
     if (f.exec && (mod.executionStatus || 'planejada') !== f.exec) return false;
   }
@@ -10348,20 +10391,36 @@ function setView(v, btn) {
 // --- EAD RENDER ------------------------------------------
 const TIPO_LABELS = { leitura: 'Leitura', video: 'Vídeo', resumo: 'Resumo', avaliativa: 'Atividade avaliativa' };
 
-function montarTexto(tipo, desc, disc, aula) {
-  const sufixo = disc ? ` - ${disc}` : '';
+function getEadTipos(mod) {
+  const tipos = Array.isArray(mod?.tipos) ? mod.tipos : [mod?.tipo || 'leitura'];
+  return tipos.filter(Boolean);
+}
+function setEadTipos(tipos) {
+  const selected = new Set(tipos && tipos.length ? tipos : ['leitura']);
+  document.querySelectorAll('.ead-type-toggle').forEach(btn => {
+    btn.classList.toggle('active', selected.has(btn.dataset.tipo));
+  });
+}
+function getSelectedEadTipos() {
+  const tipos = [...document.querySelectorAll('.ead-type-toggle.active')].map(btn => btn.dataset.tipo);
+  return tipos.length ? tipos : ['leitura'];
+}
+function toggleEadTipo(btn) {
+  btn.classList.toggle('active');
+  if (!document.querySelector('.ead-type-toggle.active')) btn.classList.add('active');
+}
+
+function montarTexto(tipos, desc, disc, aula) {
+  const listaTipos = Array.isArray(tipos) ? tipos : [tipos || 'leitura'];
+  const sufixo = disc ? ` - ${disc}` : ' - Livre / Curso externo';
+  const prefixos = listaTipos.map(t => TIPO_LABELS[t] || t).join(' + ');
   if (desc && desc.trim()) {
-    if (tipo === 'avaliativa') return `*ATIVIDADE AVALIATIVA* - ${desc.trim()}${sufixo}`;
-    return `${desc.trim()}${sufixo}`;
+    if (listaTipos.includes('avaliativa')) return `*ATIVIDADE AVALIATIVA* - ${prefixos}: ${desc.trim()}${sufixo}`;
+    return `${prefixos}: ${desc.trim()}${sufixo}`;
   }
   // fallback sem descrição
-  switch(tipo) {
-    case 'leitura':    return `Leia o material da ${aula}${sufixo}`;
-    case 'video':      return `Assista aos vídeos da ${aula}${sufixo}`;
-    case 'resumo':     return `Faça o resumo da ${aula} e envie foto${sufixo}`;
-    case 'avaliativa': return `*ATIVIDADE AVALIATIVA* - Realize a atividade avaliativa da ${aula}${sufixo}`;
-    default:           return `${aula}${sufixo}`;
-  }
+  if (listaTipos.includes('avaliativa')) return `*ATIVIDADE AVALIATIVA* - Realize a atividade da ${aula}${sufixo}`;
+  return `${prefixos}: ${aula}${sufixo}`;
 }
 
 function renderEad() {
@@ -10387,7 +10446,8 @@ function renderEad() {
       if (mod) {
         card.className = 'ead-card' + (planningHasActiveFilters('ead') && !planningModuleMatches('ead', mod) ? ' planning-filter-muted' : '');
         card.dataset.key = key;
-        const tipoLabel = TIPO_LABELS[mod.tipo] || mod.tipo;
+        const tipos = getEadTipos(mod);
+        const tagsHtml = tipos.map(tipo => `<span class="tag tag-${tipo}">${TIPO_LABELS[tipo] || tipo}</span>`).join('');
         const discShort = mod.disc || 'Livre / Curso externo';
         const descShort = (mod.desc || '').trim();
         card.innerHTML = `
@@ -10395,7 +10455,7 @@ function renderEad() {
           <div class="mod-title">${escapeHtml(discShort)}</div>
           ${descShort ? `<div class="ead-card-desc">${escapeHtml(descShort).slice(0,90)}${descShort.length > 90 ? '...' : ''}</div>` : ''}
           <div class="mod-footer">
-            <div class="tags"><span class="tag tag-${mod.tipo}">${tipoLabel}</span></div>
+            <div class="tags">${tagsHtml}</div>
           </div>`;
         card.addEventListener('click', () => openEadDetail(key));
       } else {
@@ -10429,7 +10489,7 @@ function buildComunicado(dates) {
     const dateStr = fmtDate(date);
     lines.push(`${dateStr} - ${dayAbbr}`);
     dayMods.forEach(mod => {
-      const texto = montarTexto(mod.tipo, mod.desc, mod.disc, mod.aula);
+      const texto = montarTexto(getEadTipos(mod), mod.desc, mod.disc, mod.aula);
       lines.push(`• ${texto}`);
     });
     lines.push('');
@@ -10470,8 +10530,8 @@ function openEadDetail(key) {
   const dateStr = parts[1]; const mNum = parts[2];
   const d = new Date(dateStr + 'T12:00:00');
   document.getElementById('eadDetailMeta').textContent = `Módulo ${mNum} EaD · ${DAY_NAMES[d.getDay()-1]}, ${fmtDate(d)}`;
-  document.getElementById('eadDetailTitle').textContent = TIPO_LABELS[mod.tipo] || mod.tipo;
-  const tagHtml = `<span class="tag tag-${mod.tipo}">${TIPO_LABELS[mod.tipo]||mod.tipo}</span>`;
+  document.getElementById('eadDetailTitle').textContent = mod.disc || 'Livre / Curso externo';
+  const tagHtml = getEadTipos(mod).map(tipo => `<span class="tag tag-${tipo}">${TIPO_LABELS[tipo]||tipo}</span>`).join('');
   document.getElementById('eadDetailTags').innerHTML = `<div class="tags">${tagHtml}</div>`;
   setField('eadDetailDisc', mod.disc);
   setField('eadDetailAula', mod.aula);
@@ -10502,7 +10562,7 @@ function editEadModule() {
   document.getElementById('efMod').value = mNum;
   document.getElementById('efDisc').value = mod.disc || '';
   document.getElementById('efAula').value = mod.aula || 'Aula 1';
-  document.getElementById('efTipo').value = mod.tipo || 'leitura';
+  setEadTipos(getEadTipos(mod));
   document.getElementById('efDesc').value = mod.desc || '';
   document.getElementById('efObs').value = mod.obs || '';
   document.getElementById('eadModalTitle').textContent = 'Editar tarefa EaD';
@@ -10531,7 +10591,7 @@ function duplicateEadModule() {
 
   document.getElementById('efDisc').value = mod.disc || '';
   document.getElementById('efAula').value = mod.aula || 'Aula 1';
-  document.getElementById('efTipo').value = mod.tipo || 'leitura';
+  setEadTipos(getEadTipos(mod));
   document.getElementById('efDesc').value = mod.desc || '';
   document.getElementById('efObs').value = mod.obs || '';
 
@@ -10561,6 +10621,7 @@ function openEadModal(dateKey, modNum) {
   document.getElementById('eadModalTitle').textContent = 'Nova tarefa EaD';
   document.getElementById('efDesc').value = '';
   document.getElementById('efObs').value = '';
+  setEadTipos(['leitura']);
   if (!dateKey && !modNum) {
     const freeSlot = findFirstFreePlanningSlot('ead');
     if (freeSlot) {
@@ -10583,7 +10644,8 @@ function closeEadModal() {
 
 function saveEadModule() {
   const disc = document.getElementById('efDisc').value;
-  const tipo = document.getElementById('efTipo').value;
+  const tipos = getSelectedEadTipos();
+  const tipo = tipos[0] || 'leitura';
   const dayIdx = parseInt(document.getElementById('efDay').value);
   const modNum = document.getElementById('efMod').value;
   const dates = getWeekDates(state.weekOffset);
@@ -10599,7 +10661,7 @@ function saveEadModule() {
     ? (!existingEadModule || professorOwnsEadModule(key))
     : existingEadModule?._professorAdded === true;
   state.eadModules[key] = {
-    disc, tipo,
+    disc, tipo, tipos,
     aula: document.getElementById('efAula').value,
     desc: document.getElementById('efDesc').value,
     obs: document.getElementById('efObs').value,
