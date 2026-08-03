@@ -2042,6 +2042,7 @@
   .week-label {
     min-width:150px!important;
     text-align:center!important;
+    font-family:inherit!important;
     font-weight:600!important;
     color:var(--text)!important;
   }
@@ -2118,6 +2119,35 @@
   .day-modules-btn:hover {
     border-color:var(--accent)!important;
     color:var(--accent)!important;
+  }
+  .day-add-module {
+    width:100%!important;
+    min-height:30px!important;
+    border:1px dashed var(--border)!important;
+    background:#fff!important;
+    border-radius:12px!important;
+    color:var(--text3)!important;
+    cursor:pointer!important;
+    font-size:16px!important;
+    line-height:1!important;
+  }
+  .day-add-module:hover {
+    border-color:var(--accent)!important;
+    color:var(--accent)!important;
+    background:#fff7f3!important;
+  }
+  .module-extra-fields {
+    margin-top:8px!important;
+    border:1px solid var(--border)!important;
+    border-radius:14px!important;
+    padding:10px!important;
+    background:#fff!important;
+  }
+  .module-extra-fields summary {
+    cursor:pointer!important;
+    font-weight:700!important;
+    color:var(--text)!important;
+    margin-bottom:10px!important;
   }
   .mod-card {
     border-radius:12px!important;
@@ -3622,10 +3652,12 @@
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">M dulo (1 6)</label>
+          <label class="form-label">Módulo</label>
           <select class="form-input" id="fMod">
             <option>1</option><option>2</option><option>3</option>
             <option>4</option><option>5</option><option>6</option>
+            <option>7</option><option>8</option><option>9</option>
+            <option>10</option><option>11</option><option>12</option>
           </select>
         </div>
       </div>
@@ -3642,37 +3674,40 @@
         <label class="form-label">Tipo</label>
         <div id="tagButtonsContainer" style="display:flex;gap:6px;flex-wrap:wrap"></div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Desenvolvimento te rico</label>
-        <textarea class="form-input" id="fTeoria" placeholder="Conte dos, conceitos e t picos a abordar..."></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Avalia  o / entreg vel</label>
-        <textarea class="form-input" id="fAval" placeholder="Crit rio de avalia  o, o que deve ser entregue..."></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Atividade pr tica</label>
-        <textarea class="form-input" id="fAtiv" placeholder="Descri  o da atividade, materiais necess rios..."></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Observa  es</label>
-        <textarea class="form-input" id="fObs" placeholder="Lembretes, materiais a preparar, aten  es especiais..."></textarea>
-      </div>
-      <div class="form-row">
+      <details class="module-extra-fields">
+        <summary>Detalhes opcionais</summary>
         <div class="form-group">
-          <label class="form-label">Status da execu  o</label>
-          <select class="form-input" id="fExecStatus">
-            <option value="planejada">Planejada</option>
-            <option value="realizada">Realizada conforme planejado</option>
-            <option value="ajustes">Realizada com ajustes</option>
-            <option value="nao_realizada">N o realizada</option>
-          </select>
+          <label class="form-label">Desenvolvimento teórico</label>
+          <textarea class="form-input" id="fTeoria" placeholder="Conteúdos, conceitos e tópicos a abordar..."></textarea>
         </div>
         <div class="form-group">
-          <label class="form-label">Ajustes / registro da execu  o</label>
-          <textarea class="form-input" id="fExecObs" placeholder="Ex.: troquei a atividade, avancei menos m dulos, pr tica ficou para a pr xima aula..."></textarea>
+          <label class="form-label">Avaliação / entregável</label>
+          <textarea class="form-input" id="fAval" placeholder="Critério de avaliação, o que deve ser entregue..."></textarea>
         </div>
-      </div>
+        <div class="form-group">
+          <label class="form-label">Atividade prática</label>
+          <textarea class="form-input" id="fAtiv" placeholder="Descrição da atividade, materiais necessários..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Observações</label>
+          <textarea class="form-input" id="fObs" placeholder="Lembretes, materiais a preparar, atenções especiais..."></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Status da execução</label>
+            <select class="form-input" id="fExecStatus">
+              <option value="planejada">Planejada</option>
+              <option value="realizada">Realizada conforme planejado</option>
+              <option value="ajustes">Realizada com ajustes</option>
+              <option value="nao_realizada">Não realizada</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ajustes / registro da execução</label>
+            <textarea class="form-input" id="fExecObs" placeholder="Ex.: troquei a atividade, avancei menos módulos, prática ficou para a próxima aula..."></textarea>
+          </div>
+        </div>
+      </details>
     </div>
     <div class="modal-foot">
       <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
@@ -5160,6 +5195,19 @@ function setClassModuleCountForDate(dateKey, currentCount) {
   }
   saveData();
   render();
+}
+function addExtraModuleForDay(dateKey, nextModule) {
+  if (isProfessorMode()) {
+    showToast('Apenas o painel administrativo pode ajustar os módulos do dia.');
+    return;
+  }
+  const turma = getActiveClass();
+  if (!turma) return;
+  if (!turma.modulosPorData || typeof turma.modulosPorData !== 'object') turma.modulosPorData = {};
+  turma.modulosPorData[dateKey] = Math.min(12, Math.max(Number(turma.modulosPorData[dateKey]) || 0, Number(nextModule) || 0));
+  saveData();
+  render();
+  openModal(dateKey, String(nextModule));
 }
 function getClassMaxModuleCount() {
   return Math.max(0, ...(getActiveClass()?.horarios || []).filter(h => h.ativo).map(h => Number(h.modulos) || 0));
@@ -9889,6 +9937,15 @@ function render() {
         card.addEventListener('click', () => openModal(dateKey, m));
       }
       col.appendChild(card);
+    }
+    if (!isProfessorMode()) {
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'day-add-module';
+      addBtn.title = 'Adicionar mais um módulo neste dia';
+      addBtn.textContent = '+';
+      addBtn.addEventListener('click', () => addExtraModuleForDay(dateKey, dayModuleCount + 1));
+      col.appendChild(addBtn);
     }
     grid.appendChild(col);
   });
