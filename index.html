@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1856,9 +1856,37 @@
     font-weight:600!important;
     margin-top:2px!important;
   }
+  .dash-stat.is-clickable {
+    cursor:pointer!important;
+  }
+  .dash-stat.is-clickable:hover {
+    transform:translateY(-1px)!important;
+    box-shadow:0 10px 24px rgba(21,24,33,.08)!important;
+  }
+  .dash-stat-note.is-link {
+    color:var(--accent)!important;
+    cursor:pointer!important;
+  }
   .dash-col {
     display:grid!important;
     gap:12px!important;
+  }
+  .dash-grid-dashboard {
+    grid-template-columns:minmax(0,2fr) minmax(300px,.9fr)!important;
+    align-items:start!important;
+  }
+  .dash-col-side .dash-card-body {
+    max-height:190px!important;
+    overflow:auto!important;
+  }
+  .dash-print-detail-card,
+  .dash-return-card,
+  .dash-birthday-card {
+    display:none!important;
+  }
+  .dash-occ-card .dash-card-body {
+    max-height:126px!important;
+    overflow:auto!important;
   }
   .dash-card-head {
     background:#fff!important;
@@ -1872,8 +1900,101 @@
   .dash-empty {
     padding:10px 0!important;
   }
+  .mini-modal-overlay {
+    position:fixed!important;
+    inset:0!important;
+    z-index:2000!important;
+    background:rgba(15,23,42,.36)!important;
+    display:none;
+    align-items:center!important;
+    justify-content:center!important;
+    padding:18px!important;
+  }
+  .mini-modal {
+    width:min(560px,100%)!important;
+    max-height:min(78vh,720px)!important;
+    overflow:auto!important;
+    background:#fff!important;
+    border:1px solid var(--border)!important;
+    border-radius:18px!important;
+    box-shadow:0 24px 80px rgba(15,23,42,.22)!important;
+  }
+  .mini-modal-head {
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:12px!important;
+    padding:16px 18px!important;
+    border-bottom:1px solid var(--border)!important;
+  }
+  .mini-modal-head h3 {
+    margin:0!important;
+    font-size:18px!important;
+  }
+  .mini-modal-close {
+    width:34px!important;
+    height:34px!important;
+    border:1px solid var(--border)!important;
+    border-radius:999px!important;
+    background:#fff!important;
+    cursor:pointer!important;
+  }
+  .mini-modal-body {
+    padding:16px 18px!important;
+  }
+  .mini-list-item {
+    width:100%!important;
+    text-align:left!important;
+    border:1px solid var(--border)!important;
+    border-radius:12px!important;
+    background:#fff!important;
+    padding:11px 12px!important;
+    margin-bottom:8px!important;
+    cursor:pointer!important;
+  }
+  .mini-list-title {
+    font-weight:800!important;
+    color:var(--text)!important;
+  }
+  .mini-list-meta {
+    color:var(--text3)!important;
+    font-size:12px!important;
+    margin-top:3px!important;
+  }
+  .birthday-calendar {
+    display:grid!important;
+    grid-template-columns:repeat(7,1fr)!important;
+    gap:6px!important;
+  }
+  .birthday-day,
+  .birthday-weekday {
+    min-height:42px!important;
+    border:1px solid var(--border)!important;
+    border-radius:10px!important;
+    padding:6px!important;
+    font-size:12px!important;
+  }
+  .birthday-weekday {
+    min-height:auto!important;
+    border:none!important;
+    color:var(--text3)!important;
+    font-weight:800!important;
+    text-align:center!important;
+  }
+  .birthday-day.has-birthday {
+    border-color:rgba(26,86,196,.35)!important;
+    background:rgba(26,86,196,.06)!important;
+  }
+  .birthday-name {
+    display:block!important;
+    color:var(--accent)!important;
+    font-size:10px!important;
+    font-weight:700!important;
+    margin-top:3px!important;
+  }
   @media(max-width:1100px){
     .dash-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+    .dash-grid-dashboard{grid-template-columns:1fr!important}
   }
   @media(max-width:700px){
     .dash-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
@@ -8171,7 +8292,7 @@ function renderInicio() {
         <div class="dash-stat dash-stat-amber">
           <div class="dash-stat-val">${evs.length}</div>
           <div class="dash-stat-label">Eventos</div>
-          <div class="dash-stat-note">pr ximos</div>
+          <div class="dash-stat-note">próximos</div>
         </div>
         <div class="dash-stat dash-stat-red">
           <div class="dash-stat-val">${alunos.length}</div>
@@ -8255,28 +8376,28 @@ function renderInicio() {
       <div class="dash-stat dash-stat-accent">
         <div class="dash-stat-val">${modsHoje.length + modsEadHoje.length}</div>
         <div class="dash-stat-label">Aulas hoje</div>
-        <div class="dash-stat-note">${modsHoje.length} presencial   ${modsEadHoje.length} EaD</div>
+        <div class="dash-stat-note">${modsHoje.length} presencial · ${modsEadHoje.length} EaD</div>
       </div>
       <div class="dash-stat dash-stat-green">
         <div class="dash-stat-val">${tarefasHoje.length}</div>
         <div class="dash-stat-label">Tarefas de hoje</div>
         <div class="dash-stat-note">${tarefasAtrasadasHoje} atrasada(s)</div>
       </div>
-      <div class="dash-stat dash-stat-amber">
+      <div class="dash-stat dash-stat-amber is-clickable" onclick="openPrintPendenciasModal()">
         <div class="dash-stat-val">${totalPrintPend}</div>
-        <div class="dash-stat-label">Impress es</div>
+        <div class="dash-stat-label">Impressões</div>
         <div class="dash-stat-note">pendentes</div>
       </div>
-      <div class="dash-stat dash-stat-red">
+      <div class="dash-stat dash-stat-red is-clickable" onclick="openAlunosFromDash()">
         <div class="dash-stat-val">${alunos.length}</div>
         <div class="dash-stat-label">Alunos</div>
-        <div class="dash-stat-note">${anivs.length} anivers rio(s)</div>
+        <div class="dash-stat-note is-link" onclick="openBirthdayMonthModal(event)">${anivs.length} aniversário(s)</div>
       </div>
     </div>
     ${focusHtml}
-    <div class="dash-grid">
-      <div class="dash-col">
-        <div class="dash-card">
+    <div class="dash-grid dash-grid-dashboard">
+      <div class="dash-col dash-col-main">
+        <div class="dash-card dash-print-detail-card">
           <div class="dash-card-head">
             <div class="dash-card-title">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="2" width="14" height="12" rx="2"/><path d="M1 6h14M5 6v8"/></svg>
@@ -8286,7 +8407,7 @@ function renderInicio() {
           </div>
           <div class="dash-card-body">${modsHtml}</div>
         </div>
-        <div class="dash-card">
+        <div class="dash-card dash-occ-card">
           <div class="dash-card-head">
             <div class="dash-card-title">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="2" width="14" height="12" rx="2"/><path d="M1 6h14"/><circle cx="5" cy="10" r="1.5" fill="currentColor" stroke="none"/><circle cx="9" cy="10" r="1.5" fill="currentColor" stroke="none"/><circle cx="13" cy="10" r="1.5" fill="currentColor" stroke="none"/></svg>
@@ -8320,8 +8441,8 @@ function renderInicio() {
           </div>
         </div>
       </div>
-      <div class="dash-col">
-        <div class="dash-card">
+      <div class="dash-col dash-col-side">
+        <div class="dash-card dash-events-card">
           <div class="dash-card-head">
             <div class="dash-card-title">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 8l2 2 4-5"/></svg>
@@ -8331,7 +8452,7 @@ function renderInicio() {
           </div>
           <div class="dash-card-body">${tasksHtml}</div>
         </div>
-        <div class="dash-card">
+        <div class="dash-card dash-return-card">
           <div class="dash-card-head">
             <div class="dash-card-title">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="2" width="14" height="13" rx="2"/><path d="M1 6h14M5 1v3M11 1v3"/></svg>
@@ -8341,7 +8462,7 @@ function renderInicio() {
           </div>
           <div class="dash-card-body">${evsHtml}</div>
         </div>
-        <div class="dash-card">
+        <div class="dash-card dash-birthday-card">
           <div class="dash-card-head">
             <div class="dash-card-title">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v5l3 2"/><circle cx="8" cy="8" r="6"/></svg>
@@ -8365,6 +8486,123 @@ function renderInicio() {
     </div>`;
 }
 
+
+function openDashboardMiniModal(title, bodyHtml) {
+  let overlay = document.getElementById('dashboardMiniModal');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'dashboardMiniModal';
+    overlay.className = 'mini-modal-overlay';
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) closeDashboardMiniModal();
+    });
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = `
+    <div class="mini-modal" role="dialog" aria-modal="true">
+      <div class="mini-modal-head">
+        <h3>${escapeHtml(title)}</h3>
+        <button class="mini-modal-close" onclick="closeDashboardMiniModal()" aria-label="Fechar">×</button>
+      </div>
+      <div class="mini-modal-body">${bodyHtml}</div>
+    </div>`;
+  overlay.style.display = 'flex';
+}
+
+function closeDashboardMiniModal() {
+  const overlay = document.getElementById('dashboardMiniModal');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function dashboardPrintPendencias() {
+  return Object.entries(state.modules || {})
+    .filter(([, mod]) => mod.needPrint)
+    .map(([key, mod]) => {
+      const parts = key.split('_');
+      const dateStr = parts[0] || '';
+      const modNum = parts[1] || '';
+      return {
+        key,
+        mod,
+        modNum,
+        dateStr,
+        dateFmt: dateStr ? fmtEvDate(dateStr) : ''
+      };
+    })
+    .sort((a, b) => a.dateStr.localeCompare(b.dateStr));
+}
+
+function openPrintPendenciasModal() {
+  const items = dashboardPrintPendencias();
+  const body = items.length
+    ? `<div class="mini-list">${items.map(({key, mod, modNum, dateFmt}) => `
+        <button class="mini-list-item" onclick="openPrintPlanning('${escapeJsString(key)}')">
+          <div class="mini-list-title">${escapeHtml(mod.title || 'Módulo ' + modNum)}</div>
+          <div class="mini-list-meta">${escapeHtml(mod.printWhat || 'Imprimir')} · ${escapeHtml(dateFmt || '')}</div>
+        </button>`).join('')}</div>`
+    : `<div class="dash-empty">Nenhuma impressão pendente.</div>`;
+  openDashboardMiniModal('Impressões pendentes', body);
+}
+
+function plannerWeekStart(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(12, 0, 0, 0);
+  return d;
+}
+
+function openPrintPlanning(key) {
+  const dateStr = (key || '').split('_')[0];
+  if (dateStr) {
+    const targetMonday = plannerWeekStart(new Date(dateStr + 'T12:00:00'));
+    const todayMonday = plannerWeekStart(new Date());
+    state.weekOffset = Math.round((targetMonday - todayMonday) / (7 * 24 * 60 * 60 * 1000));
+  }
+  closeDashboardMiniModal();
+  setView('presencial', document.querySelector('[onclick*=presencial]'));
+}
+
+function openAlunosFromDash() {
+  setView('alunos', document.querySelector('[onclick*=alunos]'));
+}
+
+function openBirthdayMonthModal(event) {
+  if (event) event.stopPropagation();
+  const now = new Date();
+  const month = now.getMonth();
+  const year = now.getFullYear();
+  const alunosMes = getAlunos()
+    .map(aluno => ({ aluno, dt: parseBirthdayParts(aluno.nascimento) }))
+    .filter(item => item.dt && item.dt.month === month)
+    .sort((a, b) => a.dt.day - b.dt.day);
+  const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const weekdays = ['D','S','T','Q','Q','S','S'].map(d => `<div class="birthday-weekday">${d}</div>`).join('');
+  const firstDay = new Date(year, month, 1).getDay();
+  const totalDays = new Date(year, month + 1, 0).getDate();
+  let cells = ''.padStart(firstDay, '|').split('').filter(Boolean).map(() => '<div></div>').join('');
+  for (let day = 1; day <= totalDays; day++) {
+    const names = alunosMes.filter(item => item.dt.day === day).map(item => escapeHtml(item.aluno.apelido || item.aluno.nome || 'Aluno'));
+    cells += `<div class="birthday-day ${names.length ? 'has-birthday' : ''}">
+      <strong>${day}</strong>
+      ${names.map(name => `<span class="birthday-name">${name}</span>`).join('')}
+    </div>`;
+  }
+  const body = alunosMes.length
+    ? `<p class="mini-list-meta" style="margin-top:0">${monthNames[month]} de ${year}</p><div class="birthday-calendar">${weekdays}${cells}</div>`
+    : `<div class="dash-empty">Nenhum aniversário cadastrado neste mês.</div>`;
+  openDashboardMiniModal('Aniversários do mês', body);
+}
+
+function parseBirthdayParts(value) {
+  if (!value) return null;
+  const iso = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return { month: Number(iso[2]) - 1, day: Number(iso[3]) };
+  const br = String(value).match(/^(\d{1,2})\/(\d{1,2})/);
+  if (br) return { month: Number(br[2]) - 1, day: Number(br[1]) };
+  return null;
+}
 
 const planningConsultFilters = {
   presencial: { disc:'', exec:'' },
