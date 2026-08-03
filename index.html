@@ -239,10 +239,14 @@
   .comunicado-box { margin-top: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
   .comunicado-head { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
   .comunicado-head h3 { font-size: 14px; font-weight: 600; }
+  .comunicado-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .comunicado-body { padding: 16px 20px; }
   .comunicado-text { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; font-size: 13px; line-height: 1.9; color: var(--text); white-space: pre-wrap; font-family: 'DM Sans', sans-serif; min-height: 80px; }
   .btn-copy { background: var(--purple-bg); color: var(--purple); border: 1px solid var(--purple); padding: 6px 14px; border-radius: var(--radius); font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all .12s; }
   .btn-copy:hover { background: var(--purple); color: #fff; }
+  .btn-chat { display:inline-flex; align-items:center; gap:7px; background:#e9f8ef; color:#087a3d; border:1px solid #bfe8ce; padding:6px 12px; border-radius:var(--radius); font-size:13px; font-weight:700; cursor:pointer; font-family:'DM Sans',sans-serif; }
+  .btn-chat img { width:18px; height:18px; display:block; }
+  .btn-chat:hover { background:#d9f3e4; }
   .ead-detail-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 200; }
   .ead-detail-overlay.open { display: block; }
   .ead-detail-panel { position: fixed; right: 0; top: 0; bottom: 0; width: 440px; background: var(--surface); border-left: 1px solid var(--border); z-index: 201; overflow-y: auto; display: flex; flex-direction: column; transform: translateX(100%); transition: transform .25s cubic-bezier(.4,0,.2,1); }
@@ -3327,7 +3331,10 @@
       <div class="comunicado-box" id="comunicadoBox">
         <div class="comunicado-head">
           <h3>Comunicado semanal EaD</h3>
-          <button class="btn-copy" onclick="copyComunicado()">Copiar texto</button>
+          <div class="comunicado-actions">
+            <button class="btn-chat" onclick="openGoogleChatGroup()"><img alt="" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAEb0lEQVR4nO1ZbWwURRhe40f82NlrikGBRK0NDZhGSAopKYLBxJgQTDDaoEk7c9ha0Ng2hVihqAWLyg+DaCqJMcSS+pXGRGIotjuzt3flrlexUqpttK2G0CL0StPSVoGr9F4zV67c5fZ279q73pLckzzZH7vvu8+7M7PzPruCkEIKKaSQwnxj0Q8l94py4XILwxssijV/TmR4A8/FcyZWdWv+PRIj2xEjVKJ4UmIE4kqKJxHFMr+HoJK746odUYwRw/1xF820iRg5hxgumLty9ck7EMW18yVcChsV8rnQkH/X7MQ35N8uUdyYNPEsQHyca4lZv0TxR1oJFymlsNy+H1Y6DsIqR21cuNJx0J+T546wPj6MSbzIrOuCE2Soe+BZpwzlbcPw1ilIKMvbhmGTsxkybFUhRYi08IlYnr7L/7Rt5fDcSSfscF+dd1a4r8BmZws8qJQF1kObAMJthuKRrSCXByxVa4C4euGV1vNJJXH1QZbt3eki5MJVxgUw8v5S9T3Y0tIBL57sNAW3tHRAlq2Gv15rDAt4WNnds9GhwCaHaipudCjwkG3XH7ri+Xaep9b7nrJ/D2Zknv3LKd1dWmK4KletgzXqUVMyV60DkZFKTfEPNBfchygezVYOwQql1pTMVg4BomREs/GzUPI8X+mZbB8sYwdMyUy2b3pPYGSzxvQhR/nJxXQnZNBqQz7j/hQ+/svuP0ZzvRYfVz+A4jNf+4/RXL+Y7QzszF+EFYAY7uAn09k2WEIrDXn+6ihwDHnHIdu+N6qYYD6qVEH3+AV/jo6x/qhi0lnJdLdKSbvWCHj4SQuzwkK5FBbKZbr8818PBNB++Sxk2ioNYwJcwiqg0dM5E+/xjkURV+rXdmMELmoV4A30HWmsCNLl7bp84ZdPYMrnmxHx6/gArHfvN4zLcb4NzpEeCEZZd71hnIUWB3eo18ILoHjw5gVWSKNFkCbrs6rn2xAhvKCmoU4o7a6Dta3VkGXf4WdeazW82nUEjg22w3++qZCYw+dkw/twLVzTTcOD+8PXAMVnQttYK0h0qyFf6z4CV657IVZM+q7D3r7vjO8hW0PE31gDP2ksYnJYxxnpMsf1JhzznAqZUpHgAx/Iw52wru0dw7wRLSfFtWEF8HfrXN3TCtcbsKvnK2i8dBq6Jvrh4rVRGPRehq6JAThxqQP29H4Dq9274+DSrE+HFcC9J6JkIPkWkhhZzL8j+mREcUXyBRJdigwXCxHRXnInYuTnZIuUIhAxctrQ4POvZLxhMuHUGbKo5BFd8TNTSSZrEMXjpnnylIyIzWRtVOKDR0Ji5Ldki5cY7hWbyDJhNvB7BEZqkjEaiJExbrDi8tFXVF+6X2L4dcQwS7DofxDDP0oMb0O0cIGQCMQkipJ6iVpXW2wkR48i2/qYRSVpCRE8ywIuaLomM0AyfGPgBqmpKF0wK6TIws9q9ygmgxQ+z32Ikc8WOF9Gwq0ARMlE0AbTJyp4vXArAVFSJjH8O6LkQOJ/zKWQgpBo/A9EKN4SpYCscgAAAABJRU5ErkJggg==">Abrir Chat</button>
+            <button class="btn-copy" onclick="copyComunicado()">Copiar texto</button>
+          </div>
         </div>
         <div class="comunicado-body">
           <div class="comunicado-text" id="comunicadoText">Preencha os módulos EaD acima para gerar o comunicado automaticamente.</div>
@@ -10412,15 +10419,15 @@ function toggleEadTipo(btn) {
 
 function montarTexto(tipos, desc, disc, aula) {
   const listaTipos = Array.isArray(tipos) ? tipos : [tipos || 'leitura'];
-  const sufixo = disc ? ` - ${disc}` : ' - Livre / Curso externo';
+  const disciplina = disc || 'Livre / Curso externo';
   const prefixos = listaTipos.map(t => TIPO_LABELS[t] || t).join(' + ');
   if (desc && desc.trim()) {
-    if (listaTipos.includes('avaliativa')) return `*ATIVIDADE AVALIATIVA* - ${prefixos}: ${desc.trim()}${sufixo}`;
-    return `${prefixos}: ${desc.trim()}${sufixo}`;
+    if (listaTipos.includes('avaliativa')) return `${disciplina}: *ATIVIDADE AVALIATIVA* - ${prefixos}: ${desc.trim()}`;
+    return `${disciplina}: ${prefixos}: ${desc.trim()}`;
   }
   // fallback sem descrição
-  if (listaTipos.includes('avaliativa')) return `*ATIVIDADE AVALIATIVA* - Realize a atividade da ${aula}${sufixo}`;
-  return `${prefixos}: ${aula}${sufixo}`;
+  if (listaTipos.includes('avaliativa')) return `${disciplina}: *ATIVIDADE AVALIATIVA* - Realize a atividade da ${aula}`;
+  return `${disciplina}: ${prefixos}: ${aula}`;
 }
 
 function renderEad() {
@@ -10517,6 +10524,17 @@ function copyComunicado() {
     ta.value = text; document.body.appendChild(ta); ta.select();
     document.execCommand('copy'); ta.remove(); showToast('Copiado!');
   });
+}
+
+function openGoogleChatGroup() {
+  let url = localStorage.getItem('planner_google_chat_url') || '';
+  if (!url) {
+    url = prompt('Cole o link do grupo do Google Chat:') || '';
+    url = url.trim();
+    if (!url) return;
+    localStorage.setItem('planner_google_chat_url', url);
+  }
+  window.open(url, '_blank', 'noopener');
 }
 
 // --- EAD DETAIL ------------------------------------------
