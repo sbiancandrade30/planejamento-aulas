@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -2148,6 +2148,7 @@
     font-weight:700!important;
     color:var(--text)!important;
     margin-bottom:10px!important;
+    text-align:center!important;
   }
   .mod-card {
     border-radius:12px!important;
@@ -3671,15 +3672,15 @@
         </select>
       </div>
       <div class="form-group">
+        <label class="form-label">Descrição breve da aula</label>
+        <textarea class="form-input" id="fTeoria" placeholder="Resuma em poucas palavras o que será feito nesta aula..."></textarea>
+      </div>
+      <div class="form-group">
         <label class="form-label">Tipo</label>
         <div id="tagButtonsContainer" style="display:flex;gap:6px;flex-wrap:wrap"></div>
       </div>
       <details class="module-extra-fields">
         <summary>Detalhes opcionais</summary>
-        <div class="form-group">
-          <label class="form-label">Desenvolvimento teórico</label>
-          <textarea class="form-input" id="fTeoria" placeholder="Conteúdos, conceitos e tópicos a abordar..."></textarea>
-        </div>
         <div class="form-group">
           <label class="form-label">Avaliação / entregável</label>
           <textarea class="form-input" id="fAval" placeholder="Critério de avaliação, o que deve ser entregue..."></textarea>
@@ -4587,10 +4588,10 @@ const SENAI_PLANNER_VERSION = 'Etapa 26.2   Disciplinas compactas';
 // TIPOS DE AULA EDIT VEIS
 // -------------------------------------------------------
 const TIPOS_AULA_DEFAULT = [
-  { id:'teoria',    nome:'Teoria',     cor:'#2d5be3' },
-  { id:'atividade', nome:'Atividade',  cor:'#2a7d4f' },
+  { id:'teoria',    nome:'Teoria',     cor:'#2f6fe4' },
+  { id:'atividade', nome:'Atividade',  cor:'#2f8f5b' },
   { id:'prova',     nome:'Prova',      cor:'#b93232' },
-  { id:'trabalho',  nome:'Trabalho',   cor:'#9a6200' },
+  { id:'trabalho',  nome:'Trabalho',   cor:'#b7791f' },
 ];
 
 function getTiposAula() {
@@ -4617,10 +4618,21 @@ function rebuildTagButtons() {
   const tipos = getTiposAula();
   const container = document.getElementById('tagButtonsContainer');
   if (!container) return;
+  const palette = {
+    teoria: '#2f6fe4',
+    atividade: '#2f8f5b',
+    prova: '#b93232',
+    trabalho: '#b7791f'
+  };
   container.innerHTML = tipos.map(t =>
+    {
+      const cor = palette[t.id] || t.cor;
+      return (
     `<button type="button" class="tag tag-toggle" data-tag="${t.id}"
-      style="background:${hexToRgba(t.cor,0.13)};color:${t.cor};border:1px solid ${hexToRgba(t.cor,0.3)};border-radius:20px;padding:4px 12px;font-size:11px;font-weight:500;cursor:pointer;opacity:.45;transition:all .12s"
+      style="background:${hexToRgba(cor,0.13)};color:${cor};border:1px solid ${hexToRgba(cor,0.32)};border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;opacity:.62;transition:all .12s"
       onclick="toggleTag(this)">${t.nome}</button>`
+      );
+    }
   ).join('');
 }
 
@@ -9894,7 +9906,6 @@ function render() {
     col.innerHTML = `<div class="day-head ${isT?'day-today':''}">
       <div class="day-name">${DAY_NAMES[di]}</div>
       <div class="day-date">${fmtDate(date)}</div>
-      <button type="button" class="day-modules-btn" onclick="event.stopPropagation();setClassModuleCountForDate('${dateKey}', ${dayModuleCount})">${dayModuleCount} módulos</button>
     </div>`;
 
     for (let m = 1; m <= dayModuleCount; m++) {
@@ -10059,7 +10070,7 @@ function editModule() {
   document.querySelectorAll('.tag-toggle').forEach(btn => {
     const isActive = (mod.tags||[]).includes(btn.dataset.tag);
     btn.classList.toggle('active-tag', isActive);
-    btn.style.opacity = isActive ? '1' : '0.45';
+    btn.style.opacity = isActive ? '1' : '0.62';
   });
 
   document.getElementById('modalTitle').textContent = 'Editar m dulo';
@@ -10097,7 +10108,7 @@ function duplicateModule() {
   document.querySelectorAll('.tag-toggle').forEach(btn => {
     const isActive = (mod.tags || []).includes(btn.dataset.tag);
     btn.classList.toggle('active-tag', isActive);
-    btn.style.opacity = isActive ? '1' : '0.45';
+    btn.style.opacity = isActive ? '1' : '0.62';
   });
 
   document.getElementById('modalTitle').textContent = 'Duplicar m dulo';
@@ -10167,7 +10178,7 @@ function openModal(dateKey, modNum) {
   const btns = document.querySelectorAll('.tag-toggle');
   btns.forEach((btn, i) => {
     btn.classList.toggle('active-tag', i === 0);
-    btn.style.opacity = i === 0 ? '1' : '0.45';
+    btn.style.opacity = i === 0 ? '1' : '0.62';
   });
 
   document.getElementById('modalOverlay').classList.add('open');
@@ -10195,7 +10206,7 @@ function closeModal() {
 
 function toggleTag(btn) {
   btn.classList.toggle('active-tag');
-  btn.style.opacity = btn.classList.contains('active-tag') ? '1' : '0.45';
+  btn.style.opacity = btn.classList.contains('active-tag') ? '1' : '0.62';
 }
 
 function saveModule() {
