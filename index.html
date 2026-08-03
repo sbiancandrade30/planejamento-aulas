@@ -2017,11 +2017,33 @@
     margin-bottom:12px!important;
   }
   .planning-week-hint {
+    display:none!important;
+  }
+  .planning-page-head {
     background:#fff!important;
     border:1px solid var(--border)!important;
     border-radius:var(--radius-lg)!important;
-    padding:12px 14px!important;
+    padding:14px 16px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:12px!important;
+  }
+  .planning-page-title {
+    font-size:22px!important;
+    font-weight:850!important;
+    color:var(--text)!important;
+  }
+  .planning-page-week {
+    font-size:13px!important;
     color:var(--text2)!important;
+    margin-top:3px!important;
+  }
+  .week-label {
+    min-width:150px!important;
+    text-align:center!important;
+    font-weight:850!important;
+    color:var(--text)!important;
   }
   .planning-summary-grid {
     grid-template-columns:repeat(4,minmax(120px,1fr))!important;
@@ -2069,16 +2091,19 @@
     border-radius:var(--radius-lg)!important;
     padding:10px!important;
     margin-bottom:8px!important;
-    text-align:left!important;
+    text-align:center!important;
   }
   .day-name {
-    font-size:12px!important;
-    font-weight:800!important;
+    font-size:13px!important;
+    font-weight:900!important;
+    letter-spacing:.08em!important;
     color:var(--text)!important;
+    text-transform:uppercase!important;
   }
   .day-date {
-    font-size:11px!important;
+    font-size:12px!important;
     color:var(--text3)!important;
+    margin-top:3px!important;
   }
   .mod-card {
     border-radius:12px!important;
@@ -8949,7 +8974,7 @@ function isToday(d) {
 }
 
 // --- RENDER ----------------------------------------------
-const DAY_NAMES = ['Segunda','Ter a','Quarta','Quinta','Sexta'];
+const DAY_NAMES = ['Segunda','Terça','Quarta','Quinta','Sexta'];
 
 // --- DASHBOARD IN CIO -------------------------------------
 function renderInicio() {
@@ -9699,7 +9724,12 @@ function renderPlanningConsult(kind = 'presencial') {
     : '';
 
   target.innerHTML = `
-    <div class="planning-week-hint"><strong>${kind === 'ead' ? 'Planejamento EaD' : 'Planejamento Presencial'}:</strong> visão da semana de ${weekLabel}.</div>
+    <div class="planning-page-head">
+      <div>
+        <div class="planning-page-title">${kind === 'ead' ? 'Planejamento EaD' : 'Planejamento presencial'}</div>
+        <div class="planning-page-week">Semana de ${weekLabel}</div>
+      </div>
+    </div>
     ${summaryHtml}
     <div class="planning-filter-panel">
       <div class="planning-filter-group">
@@ -9757,7 +9787,7 @@ function render() {
   renderPlanningConsult('presencial');
   const first = dates[0], last = dates[4];
   document.getElementById('weekLabel').textContent =
-    `${fmtDate(first)}   ${fmtDate(last)}`;
+    `${fmtDate(first)} a ${fmtDate(last)}`;
 
   const grid = document.getElementById('weekGrid');
   grid.innerHTML = '';
