@@ -2144,11 +2144,30 @@
     background:#fff!important;
   }
   .module-extra-fields summary {
+    min-height:28px!important;
+    display:flex!important;
+    align-items:center!important;
     cursor:pointer!important;
     font-weight:700!important;
     color:var(--text)!important;
     margin-bottom:10px!important;
-    text-align:center!important;
+    text-align:left!important;
+    outline:none!important;
+  }
+  #tagButtonsContainer {
+    gap:8px!important;
+  }
+  #tagButtonsContainer .tag-toggle {
+    padding:8px 15px!important;
+    min-height:32px!important;
+    border-radius:999px!important;
+    font-size:12px!important;
+    font-weight:800!important;
+    opacity:.72!important;
+  }
+  #tagButtonsContainer .tag-toggle.active-tag {
+    opacity:1!important;
+    box-shadow:0 0 0 2px rgba(22,65,148,.08)!important;
   }
   .mod-card {
     border-radius:12px!important;
@@ -3040,7 +3059,7 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>
         <span>+ Logo</span>
       </div>
-      <div class="splash-title" id="splashTitle">Aprendizagem Industrial em Moldador de Pl stico por Compress o</div>
+      <div class="splash-title" id="splashTitle">Aprendizagem Industrial em Moldador de Plástico por Compressão</div>
       <div class="splash-subtitle" id="splashSubtitle">SENAI   Painel Docente</div>
     </div>
     <div class="splash-card-body">
@@ -3226,7 +3245,7 @@
           <div id="syncDot" style="width:8px;height:8px;border-radius:50%;background:var(--text3)"></div>
           <span id="syncLabel">N o conectado</span>
         </div>
-        <button type="button" class="btn btn-outline" id="modalBtnPresencial" onclick="openPresencialModuleModalFromToolbar(event)">+ Novo m dulo</button>
+        <button type="button" class="btn btn-outline" id="modalBtnPresencial" onclick="openPresencialModuleModalFromToolbar(event)">+ Novo módulo</button>
         <button class="btn btn-outline btn-professor-preview" id="btnPreviewProfessor" onclick="visualizarComoProfessor()" title="Ver como ficará a versão compartilhada com o professor">Visualizar como professor</button>
         <button class="btn btn-outline btn-professor-generate" id="btnGerarProfessor" onclick="gerarVersaoProfessor()" title="Gerar um HTML de visualização para compartilhar">Gerar versão para professor</button>
         <button class="btn btn-outline" id="btnVoltarProfessorPreview" onclick="voltarDaVisualizacaoProfessor()">← Voltar ao painel completo</button>
@@ -3635,7 +3654,7 @@
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
     <div class="modal-head">
-      <h2 id="modalTitle">Novo m dulo</h2>
+      <h2 id="modalTitle">Novo módulo</h2>
       <button class="close-btn" onclick="closeModal()">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 1l12 12M13 1L1 13"/></svg>
       </button>
@@ -3663,7 +3682,7 @@
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">T tulo / tema da aula</label>
+        <label class="form-label">Título / tema da aula</label>
         <input type="text" class="form-input" id="fTitle" placeholder="ex: Contato de selo e diagrama de comando">
       </div>
       <div class="form-group">
@@ -3712,7 +3731,7 @@
     </div>
     <div class="modal-foot">
       <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveModule()">Salvar m dulo</button>
+      <button class="btn btn-primary" onclick="saveModule()">Salvar módulo</button>
     </div>
   </div>
 </div>
@@ -4595,7 +4614,11 @@ const TIPOS_AULA_DEFAULT = [
 ];
 
 function getTiposAula() {
-  try { const s = localStorage.getItem('oficial_app_tipos_aula'); if (s) return JSON.parse(s); } catch(e) {}
+  const fixed = { teoria:'#2f6fe4', atividade:'#2f8f5b', prova:'#b93232', trabalho:'#b7791f' };
+  try {
+    const s = localStorage.getItem('oficial_app_tipos_aula');
+    if (s) return JSON.parse(s).map(t => ({ ...t, cor: fixed[t.id] || t.cor }));
+  } catch(e) {}
   return JSON.parse(JSON.stringify(TIPOS_AULA_DEFAULT));
 }
 function saveTiposAula(arr) {
@@ -10073,7 +10096,7 @@ function editModule() {
     btn.style.opacity = isActive ? '1' : '0.62';
   });
 
-  document.getElementById('modalTitle').textContent = 'Editar m dulo';
+  document.getElementById('modalTitle').textContent = 'Editar módulo';
   document.getElementById('modalOverlay').classList.add('open');
   editingKey = currentDetailKey;
 }
@@ -10151,7 +10174,7 @@ function findFirstFreePlanningSlot(kind = 'presencial') {
 
 function openModal(dateKey, modNum) {
   editingKey = null;
-  document.getElementById('modalTitle').textContent = 'Novo m dulo';
+  document.getElementById('modalTitle').textContent = 'Novo módulo';
   document.getElementById('fTitle').value = '';
   document.getElementById('fTeoria').value = '';
   document.getElementById('fAtiv').value = '';
@@ -10192,8 +10215,8 @@ function openPresencialModuleModalFromToolbar(event) {
   try {
     openModal();
   } catch (error) {
-    console.error('Falha ao abrir o cadastro de m dulo presencial:', error);
-    showToast('N o consegui abrir o cadastro do m dulo. Recarregue a p gina e tente novamente.');
+    console.error('Falha ao abrir o cadastro de módulo presencial:', error);
+    showToast('Não consegui abrir o cadastro do módulo. Recarregue a página e tente novamente.');
   }
 }
 window.openModal = openModal;
