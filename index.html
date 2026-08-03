@@ -2086,9 +2086,22 @@
     margin-bottom:7px!important;
     box-shadow:none!important;
   }
+  .ead-card {
+    border-radius:12px!important;
+    padding:9px 10px!important;
+    margin-bottom:7px!important;
+    box-shadow:none!important;
+    background:#fff!important;
+    border:1px solid var(--border)!important;
+  }
   .mod-card.empty {
     min-height:50px!important;
     font-size:11px!important;
+  }
+  .ead-card.empty {
+    min-height:50px!important;
+    font-size:11px!important;
+    background:transparent!important;
   }
   .mod-num {
     font-size:9px!important;
@@ -2096,6 +2109,12 @@
     color:var(--text3)!important;
   }
   .mod-title {
+    font-size:12px!important;
+    font-weight:800!important;
+    line-height:1.25!important;
+    margin-bottom:6px!important;
+  }
+  .ead-card .mod-title {
     font-size:12px!important;
     font-weight:800!important;
     line-height:1.25!important;
@@ -9208,7 +9227,7 @@ function toggleTag(btn) {
 
 function saveModule() {
   const title = document.getElementById('fTitle').value.trim();
-  if (!title) { alert('Preencha o t tulo do m dulo.'); return; }
+  if (!title) { alert('Preencha o título do módulo.'); return; }
 
   const dayIdx = parseInt(document.getElementById('fDay').value);
   const modNum = document.getElementById('fMod').value;
@@ -9219,11 +9238,11 @@ function saveModule() {
 
   if (isProfessorMode()) {
     if (editingKey && !professorOwnsPlanningModule(editingKey)) {
-      showToast('O professor pode editar somente os m dulos que ele mesmo adicionar.');
+      showToast('O professor pode editar somente os módulos que ele mesmo adicionar.');
       return;
     }
     if (!editingKey && state.modules[key] && !professorOwnsPlanningModule(key)) {
-      showToast('Esse m dulo j  existe e fica bloqueado na vers o do professor.');
+      showToast('Esse módulo já existe e fica bloqueado na versão do professor.');
       return;
     }
   }
@@ -9247,7 +9266,7 @@ function saveModule() {
   saveData();
   closeModal();
   render();
-  showToast('M dulo salvo!');
+  showToast('Módulo salvo!');
 }
 
 // --- NAV -------------------------------------------------
@@ -9271,7 +9290,7 @@ function goToInicio() {
 
 function setView(v, btn) {
   if (isProfessorMode() && ['tarefas','ocorrencias','configuracoes'].includes(v)) {
-    showToast('Essa  rea n o aparece na vers o do professor.');
+    showToast('Essa área não aparece na versão do professor.');
     return;
   }
   state.view = v;
@@ -9311,20 +9330,20 @@ function setView(v, btn) {
 }
 
 // --- EAD RENDER ------------------------------------------
-const TIPO_LABELS = { leitura: 'Leitura', video: 'V deo', resumo: 'Resumo', avaliativa: 'Atividade avaliativa' };
+const TIPO_LABELS = { leitura: 'Leitura', video: 'Vídeo', resumo: 'Resumo', avaliativa: 'Atividade avaliativa' };
 
 function montarTexto(tipo, desc, disc, aula) {
   const sufixo = disc ? ` - ${disc}` : '';
   if (desc && desc.trim()) {
-    if (tipo === 'avaliativa') return `*ATIVIDADE AVALIATIVA*   ${desc.trim()}${sufixo}`;
+    if (tipo === 'avaliativa') return `*ATIVIDADE AVALIATIVA* - ${desc.trim()}${sufixo}`;
     return `${desc.trim()}${sufixo}`;
   }
-  // fallback sem descri  o
+  // fallback sem descrição
   switch(tipo) {
     case 'leitura':    return `Leia o material da ${aula}${sufixo}`;
-    case 'video':      return `Assista aos v deos da ${aula}${sufixo}`;
-    case 'resumo':     return `Fa a o resumo da ${aula} e envie foto${sufixo}`;
-    case 'avaliativa': return `*ATIVIDADE AVALIATIVA*   Realize a atividade avaliativa da ${aula}${sufixo}`;
+    case 'video':      return `Assista aos vídeos da ${aula}${sufixo}`;
+    case 'resumo':     return `Faça o resumo da ${aula} e envie foto${sufixo}`;
+    case 'avaliativa': return `*ATIVIDADE AVALIATIVA* - Realize a atividade avaliativa da ${aula}${sufixo}`;
     default:           return `${aula}${sufixo}`;
   }
 }
@@ -9355,7 +9374,7 @@ function renderEad() {
         const tipoLabel = TIPO_LABELS[mod.tipo] || mod.tipo;
         const discShort = mod.disc ? mod.disc.split(' ').slice(0,3).join(' ')+'...' : 'Livre / Curso externo';
         card.innerHTML = `
-          <div class="mod-num">M dulo ${m}   ${mod.aula||''}</div>
+          <div class="mod-num">Módulo ${m} - ${mod.aula||''}</div>
           <div class="mod-title">${discShort}</div>
           <div class="mod-footer">
             <div class="tags"><span class="tag tag-${mod.tipo}">${tipoLabel}</span></div>
@@ -9363,7 +9382,7 @@ function renderEad() {
         card.addEventListener('click', () => openEadDetail(key));
       } else {
         card.className = 'ead-card empty';
-        card.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2v8M2 6h8"/></svg> M dulo ${m}`;
+        card.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2v8M2 6h8"/></svg> Módulo ${m}`;
         card.addEventListener('click', () => openEadModal(dateKey, m));
       }
       col.appendChild(card);
