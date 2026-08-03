@@ -2209,6 +2209,12 @@
     line-height:1.25!important;
     margin-bottom:6px!important;
   }
+  .ead-card .ead-card-desc {
+    font-size:11px!important;
+    line-height:1.35!important;
+    color:var(--text2)!important;
+    margin-top:3px!important;
+  }
   .mod-exec-pill {
     display:inline-flex!important;
     width:auto!important;
@@ -3665,7 +3671,7 @@
           <label class="form-label">Dia da semana</label>
           <select class="form-input" id="fDay">
             <option value="0">Segunda</option>
-            <option value="1">Ter a</option>
+            <option value="1">Terça</option>
             <option value="2">Quarta</option>
             <option value="3">Quinta</option>
             <option value="4">Sexta</option>
@@ -3761,11 +3767,11 @@
       </div>
     </div>
     <div class="detail-section">
-      <div class="detail-section-label">Descri  o / instru  o</div>
+      <div class="detail-section-label">Descrição / instrução</div>
       <div class="detail-field" id="eadDetailDesc"></div>
     </div>
     <div class="detail-section">
-      <div class="detail-section-label">Observa  es</div>
+      <div class="detail-section-label">Observações</div>
       <div class="detail-field" id="eadDetailObs"></div>
     </div>
   </div>
@@ -3799,7 +3805,7 @@
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">M dulo (1 ou 2)</label>
+          <label class="form-label">Módulo EaD</label>
           <select class="form-input" id="efMod">
             <option value="1">1</option>
             <option value="2">2</option>
@@ -3807,14 +3813,14 @@
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Disciplina <span style="font-weight:400;color:var(--text3)">(opcional)</span></label>
+        <label class="form-label">Disciplina / área</label>
         <select class="form-input" id="efDisc">
-          <option value="">  Livre / Curso externo  </option>
+          <option value="">Livre / Curso externo</option>
         </select>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">N mero da aula</label>
+          <label class="form-label">Aula no AVA</label>
           <select class="form-input" id="efAula">
             <option>Aula 1</option><option>Aula 2</option><option>Aula 3</option>
             <option>Aula 4</option><option>Aula 5</option>
@@ -3824,19 +3830,19 @@
           <label class="form-label">Tipo de tarefa</label>
           <select class="form-input" id="efTipo">
             <option value="leitura">Leitura</option>
-            <option value="video">V deo</option>
+            <option value="video">Vídeo</option>
             <option value="resumo">Resumo</option>
             <option value="avaliativa">Atividade avaliativa</option>
           </select>
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Descri  o / instru  o para o aluno</label>
-        <textarea class="form-input" id="efDesc" placeholder="ex: Leia a apostila da Leitura Complementar e assista aos v deos da Aula 5..."></textarea>
+        <label class="form-label">Orientação para o aluno</label>
+        <textarea class="form-input" id="efDesc" placeholder="ex: Leia a apostila, assista ao vídeo e responda a atividade no AVA..."></textarea>
       </div>
       <div class="form-group">
-        <label class="form-label">Observa  es internas</label>
-        <textarea class="form-input" id="efObs" placeholder="Anota  es para voc  (n o aparecem no comunicado)..."></textarea>
+        <label class="form-label">Observações internas</label>
+        <textarea class="form-input" id="efObs" placeholder="Anotações para você (não aparecem no comunicado)..."></textarea>
       </div>
     </div>
     <div class="modal-foot">
@@ -10317,7 +10323,10 @@ function setView(v, btn) {
   document.getElementById('viewConfiguracoes').style.display = v === 'configuracoes' ? '' : 'none';
   document.getElementById('legendPresencial').style.display = v === 'presencial' ? '' : 'none';
   document.getElementById('legendEad').style.display = v === 'ead' ? '' : 'none';
-  document.getElementById('modalBtnPresencial').style.display = v === 'presencial' ? '' : 'none';
+  const planningAddBtn = document.getElementById('modalBtnPresencial');
+  planningAddBtn.style.display = (v === 'presencial' || v === 'ead') ? '' : 'none';
+  planningAddBtn.textContent = v === 'ead' ? '+ Nova tarefa EaD' : '+ Novo módulo';
+  planningAddBtn.onclick = v === 'ead' ? () => openEadModal() : (event) => openPresencialModuleModalFromToolbar(event);
   document.getElementById('weekToolbarNav').style.display = (v === 'presencial' || v === 'ead') ? '' : 'none';
   if (v === 'inicio') renderInicio();
   if (v === 'ead') renderEad();
@@ -10379,10 +10388,12 @@ function renderEad() {
         card.className = 'ead-card' + (planningHasActiveFilters('ead') && !planningModuleMatches('ead', mod) ? ' planning-filter-muted' : '');
         card.dataset.key = key;
         const tipoLabel = TIPO_LABELS[mod.tipo] || mod.tipo;
-        const discShort = mod.disc ? mod.disc.split(' ').slice(0,3).join(' ')+'...' : 'Livre / Curso externo';
+        const discShort = mod.disc || 'Livre / Curso externo';
+        const descShort = (mod.desc || '').trim();
         card.innerHTML = `
-          <div class="mod-num">Módulo ${m} - ${mod.aula||''}</div>
-          <div class="mod-title">${discShort}</div>
+          <div class="mod-num">Módulo ${m}${mod.aula ? ` · ${escapeHtml(mod.aula)}` : ''}</div>
+          <div class="mod-title">${escapeHtml(discShort)}</div>
+          ${descShort ? `<div class="ead-card-desc">${escapeHtml(descShort).slice(0,90)}${descShort.length > 90 ? '...' : ''}</div>` : ''}
           <div class="mod-footer">
             <div class="tags"><span class="tag tag-${mod.tipo}">${tipoLabel}</span></div>
           </div>`;
@@ -10456,7 +10467,7 @@ function openEadDetail(key) {
   const parts = key.split('_'); // ead_dateStr_m
   const dateStr = parts[1]; const mNum = parts[2];
   const d = new Date(dateStr + 'T12:00:00');
-  document.getElementById('eadDetailMeta').textContent = `M dulo ${mNum} EaD   ${DAY_NAMES[d.getDay()-1]}, ${fmtDate(d)}`;
+  document.getElementById('eadDetailMeta').textContent = `Módulo ${mNum} EaD · ${DAY_NAMES[d.getDay()-1]}, ${fmtDate(d)}`;
   document.getElementById('eadDetailTitle').textContent = TIPO_LABELS[mod.tipo] || mod.tipo;
   const tagHtml = `<span class="tag tag-${mod.tipo}">${TIPO_LABELS[mod.tipo]||mod.tipo}</span>`;
   document.getElementById('eadDetailTags').innerHTML = `<div class="tags">${tagHtml}</div>`;
@@ -10478,7 +10489,7 @@ function closeEadDetail() {
 function editEadModule() {
   if (!currentEadKey) return;
   if (isProfessorMode() && !professorOwnsEadModule(currentEadKey)) {
-    showToast('Na vers o do professor, s    poss vel editar tarefas EaD cadastradas pelo pr prio professor.');
+    showToast('Na versão do professor, só é possível editar tarefas EaD cadastradas pelo próprio professor.');
     return;
   }
   const mod = state.eadModules[currentEadKey];
@@ -10531,7 +10542,7 @@ function duplicateEadModule() {
 function deleteEadModule() {
   if (!currentEadKey) return;
   if (isProfessorMode() && !professorOwnsEadModule(currentEadKey)) {
-    showToast('Na vers o do professor, s    poss vel excluir tarefas EaD cadastradas pelo pr prio professor.');
+    showToast('Na versão do professor, só é possível excluir tarefas EaD cadastradas pelo próprio professor.');
     return;
   }
   if (confirm('Excluir esta tarefa EaD?')) {
@@ -10571,7 +10582,6 @@ function closeEadModal() {
 function saveEadModule() {
   const disc = document.getElementById('efDisc').value;
   const tipo = document.getElementById('efTipo').value;
-  if (!disc) { alert('Selecione a disciplina.'); return; }
   const dayIdx = parseInt(document.getElementById('efDay').value);
   const modNum = document.getElementById('efMod').value;
   const dates = getWeekDates(state.weekOffset);
@@ -10579,7 +10589,7 @@ function saveEadModule() {
   const dateKey = fmtDateKey(date);
   const key = eadEditingKey || `ead_${dateKey}_${modNum}`;
   if (isProfessorMode() && state.eadModules[key] && !professorOwnsEadModule(key)) {
-    showToast('Esse m dulo EaD j  estava cadastrado e n o pode ser alterado na vers o do professor.');
+    showToast('Esse módulo EaD já estava cadastrado e não pode ser alterado na versão do professor.');
     return;
   }
   const existingEadModule = state.eadModules[key];
