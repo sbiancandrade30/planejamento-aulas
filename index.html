@@ -2515,6 +2515,54 @@
     font-size:12px;
     font-weight:700;
   }
+  .freq-call-actions {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    padding:10px;
+    margin-bottom:10px;
+  }
+  .freq-call-title {
+    font-size:13px;
+    font-weight:800;
+    color:var(--text);
+  }
+  .freq-call-sub {
+    font-size:12px;
+    color:var(--text2);
+    margin-top:2px;
+  }
+  .freq-call-buttons {
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+  }
+  .freq-call-btn {
+    border:1px solid var(--border);
+    background:#fff;
+    color:var(--text2);
+    border-radius:999px;
+    height:34px;
+    padding:0 12px;
+    font-size:12px;
+    font-weight:800;
+    cursor:pointer;
+  }
+  .freq-call-btn.primary {
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#fff;
+  }
+  .freq-call-btn.warn {
+    border-color:#f0b429;
+    color:#946200;
+    background:#fff8e6;
+  }
   @media(max-width:720px){
     .freq-toolbar {
       display:grid!important;
@@ -2542,6 +2590,17 @@
     .freq-bar-row {
       grid-template-columns:1fr;
       gap:4px;
+    }
+    .freq-call-actions {
+      align-items:flex-start;
+      flex-direction:column;
+    }
+    .freq-call-buttons {
+      width:100%;
+      justify-content:stretch;
+    }
+    .freq-call-btn {
+      flex:1 1 calc(50% - 8px);
     }
   }
 
@@ -11159,6 +11218,36 @@ function renderFreqEmptyState() {
   </div>`;
 }
 
+function getFreqEntryStats(entry) {
+  const stats = { presentes:0, comJust:0, semJust:0, documentos:0 };
+  Object.values(entry?.alunos || {}).forEach(aluno => {
+    (aluno.mods || []).forEach(status => {
+      if (status === 'P') stats.presentes++;
+      if (status === 'CJ') stats.comJust++;
+      if (status === 'SJ') stats.semJust++;
+    });
+    if ((aluno.link || '').trim()) stats.documentos++;
+  });
+  return stats;
+}
+
+function renderFreqCallActions(disc, data, entry) {
+  const stats = getFreqEntryStats(entry);
+  const discArg = encodeURIComponent(disc);
+  const dataArg = encodeURIComponent(data);
+  return `<div class="freq-call-actions">
+    <div>
+      <div class="freq-call-title">Chamada de ${escapeHtml(disc)}</div>
+      <div class="freq-call-sub">${formatDateKeyPtBr(data)} · P ${stats.presentes} · CJ ${stats.comJust} · SJ ${stats.semJust} · ${stats.documentos} documento${stats.documentos === 1 ? '' : 's'}</div>
+    </div>
+    <div class="freq-call-buttons">
+      <button class="freq-call-btn primary" onclick="setAllFreqMods('${discArg}','${dataArg}','P')">Todos presentes</button>
+      <button class="freq-call-btn" onclick="setAllFreqMods('${discArg}','${dataArg}','CJ')">Todos justificados</button>
+      <button class="freq-call-btn warn" onclick="clearFreqJustificativas('${discArg}','${dataArg}')">Limpar justificativas</button>
+    </div>
+  </div>`;
+}
+
 function renderFreq() {
   const data = document.getElementById('freqData').value;
   const disc = document.getElementById('freqDisc').value;
@@ -11186,7 +11275,7 @@ function renderFreq() {
 
   const moduleCount = getClassModuleCountForDate(data);
   const moduleHeaders = Array.from({length:moduleCount}, (_,i) => `<th>M${i+1}</th>`).join('');
-  let html = `<div class="freq-table-wrap"><table class="freq-table"><thead><tr>
+  let html = renderFreqCallActions(disc, data, entry) + `<div class="freq-table-wrap"><table class="freq-table"><thead><tr>
     <th class="th-left" style="min-width:170px">Aluno</th>
     ${moduleHeaders}
     <th class="th-left" style="min-width:140px">Observação</th>
@@ -11257,6 +11346,49 @@ function renderFreq() {
 
   html += '</tbody></table></div>';
   wrap.innerHTML = html;
+}
+
+function setAllFreqMods(disc, data, status) {
+  disc = decodeURIComponent(disc);
+  data = decodeURIComponent(data);
+  const entry = getFreqEntry(disc, data);
+  const moduleCount = getClassModuleCountForDate(data);
+  Object.entries(entry.alunos || {}).forEach(([nome, aluno]) => {
+    const suspensaoOcorrencia = getAfastamentoOcorrenciaParaFrequencia(data, nome);
+    if (suspensaoOcorrencia) return;
+    aluno.mods = Array.from({length:moduleCount}, (_,i) =>
+      professorCanEditFreq(disc, data, nome, 'mods', i) ? status : (aluno.mods?.[i] || 'P')
+    );
+  });
+  saveData();
+  renderFreq();
+  showToast('Chamada atualizada.');
+}
+
+function clearFreqJustificativas(disc, data) {
+  disc = decodeURIComponent(disc);
+  data = decodeURIComponent(data);
+  const entry = getFreqEntry(disc, data);
+  const moduleCount = getClassModuleCountForDate(data);
+  Object.entries(entry.alunos || {}).forEach(([nome, aluno]) => {
+    const suspensaoOcorrencia = getAfastamentoOcorrenciaParaFrequencia(data, nome);
+    if (suspensaoOcorrencia) return;
+    aluno.mods = Array.from({length:moduleCount}, (_,i) => {
+      const atual = aluno.mods?.[i] || 'P';
+      return professorCanEditFreq(disc, data, nome, 'mods', i) && atual === 'CJ' ? 'P' : atual;
+    });
+    if (professorCanEditFreq(disc, data, nome, 'obs')) aluno.obs = '';
+    if (professorCanEditFreq(disc, data, nome, 'link')) aluno.link = '';
+    if (professorCanEditFreq(disc, data, nome, 'afastamentoTipo')) {
+      aluno.afastamentoTipo = '';
+      aluno.afastamentoDias = '';
+      aluno.afastamentoRetorno = '';
+      removerAfastamentoRegistro(disc, data, nome);
+    }
+  });
+  saveData();
+  renderFreq();
+  showToast('Justificativas limpas.');
 }
 
 function setModStatus(disc, data, nome, modIdx, status) {
