@@ -247,6 +247,7 @@
   .btn-chat { display:inline-flex; align-items:center; gap:7px; background:#e9f8ef; color:#087a3d; border:1px solid #bfe8ce; padding:6px 12px; border-radius:var(--radius); font-size:13px; font-weight:700; cursor:pointer; font-family:'DM Sans',sans-serif; }
   .btn-chat img { width:18px; height:18px; display:block; }
   .btn-chat:hover { background:#d9f3e4; }
+  .btn-chat-link { background:#fff; color:var(--text2); border-color:var(--border2); }
   .ead-detail-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 200; }
   .ead-detail-overlay.open { display: block; }
   .ead-detail-panel { position: fixed; right: 0; top: 0; bottom: 0; width: 440px; background: var(--surface); border-left: 1px solid var(--border); z-index: 201; overflow-y: auto; display: flex; flex-direction: column; transform: translateX(100%); transition: transform .25s cubic-bezier(.4,0,.2,1); }
@@ -10417,17 +10418,34 @@ function toggleEadTipo(btn) {
   if (!document.querySelector('.ead-type-toggle.active')) btn.classList.add('active');
 }
 
-function montarTexto(tipos, desc, disc, aula) {
+function joinEadActions(actions) {
+  if (actions.length <= 1) return actions[0] || '';
+  if (actions.length === 2) return `${actions[0]} e ${actions[1]}`;
+  return `${actions.slice(0, -1).join(', ')} e ${actions[actions.length - 1]}`;
+}
+
+function montarAcaoEad(tipos, aula) {
+  const listaTipos = Array.isArray(tipos) ? tipos : [tipos || 'leitura'];
+  const actions = [];
+  if (listaTipos.includes('leitura')) actions.push('leia o material');
+  if (listaTipos.includes('video')) actions.push('assista aos vídeos');
+  if (listaTipos.includes('resumo')) actions.push('faça o resumo e envie foto');
+  if (listaTipos.includes('avaliativa')) actions.push('realize a ATIVIDADE AVALIATIVA');
+  const frase = joinEadActions(actions) || 'realize a atividade';
+  return `${frase} da ${aula || 'aula'}`;
+}
+
+function montarTexto(tipos, desc, disc, aula, diaTexto) {
   const listaTipos = Array.isArray(tipos) ? tipos : [tipos || 'leitura'];
   const disciplina = disc || 'Livre / Curso externo';
-  const prefixos = listaTipos.map(t => TIPO_LABELS[t] || t).join(' + ');
-  if (desc && desc.trim()) {
-    if (listaTipos.includes('avaliativa')) return `${disciplina}: *ATIVIDADE AVALIATIVA* - ${prefixos}: ${desc.trim()}`;
-    return `${disciplina}: ${prefixos}: ${desc.trim()}`;
+  const aulaTexto = aula || 'aula';
+  let acao = (desc || '').trim() || montarAcaoEad(listaTipos, aulaTexto);
+  const mencionaAula = /\baula\s*\d+/i.test(acao) || acao.toLowerCase().includes(String(aulaTexto).toLowerCase());
+  if (!mencionaAula) acao = `${acao} da ${aulaTexto}`;
+  if (listaTipos.includes('avaliativa') && !/atividade avaliativa/i.test(acao)) {
+    acao = `${acao} realizando a ATIVIDADE AVALIATIVA`;
   }
-  // fallback sem descrição
-  if (listaTipos.includes('avaliativa')) return `${disciplina}: *ATIVIDADE AVALIATIVA* - Realize a atividade da ${aula}`;
-  return `${disciplina}: ${prefixos}: ${aula}`;
+  return `${disciplina} - ${diaTexto}: ${acao}`;
 }
 
 function renderEad() {
@@ -10482,6 +10500,7 @@ function buildComunicado(dates) {
   const el = document.getElementById('comunicadoText');
   const lines = [];
   let hasAny = false;
+  ensureChatLinkButton();
 
   dates.forEach((date, di) => {
     const dateKey = fmtDateKey(date);
@@ -10492,14 +10511,12 @@ function buildComunicado(dates) {
     }
     if (dayMods.length === 0) return;
     hasAny = true;
-    const dayAbbr = ['segunda','terça','quarta','quinta','sexta'][di];
+    const dayAbbr = ['seg','ter','qua','qui','sex'][di];
     const dateStr = fmtDate(date);
-    lines.push(`${dateStr} - ${dayAbbr}`);
     dayMods.forEach(mod => {
-      const texto = montarTexto(getEadTipos(mod), mod.desc, mod.disc, mod.aula);
+      const texto = montarTexto(getEadTipos(mod), mod.desc, mod.disc, mod.aula, `${dateStr} ${dayAbbr}`);
       lines.push(`• ${texto}`);
     });
-    lines.push('');
   });
 
   if (!hasAny) {
@@ -10512,8 +10529,8 @@ function buildComunicado(dates) {
     return `${fmtDate(d[0])} a ${fmtDate(d[4])}`;
   })();
 
-  const textoFinal = `Boa tarde, pessoal!\n\nSegue o cronograma das atividades EaD da semana (${semana}):\n\n${lines.join('\n').trim()}\n\nAs atividades estão no Classroom. Qualquer dúvida, me chamem por aqui.`;
-  el.innerHTML = textoFinal.replace(/\*ATIVIDADE AVALIATIVA\*/g, '<strong>ATIVIDADE AVALIATIVA</strong>');
+  const textoFinal = `Boa tarde, segue o cronograma das atividades EAD dessa semana (${semana}):\n\n${lines.join('\n').trim()}\n\nAs atividades estão no Classroom. Qualquer dúvida, me chamem por aqui.`;
+  el.innerHTML = textoFinal.replace(/ATIVIDADE AVALIATIVA/g, '<strong>ATIVIDADE AVALIATIVA</strong>');
 }
 
 function copyComunicado() {
@@ -10535,6 +10552,27 @@ function openGoogleChatGroup() {
     localStorage.setItem('planner_google_chat_url', url);
   }
   window.open(url, '_blank', 'noopener');
+}
+
+function changeGoogleChatGroup() {
+  const atual = localStorage.getItem('planner_google_chat_url') || '';
+  const url = (prompt('Cole o novo link do grupo do Google Chat:', atual) || '').trim();
+  if (!url) return;
+  localStorage.setItem('planner_google_chat_url', url);
+  showToast('Link do Google Chat atualizado.');
+}
+
+function ensureChatLinkButton() {
+  const actions = document.querySelector('.comunicado-actions');
+  if (!actions || document.getElementById('btnChangeChatLink')) return;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.id = 'btnChangeChatLink';
+  btn.className = 'btn-chat btn-chat-link';
+  btn.textContent = 'Alterar link';
+  btn.onclick = changeGoogleChatGroup;
+  const copyBtn = actions.querySelector('.btn-copy');
+  actions.insertBefore(btn, copyBtn || null);
 }
 
 // --- EAD DETAIL ------------------------------------------
