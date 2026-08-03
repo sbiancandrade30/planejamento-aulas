@@ -3820,7 +3820,7 @@
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Aula no AVA</label>
+          <label class="form-label">Aula no Classroom</label>
           <select class="form-input" id="efAula">
             <option>Aula 1</option><option>Aula 2</option><option>Aula 3</option>
             <option>Aula 4</option><option>Aula 5</option>
@@ -3838,7 +3838,7 @@
       </div>
       <div class="form-group">
         <label class="form-label">Orientação para o aluno</label>
-        <textarea class="form-input" id="efDesc" placeholder="ex: Leia a apostila, assista ao vídeo e responda a atividade no AVA..."></textarea>
+        <textarea class="form-input" id="efDesc" placeholder="ex: Acesse o Classroom, leia a apostila, assista ao vídeo e responda a atividade..."></textarea>
       </div>
       <div class="form-group">
         <label class="form-label">Observações internas</label>
@@ -10324,9 +10324,9 @@ function setView(v, btn) {
   document.getElementById('legendPresencial').style.display = v === 'presencial' ? '' : 'none';
   document.getElementById('legendEad').style.display = v === 'ead' ? '' : 'none';
   const planningAddBtn = document.getElementById('modalBtnPresencial');
-  planningAddBtn.style.display = (v === 'presencial' || v === 'ead') ? '' : 'none';
-  planningAddBtn.textContent = v === 'ead' ? '+ Nova tarefa EaD' : '+ Novo módulo';
-  planningAddBtn.onclick = v === 'ead' ? () => openEadModal() : (event) => openPresencialModuleModalFromToolbar(event);
+  planningAddBtn.style.display = v === 'presencial' ? '' : 'none';
+  planningAddBtn.textContent = '+ Novo módulo';
+  planningAddBtn.onclick = (event) => openPresencialModuleModalFromToolbar(event);
   document.getElementById('weekToolbarNav').style.display = (v === 'presencial' || v === 'ead') ? '' : 'none';
   if (v === 'inicio') renderInicio();
   if (v === 'ead') renderEad();
@@ -10425,16 +10425,18 @@ function buildComunicado(dates) {
     }
     if (dayMods.length === 0) return;
     hasAny = true;
-    const dayAbbr = ['seg','ter','qua','qui','sex'][di];
+    const dayAbbr = ['segunda','terça','quarta','quinta','sexta'][di];
     const dateStr = fmtDate(date);
+    lines.push(`${dateStr} - ${dayAbbr}`);
     dayMods.forEach(mod => {
       const texto = montarTexto(mod.tipo, mod.desc, mod.disc, mod.aula);
-      lines.push(`* ${dateStr} ${dayAbbr}: ${texto}`);
+      lines.push(`• ${texto}`);
     });
+    lines.push('');
   });
 
   if (!hasAny) {
-    el.innerHTML = 'Preencha os m dulos EaD acima para gerar o comunicado automaticamente.';
+    el.innerHTML = 'Preencha os módulos EaD acima para gerar o comunicado automaticamente.';
     return;
   }
 
@@ -10443,7 +10445,7 @@ function buildComunicado(dates) {
     return `${fmtDate(d[0])} a ${fmtDate(d[4])}`;
   })();
 
-  const textoFinal = `Boa tarde, segue o cronograma das atividades EAD dessa semana:\n\n${lines.join('\n')}`;
+  const textoFinal = `Boa tarde, pessoal!\n\nSegue o cronograma das atividades EaD da semana (${semana}):\n\n${lines.join('\n').trim()}\n\nAs atividades estão no Classroom. Qualquer dúvida, me chamem por aqui.`;
   el.innerHTML = textoFinal.replace(/\*ATIVIDADE AVALIATIVA\*/g, '<strong>ATIVIDADE AVALIATIVA</strong>');
 }
 
