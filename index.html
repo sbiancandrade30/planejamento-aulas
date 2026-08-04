@@ -4227,6 +4227,10 @@
         </select>
       </div>
       <div class="form-group">
+        <label class="form-label">Tipo</label>
+        <div id="tagButtonsContainer" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+      <div class="form-group">
         <label class="form-label">Materiais da Biblioteca</label>
         <div class="module-materials-box">
           <div class="module-material-toolbar">
@@ -4240,10 +4244,6 @@
       <div class="form-group">
         <label class="form-label">Descrição breve da aula</label>
         <textarea class="form-input" id="fTeoria" placeholder="Resuma em poucas palavras o que será feito nesta aula..."></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Tipo</label>
-        <div id="tagButtonsContainer" style="display:flex;gap:6px;flex-wrap:wrap"></div>
       </div>
       <details class="module-extra-fields">
         <summary>Detalhes opcionais</summary>
@@ -6876,9 +6876,29 @@ function getPlannerLibraryMaterials() {
         disc: discNome,
         tema: temaNome,
         tipo: tipoNome,
-        searchText: normalizeMaterialText([m.titulo, m.descricao, discNome, temaNome, tipoNome, lnk.titulo, lnk.origem, lnk.link].join(' '))
+        searchText: normalizeMaterialText([m.titulo, m.descricao, discNome, temaNome, tipoNome, lnk.titulo, lnk.origem, lnk.link].join(' ')),
+        typeText: normalizeMaterialText([m.titulo, m.descricao, temaNome, tipoNome, lnk.titulo, lnk.origem].join(' '))
       }));
     });
+}
+
+function selectedModuleTypeNames() {
+  const tipos = getTiposAula();
+  const aliases = {
+    teoria: ['aula', 'teoria', 'slide', 'consulta'],
+    atividade: ['atividade', 'exercicio', 'exercício', 'pratica', 'prática'],
+    prova: ['prova', 'avaliacao', 'avaliação', 'avaliativa'],
+    trabalho: ['trabalho', 'relatorio', 'relatório']
+  };
+  return [...document.querySelectorAll('#tagButtonsContainer .tag-toggle.active-tag')]
+    .map(btn => {
+      const id = btn.dataset.tag || '';
+      const tipo = tipos.find(t => t.id === id);
+      return [id, tipo?.nome || btn.textContent || '', ...(aliases[id] || [])].filter(Boolean);
+    })
+    .flat()
+    .map(normalizeMaterialText)
+    .filter(Boolean);
 }
 
 function moduleMaterialKey(item={}) {
@@ -6915,6 +6935,7 @@ function renderModuleMaterialPicker() {
   const disc = document.getElementById('fDisc')?.value || '';
   const search = normalizeMaterialText(document.getElementById('fMaterialSearch')?.value || '');
   const discNorm = normalizeMaterialText(disc);
+  const selectedTypes = selectedModuleTypeNames();
   const attachedKeys = new Set(moduleDraftMaterials.map(moduleMaterialKey));
 
   attachedWrap.innerHTML = moduleDraftMaterials.length
@@ -6934,6 +6955,7 @@ function renderModuleMaterialPicker() {
   const matches = getPlannerLibraryMaterials()
     .filter(m => !attachedKeys.has(moduleMaterialKey(m)))
     .filter(m => !discNorm || normalizeMaterialText(m.disc).includes(discNorm) || m.searchText.includes(discNorm))
+    .filter(m => !selectedTypes.length || selectedTypes.some(type => m.typeText.includes(type)))
     .filter(m => !search || m.searchText.includes(search))
     .slice(0, 8);
 
@@ -6948,7 +6970,7 @@ function renderModuleMaterialPicker() {
           <button type="button" class="module-material-btn" onclick="attachModuleMaterial('${escapeJsString(m.id)}')">Anexar</button>
         </div>
       </div>`).join('')
-    : '<div class="module-material-empty">Nenhum material encontrado na Biblioteca local para esta busca.</div>';
+    : `<div class="module-material-empty">Nenhum material encontrado para esta disciplina${selectedTypes.length ? ' e tipo selecionado' : ''}.</div>`;
 }
 
 function moduleMaterialsHtml(materials=[]) {
@@ -11195,6 +11217,7 @@ function closeModal() {
 function toggleTag(btn) {
   btn.classList.toggle('active-tag');
   btn.style.opacity = btn.classList.contains('active-tag') ? '1' : '0.62';
+  renderModuleMaterialPicker();
 }
 
 function saveModule() {
