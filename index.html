@@ -3839,8 +3839,13 @@
           <div class="page-title">Alunos</div>
           <div class="page-sub">Consulte a turma, aniversários, observações, faltas e ocorrências em um só lugar.</div>
         </div>
-        <button class="btn btn-primary" onclick="openAlunoModal()">+ Novo aluno</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <button class="btn btn-outline" onclick="baixarModeloAlunos()">Baixar modelo</button>
+          <button class="btn btn-outline" onclick="document.getElementById('alunosImportInput').click()">Importar planilha</button>
+          <button class="btn btn-primary" onclick="openAlunoModal()">+ Novo aluno</button>
+        </div>
       </div>
+      <input type="file" id="alunosImportInput" accept=".csv,text/csv" style="display:none" onchange="importarAlunosCsv(this)">
       <div class="alunos-toolbar">
         <input type="text" class="freq-select" id="alunoSearch" placeholder="Buscar por nome..." oninput="renderAlunos()">
         <select class="freq-select" id="alunoFiltro" onchange="renderAlunos()">
@@ -7046,7 +7051,7 @@ function openAlunoModal(id) {
 function closeAlunoModal() { document.getElementById('alunoModalOverlay').classList.remove('open'); alunoEditingId = null; alunoFotoTemp = null; }
 
 function saveAluno() {
-  if (isProfessorMode()) { showToast('Não   poss vel cadastrar ou editar alunos na versão do professor.'); return; }
+  if (isProfessorMode()) { showToast('Não é possível cadastrar ou editar alunos na versão do professor.'); return; }
   const nome = document.getElementById('alNome').value.trim();
   if (!nome) { alert('Preencha o nome do aluno.'); return; }
   if (!state.alunos) state.alunos = [];
@@ -7074,15 +7079,145 @@ function saveAluno() {
     if (idx !== -1) state.alunos[idx] = aluno; else state.alunos.push(aluno);
   } else {
     state.alunos.push(aluno);
-    // Adicionar anivers rio no calend rio se tiver nascimento
+    // Adicionar aniversário no calendário se tiver nascimento
     if (aluno.nascimento) syncAniversarioCalendario(aluno);
   }
   saveData(); closeAlunoModal(); renderAlunos();
   showToast(alunoEditingId ? 'Aluno atualizado!' : 'Aluno cadastrado!');
 }
 
+function alunoImportNorm(valor='') {
+  return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+}
+function alunoCsvCell(valor='') {
+  return `"${String(valor ?? '').replace(/"/g, '""')}"`;
+}
+function baixarModeloAlunos() {
+  const linhas = [
+    ['Nome completo','Como prefere ser chamado','Turma','Situação escolar','Status do aluno','Data de nascimento','Telefone','Observações'],
+    ['Maria Eduarda Silva','Maria',occurrenceClassName(getActiveClassId(), 'AI-MPC-2026/1'),'3º ano do Ensino Médio','Ativo','12/05/2008','(31) 99999-9999','']
+  ];
+  const csv = '\ufeff' + linhas.map(l => l.map(alunoCsvCell).join(';')).join('\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'modelo_alunos_planner.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+function splitAlunoCsvLine(line, sep) {
+  const out = [];
+  let cur = '', quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (quoted && line[i + 1] === '"') { cur += '"'; i++; }
+      else quoted = !quoted;
+    } else if (ch === sep && !quoted) {
+      out.push(cur.trim());
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur.trim());
+  return out;
+}
+function parseAlunoCsv(text) {
+  const lines = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
+  if (!lines.length) return [];
+  const sep = (lines[0].match(/;/g) || []).length >= (lines[0].match(/,/g) || []).length ? ';' : ',';
+  const headers = splitAlunoCsvLine(lines[0], sep).map(alunoImportNorm);
+  return lines.slice(1).map(line => {
+    const cells = splitAlunoCsvLine(line, sep);
+    const row = {};
+    headers.forEach((h, i) => row[h] = cells[i] || '');
+    return row;
+  }).filter(row => Object.values(row).some(v => String(v).trim()));
+}
+function alunoCsvValue(row, aliases) {
+  const wanted = aliases.map(alunoImportNorm);
+  for (const [key, value] of Object.entries(row)) {
+    if (wanted.includes(alunoImportNorm(key))) return String(value || '').trim();
+  }
+  return '';
+}
+function alunoTurmaIdImport(nome='') {
+  const n = alunoImportNorm(nome);
+  const found = getOccurrenceClasses().find(t => alunoImportNorm(t.nome) === n || alunoImportNorm(t.id) === n);
+  return found ? found.id : (getActiveClassId() || '');
+}
+function alunoEscolarImport(valor='') {
+  const n = alunoImportNorm(valor);
+  if (n.includes('concl')) return 'concluido';
+  if (n.includes('3') || n.includes('medio') || n.includes('medio')) return '3em';
+  return 'outro';
+}
+function alunoStatusImport(valor='') {
+  const n = alunoImportNorm(valor);
+  if (n.includes('deslig')) return 'desligado';
+  if (n.includes('transfer')) return 'transferido';
+  if (n.includes('concl')) return 'concluido';
+  return 'ativo';
+}
+function alunoDataImport(valor='') {
+  const v = String(valor || '').trim();
+  if (!v) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const m = v.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
+  if (!m) return '';
+  const ano = m[3].length === 2 ? '20' + m[3] : m[3];
+  return `${ano}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+}
+function importarAlunosCsv(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const rows = parseAlunoCsv(reader.result);
+      let criados = 0, atualizados = 0;
+      if (!state.alunos) state.alunos = [];
+      rows.forEach(row => {
+        const nome = alunoCsvValue(row, ['Nome completo','Nome','Aluno']);
+        if (!nome) return;
+        const turmaId = alunoTurmaIdImport(alunoCsvValue(row, ['Turma','Curso/Turma','Curso']));
+        const existente = state.alunos.find(a => alunoImportNorm(a.nome) === alunoImportNorm(nome) && (a.turmaId || '') === turmaId);
+        const aluno = existente || {
+          id: Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+          atencao: false,
+          registros: [],
+          foto: null
+        };
+        aluno.nome = nome;
+        aluno.apelido = alunoCsvValue(row, ['Como prefere ser chamado','Apelido','Nome social']) || aluno.apelido || '';
+        aluno.turmaId = turmaId;
+        aluno.escolar = alunoEscolarImport(alunoCsvValue(row, ['Situação escolar','Escolaridade']));
+        aluno.status = alunoStatusImport(alunoCsvValue(row, ['Status do aluno','Status']));
+        aluno.nascimento = alunoDataImport(alunoCsvValue(row, ['Data de nascimento','Nascimento','Aniversário'])) || aluno.nascimento || '';
+        aluno.telefone = alunoCsvValue(row, ['Telefone','Celular']) || aluno.telefone || '';
+        aluno.obs = alunoCsvValue(row, ['Observações','Observacao','Obs']) || aluno.obs || '';
+        if (existente) atualizados++;
+        else { state.alunos.push(aluno); criados++; }
+        if (aluno.nascimento) syncAniversarioCalendario(aluno);
+      });
+      saveData();
+      renderAlunos();
+      showToast(`${criados} aluno(s) importado(s), ${atualizados} atualizado(s).`);
+    } catch (err) {
+      console.error(err);
+      alert('Não foi possível importar a planilha. Confira se ela está em CSV e segue o modelo.');
+    } finally {
+      input.value = '';
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
 function syncAniversarioCalendario(aluno) {
-  // Cria evento de anivers rio no calend rio para o ano atual
+  // Cria evento de aniversário no calendário para o ano atual
   if (!aluno.nascimento) return;
   if (!state.eventos) state.eventos = [];
   const nasc = new Date(aluno.nascimento + 'T12:00:00');
@@ -7094,10 +7229,10 @@ function syncAniversarioCalendario(aluno) {
       id: 'aniv_' + aluno.id + '_' + anoAtual,
       data: dataAniv,
       tipo: 'outro',
-      titulo: '?? Anivers rio   ' + aluno.nome.split(' ')[0],
+      titulo: 'Aniversário - ' + aluno.nome.split(' ')[0],
       disc: '',
       valor: '',
-      obs: 'Anivers rio de ' + aluno.nome,
+      obs: 'Aniversário de ' + aluno.nome,
       _alunoId: aluno.id,
       tipo_interno: 'aniversario_aluno'
     });
