@@ -2382,6 +2382,27 @@
     border-radius:10px!important;
     background:#f8fafc!important;
   }
+  .freq-obs-input {
+    min-width:300px!important;
+    min-height:54px!important;
+    resize:vertical;
+  }
+  .freq-doc-inline {
+    display:flex;
+    align-items:center;
+    gap:6px;
+    min-width:280px;
+  }
+  .freq-doc-inline .freq-link-input {
+    flex:1 1 auto;
+    min-width:170px;
+  }
+  .freq-afastamento-wrap {
+    min-width:120px!important;
+  }
+  .freq-afastamento-select {
+    max-width:150px;
+  }
   .freq-doc-actions {
     display:flex;
     align-items:center;
@@ -5528,7 +5549,7 @@ function setClassModuleCountForDate(dateKey, currentCount) {
       showToast('Informe um número válido.');
       return;
     }
-    turma.modulosPorData[dateKey] = Math.min(12, Math.round(n));
+    turma.modulosPorData[dateKey] = Math.min(8, Math.max(6, Math.round(n)));
     showToast('Quantidade de módulos do dia ajustada.');
   }
   saveData();
@@ -5542,7 +5563,7 @@ function addExtraModuleForDay(dateKey, nextModule) {
   const turma = getActiveClass();
   if (!turma) return;
   if (!turma.modulosPorData || typeof turma.modulosPorData !== 'object') turma.modulosPorData = {};
-  turma.modulosPorData[dateKey] = Math.min(12, Math.max(Number(turma.modulosPorData[dateKey]) || 0, Number(nextModule) || 0));
+  turma.modulosPorData[dateKey] = Math.min(8, Math.max(6, Number(turma.modulosPorData[dateKey]) || 0, Number(nextModule) || 0));
   saveData();
   render();
   openModal(dateKey, String(nextModule));
@@ -11293,8 +11314,7 @@ function renderFreqCallActions(disc, data, entry) {
         <input type="checkbox" id="freqApplyWholeDay" ${freqApplyWholeDay ? 'checked' : ''} onchange="freqApplyWholeDay=this.checked">
         Aplicar no dia inteiro
       </label>
-      <button class="freq-call-btn primary" onclick="setAllFreqMods('${discArg}','${dataArg}','P')">Todos presentes</button>
-      <button class="freq-call-btn" onclick="setClassModuleCountForDate('${dataArg}', getClassModuleCountForDate('${dataArg}'))">Ajustar módulos</button>
+      <button class="freq-call-btn" onclick="adjustFreqModuleCount('${discArg}','${dataArg}')">Ajustar módulos</button>
       <button class="freq-call-btn warn" onclick="clearFreqJustificativas('${discArg}','${dataArg}')">Limpar justificativas</button>
     </div>
   </div>`;
@@ -11330,9 +11350,9 @@ function renderFreq() {
   let html = renderFreqCallActions(disc, data, entry) + `<div class="freq-table-wrap"><table class="freq-table"><thead><tr>
     <th class="th-left" style="min-width:170px">Aluno</th>
     ${moduleHeaders}
-    <th class="th-left" style="min-width:140px">Observação</th>
-    <th class="th-left" style="min-width:140px">Link doc.</th>
-    <th class="th-left" style="min-width:200px">Afastamento</th>
+    <th class="th-left" style="min-width:320px">Observação</th>
+    <th class="th-left" style="min-width:300px">Documento</th>
+    <th class="th-left" style="min-width:140px">Justificativa</th>
   </tr></thead><tbody>`;
 
   ALUNOS.forEach((nome, i) => {
@@ -11381,24 +11401,22 @@ function renderFreq() {
       <td class="td-left"><div class="aluno-nome">${nomeShort}</div></td>
       ${modCols}
       <td class="td-left">
-        <input class="freq-obs-input${professorCanEditFreq(disc, data, nome, 'obs')?'':' professor-locked-field'}" value="${a.obs||''}" placeholder="Motivo..."
-          ${professorCanEditFreq(disc, data, nome, 'obs') ? '' : 'disabled'} onchange="setFreqField('${disc}','${data}','${nome}','obs',this.value)">
+        <textarea class="freq-obs-input${professorCanEditFreq(disc, data, nome, 'obs')?'':' professor-locked-field'}" placeholder="Motivo..."
+          ${professorCanEditFreq(disc, data, nome, 'obs') ? '' : 'disabled'} onchange="setFreqField('${disc}','${data}','${nome}','obs',this.value)">${escapeHtml(a.obs||'')}</textarea>
       </td>
       <td class="td-left">
-        <div class="freq-extra">
+        <div class="freq-doc-inline">
           <input class="freq-link-input${professorCanEditFreq(disc, data, nome, 'link')?'':' professor-locked-field'}" value="${a.link||''}" placeholder="Link atestado/doc..."
             ${professorCanEditFreq(disc, data, nome, 'link') ? '' : 'disabled'} onchange="setFreqField('${disc}','${data}','${nome}','link',this.value)">
-          <div class="freq-doc-actions">
-            <input id="${docId}" type="file" accept="image/*,.pdf" style="display:none" onchange="attachFreqDoc('${discArg}','${dataArg}','${nomeArg}',this)">
-            <button type="button" class="freq-doc-btn" onclick="document.getElementById('${docId}').click()">Anexar</button>
-            ${a.docData ? `<button type="button" class="freq-doc-btn primary" title="${escapeHtml(docName)}" onclick="openFreqDoc('${discArg}','${dataArg}','${nomeArg}')">Ver anexo</button>` : ''}
-          </div>
+          <input id="${docId}" type="file" accept="image/*,.pdf" style="display:none" onchange="attachFreqDoc('${discArg}','${dataArg}','${nomeArg}',this)">
+          <button type="button" class="freq-doc-btn" onclick="document.getElementById('${docId}').click()">Anexar</button>
+          ${a.docData ? `<button type="button" class="freq-doc-btn primary" title="${escapeHtml(docName)}" onclick="openFreqDoc('${discArg}','${dataArg}','${nomeArg}')">Ver</button>` : ''}
         </div>
       </td>
       <td class="td-left">
         <div class="freq-afastamento-wrap">
           <select class="freq-afastamento-select${canEditAfastTipo?'':' professor-locked-field'}" ${canEditAfastTipo ? '' : 'disabled'} ${afastamentoVeioDeOcorrencia ? 'title="Suspensão registrada pela ocorrência. Edite pela aba Ocorrências."' : ''} onchange="setAfastamentoTipo('${disc}','${data}','${nome}',this.value)">
-            <option value="" ${!afastTipoVisual ? 'selected' : ''}>Sem afastamento</option>
+            <option value="" ${!afastTipoVisual ? 'selected' : ''}>Sem justificativa</option>
             <option value="atestado" ${afastTipoVisual === 'atestado' ? 'selected' : ''}>Atestado</option>
             <option value="suspensao" ${afastTipoVisual === 'suspensao' ? 'selected' : ''}>Suspensão</option>
           </select>
@@ -11410,6 +11428,36 @@ function renderFreq() {
 
   html += '</tbody></table></div>';
   wrap.innerHTML = html;
+}
+
+function adjustFreqModuleCount(disc, data) {
+  disc = decodeURIComponent(disc);
+  data = decodeURIComponent(data);
+  if (isProfessorMode()) {
+    showToast('Apenas o painel administrativo pode ajustar os módulos do dia.');
+    return;
+  }
+  const turma = getActiveClass();
+  if (!turma) return;
+  const atual = getClassModuleCountForDate(data) || 6;
+  const entrada = prompt('Quantos módulos neste dia? Use um número de 6 a 8.', String(atual));
+  if (entrada === null) return;
+  const n = Math.round(Number(entrada));
+  if (!Number.isFinite(n) || n < 6 || n > 8) {
+    showToast('Informe um número entre 6 e 8.', true);
+    return;
+  }
+  if (!turma.modulosPorData || typeof turma.modulosPorData !== 'object') turma.modulosPorData = {};
+  turma.modulosPorData[data] = n;
+  const entry = getFreqEntry(disc, data);
+  Object.values(entry.alunos || {}).forEach(aluno => {
+    const mods = Array.isArray(aluno.mods) ? aluno.mods.slice() : [];
+    while (mods.length < n) mods.push('P');
+    aluno.mods = mods.slice(0, n);
+  });
+  saveData();
+  renderFreq();
+  showToast(`Chamada ajustada para ${n} módulos.`);
 }
 
 function setAllFreqMods(disc, data, status) {
