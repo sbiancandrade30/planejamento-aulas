@@ -3114,6 +3114,39 @@
     gap:10px!important;
     margin-bottom:12px!important;
   }
+  .disc-filter-panel {
+    background:#fff!important;
+    border:1px solid var(--border)!important;
+    border-radius:var(--radius-lg)!important;
+    padding:12px!important;
+    margin-bottom:12px!important;
+    display:grid!important;
+    grid-template-columns:minmax(220px,1fr) 180px 180px auto!important;
+    gap:10px!important;
+    align-items:end!important;
+  }
+  .disc-filter-field {
+    display:flex!important;
+    flex-direction:column!important;
+    gap:5px!important;
+    min-width:0!important;
+  }
+  .disc-filter-label {
+    font-size:10px!important;
+    font-weight:800!important;
+    text-transform:uppercase!important;
+    letter-spacing:.07em!important;
+    color:var(--text3)!important;
+  }
+  .disc-filter-panel .freq-select {
+    width:100%!important;
+    height:38px!important;
+  }
+  .disc-filter-actions {
+    display:flex!important;
+    gap:8px!important;
+    justify-content:flex-end!important;
+  }
   .disc-overview-card {
     background:#fff!important;
     border:1px solid var(--border)!important;
@@ -3145,9 +3178,39 @@
   #discManagerGrid .btn {
     border-radius:999px!important;
   }
+  .disc-empty-state {
+    padding:18px!important;
+    color:var(--text2)!important;
+    font-size:13px!important;
+    text-align:center!important;
+  }
+  .disc-quick-actions {
+    display:flex!important;
+    flex-wrap:wrap!important;
+    gap:6px!important;
+    margin-top:10px!important;
+  }
+  .disc-quick-btn {
+    border:1px solid var(--border)!important;
+    background:#fff!important;
+    color:var(--text2)!important;
+    border-radius:999px!important;
+    padding:6px 10px!important;
+    font-size:11px!important;
+    font-weight:700!important;
+    cursor:pointer!important;
+    font-family:'DM Sans',sans-serif!important;
+  }
+  .disc-quick-btn:hover {
+    background:var(--surface2)!important;
+    color:var(--accent)!important;
+  }
   @media(max-width:900px){
     .disc-overview {
       grid-template-columns:repeat(2,1fr)!important;
+    }
+    .disc-filter-panel {
+      grid-template-columns:1fr 1fr!important;
     }
   }
   @media(max-width:620px){
@@ -3160,6 +3223,13 @@
     }
     .disc-overview {
       grid-template-columns:1fr 1fr!important;
+    }
+    .disc-filter-panel {
+      grid-template-columns:1fr!important;
+    }
+    .disc-filter-actions,
+    .disc-filter-actions .btn {
+      width:100%!important;
     }
     .disc-overview-value {
       font-size:22px!important;
@@ -3919,6 +3989,34 @@
         <div class="disc-view-toolbar">
           <button class="btn btn-outline" onclick="setAllDisciplinesExpanded(true)">Expandir todas</button>
           <button class="btn btn-outline" onclick="setAllDisciplinesExpanded(false)">Recolher todas</button>
+        </div>
+      </div>
+      <div class="disc-filter-panel">
+        <label class="disc-filter-field">
+          <span class="disc-filter-label">Buscar</span>
+          <input class="freq-select" id="discSearch" type="text" placeholder="Nome da disciplina..." oninput="renderDiscManager()">
+        </label>
+        <label class="disc-filter-field">
+          <span class="disc-filter-label">Tipo</span>
+          <select class="freq-select" id="discTipoFiltro" onchange="renderDiscManager()">
+            <option value="">Todos</option>
+            <option value="presencial">Presenciais</option>
+            <option value="ead">EaD</option>
+            <option value="presEad">Presenciais com EaD</option>
+          </select>
+        </label>
+        <label class="disc-filter-field">
+          <span class="disc-filter-label">Situação</span>
+          <select class="freq-select" id="discStatusFiltro" onchange="renderDiscManager()">
+            <option value="">Todas</option>
+            <option value="attention">Atenção</option>
+            <option value="warn">Em andamento</option>
+            <option value="good">Carga concluída</option>
+            <option value="neutral">Sem registros</option>
+          </select>
+        </label>
+        <div class="disc-filter-actions">
+          <button class="btn btn-outline" onclick="clearDiscFilters()">Limpar</button>
         </div>
       </div>
       <div class="disc-overview" id="discOverview"></div>
@@ -6605,6 +6703,39 @@ function getDiscStrategyStatus({ summary, totalMod, restantes, realizados }) {
   return { cls:'neutral', label:'Sem registros', note:'Ainda n o há planejamento nem avaliações associados a esta disciplina.' };
 }
 
+function getDiscFilters() {
+  return {
+    search: (document.getElementById('discSearch')?.value || '').trim().toLowerCase(),
+    tipo: document.getElementById('discTipoFiltro')?.value || '',
+    status: document.getElementById('discStatusFiltro')?.value || ''
+  };
+}
+
+function clearDiscFilters() {
+  const search = document.getElementById('discSearch');
+  const tipo = document.getElementById('discTipoFiltro');
+  const status = document.getElementById('discStatusFiltro');
+  if (search) search.value = '';
+  if (tipo) tipo.value = '';
+  if (status) status.value = '';
+  renderDiscManager();
+}
+
+function jumpToDiscArea(view, disc) {
+  const btn = document.querySelector(`.sidebar-item[onclick*="${view}"]`);
+  setView(view, btn);
+  setTimeout(() => {
+    const selectId = view === 'frequencia' ? 'freqDisc' : view === 'notasead' ? 'neadDisc' : view === 'notaspres' ? 'npDisc' : '';
+    const select = selectId ? document.getElementById(selectId) : null;
+    if (select && [...select.options].some(opt => opt.value === disc || opt.textContent === disc)) {
+      select.value = disc;
+      if (view === 'frequencia') renderFreq();
+      if (view === 'notasead') onNeadDiscChange();
+      if (view === 'notaspres') onNpDiscChange();
+    }
+  }, 40);
+}
+
 function renderDiscOverview(allSummaries) {
   const wrap = document.getElementById('discOverview');
   if (!wrap) return;
@@ -6672,6 +6803,7 @@ function setAllDisciplinesExpanded(open) {
 function renderDiscManager() {
   const grid = document.getElementById('discManagerGrid');
   if (!grid) return;
+  const filters = getDiscFilters();
   const tipos = [
     { key:'presencial', label:'Disciplinas Presenciais' },
     { key:'ead', label:'Disciplinas EaD' },
@@ -6679,8 +6811,9 @@ function renderDiscManager() {
   ];
   const allSummaries = [];
   grid.style.gridTemplateColumns = '1fr';
-  grid.innerHTML = tipos.map(t => {
+  const sections = tipos.filter(t => !filters.tipo || filters.tipo === t.key).map(t => {
     const arr = getDiscs(t.key);
+    let visibleCount = 0;
     const items = arr.map((d,i) => {
       const ex = getDiscExtra(d);
       const totalMod = calcModulos(ex.cargaHoras);
@@ -6694,6 +6827,9 @@ function renderDiscManager() {
       const pct = totalMod ? Math.min(100, Math.round((realizados / totalMod) * 100)) : 0;
       const strategy = getDiscStrategyStatus({ summary, totalMod, restantes, realizados });
 
+      if (filters.search && !d.toLowerCase().includes(filters.search)) return '';
+      if (filters.status && strategy.cls !== filters.status) return '';
+      visibleCount++;
       allSummaries.push({ tipo:t.key, disc:d, summary, totalMod, restantes, realizados, strategy });
 
       const horasInfo = ex.cargaHoras ? `${ex.cargaHoras}h` : '';
@@ -6775,18 +6911,25 @@ function renderDiscManager() {
           </div>
           ${progressBar}
           <div class="disc-strategy-note">${escapeHtml(strategy.note)}</div>
+          <div class="disc-quick-actions">
+            <button class="disc-quick-btn" onclick="jumpToDiscArea('presencial','${escapeJsString(d)}')">Planejamento presencial</button>
+            ${t.key !== 'presencial' ? `<button class="disc-quick-btn" onclick="jumpToDiscArea('ead','${escapeJsString(d)}')">Planejamento EaD</button>` : ''}
+            <button class="disc-quick-btn" onclick="jumpToDiscArea('frequencia','${escapeJsString(d)}')">Frequência</button>
+            ${t.key === 'ead' ? `<button class="disc-quick-btn" onclick="jumpToDiscArea('notasead','${escapeJsString(d)}')">Notas EaD</button>` : `<button class="disc-quick-btn" onclick="jumpToDiscArea('notaspres','${escapeJsString(d)}')">Notas presenciais</button>`}
+          </div>
         </div>
       </div>`;
     }).join('');
     return `<div class="disc-manager" style="margin-bottom:20px">
       <div class="disc-manager-head">
         <span class="disc-manager-title">${t.label}</span>
-        <span style="font-size:11px;color:var(--text3)">${arr.length} disciplina${arr.length!==1?'s':''}</span>
+        <span style="font-size:11px;color:var(--text3)">${visibleCount} de ${arr.length} disciplina${arr.length!==1?'s':''}</span>
       </div>
-      ${items || '<div style="padding:14px 18px;font-size:13px;color:var(--text3);font-style:italic">Nenhuma disciplina ainda.</div>'}
+      ${items || '<div class="disc-empty-state">Nenhuma disciplina encontrada com os filtros atuais.</div>'}
       <button class="disc-add-btn" onclick="openDiscModal('${t.key}',-1)">+ Adicionar disciplina</button>
     </div>`;
-  }).join('');
+  });
+  grid.innerHTML = sections.join('') || '<div class="disc-empty-state">Nenhum grupo de disciplina encontrado.</div>';
   renderDiscOverview(allSummaries);
 }
 function openDiscModal(tipo, idx) {
@@ -6827,6 +6970,26 @@ function saveDisc() {
   const idx = parseInt(document.getElementById('discModalIdx').value);
   const arr = getDiscs(tipo);
   const nomeAntigo = idx >= 0 ? arr[idx] : null;
+  if (arr.some((d, i) => i !== idx && d.trim().toLowerCase() === nome.toLowerCase())) {
+    alert('Essa disciplina já existe neste grupo.');
+    return;
+  }
+  const carga = document.getElementById('discModalCarga').value.trim();
+  const realizadosManual = document.getElementById('discModalRealizados').value.trim();
+  const dataInicio = document.getElementById('discModalInicio').value;
+  const dataFim = document.getElementById('discModalFim').value;
+  if (carga && Number(carga) <= 0) {
+    alert('Informe uma carga horária maior que zero ou deixe o campo vazio.');
+    return;
+  }
+  if (realizadosManual && Number(realizadosManual) < 0) {
+    alert('O ajuste manual não pode ser negativo.');
+    return;
+  }
+  if (dataInicio && dataFim && dataFim < dataInicio) {
+    alert('A data de fim não pode ser anterior à data de início.');
+    return;
+  }
   if (idx < 0) arr.push(nome);
   else arr[idx] = nome;
   saveDiscs(tipo, arr);
@@ -6834,10 +6997,10 @@ function saveDisc() {
   // Salvar extras
   const exKey = nome;
   const ex = {
-    cargaHoras: document.getElementById('discModalCarga').value.trim(),
-    dataInicio: document.getElementById('discModalInicio').value,
-    dataFim: document.getElementById('discModalFim').value,
-    modRealizados: document.getElementById('discModalRealizados').value.trim()
+    cargaHoras: carga,
+    dataInicio,
+    dataFim,
+    modRealizados: realizadosManual
   };
   saveDiscExtra(exKey, ex);
   // Se renomeou, copiar extras para novo nome e limpar antigo
@@ -6847,6 +7010,7 @@ function saveDisc() {
   }
 
   closeDiscModal();
+  saveData();
   renderDiscManager();
   showToast(idx < 0 ? 'Disciplina adicionada!' : 'Disciplina atualizada!');
 }
@@ -6856,6 +7020,7 @@ function resetDiscAjuste(nome) {
   const ex = getDiscExtra(nome);
   ex.modRealizados = '';
   saveDiscExtra(nome, ex);
+  saveData();
   renderDiscManager();
 }
 
@@ -6866,6 +7031,7 @@ function removeDisc(tipo, idx) {
   removeDiscExtra(arr[idx]);
   arr.splice(idx, 1);
   saveDiscs(tipo, arr);
+  saveData();
   renderDiscManager();
   showToast('Disciplina removida.');
 }
