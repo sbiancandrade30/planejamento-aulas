@@ -2563,6 +2563,25 @@
     color:#946200;
     background:#fff8e6;
   }
+  .freq-day-toggle {
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    border:1px solid var(--border);
+    background:#f8fafc;
+    color:var(--text2);
+    border-radius:999px;
+    height:34px;
+    padding:0 12px;
+    font-size:12px;
+    font-weight:800;
+    cursor:pointer;
+  }
+  .freq-day-toggle input {
+    width:14px;
+    height:14px;
+    accent-color:var(--accent);
+  }
   @media(max-width:720px){
     .freq-toolbar {
       display:grid!important;
@@ -11207,13 +11226,7 @@ function renderFreqEmptyState() {
   return `<div class="freq-empty-card">
     <div class="freq-empty-inner">
       <div class="freq-empty-title">Escolha a data e a disciplina para iniciar a chamada</div>
-      <div class="freq-insight-sub">Depois da seleção, a lista de alunos aparece aqui com presença, falta, justificativa e campo para link de atestado ou documento.</div>
-      <div class="freq-empty-actions">
-        <span class="freq-empty-pill">Presença</span>
-        <span class="freq-empty-pill">Falta justificada</span>
-        <span class="freq-empty-pill">Atestado ou suspensão</span>
-        <span class="freq-empty-pill">Link do documento</span>
-      </div>
+      <div class="freq-insight-sub">Depois da seleção, a lista de alunos aparece aqui para lançar presença, falta, justificativa e anexar o link de atestado ou documento.</div>
     </div>
   </div>`;
 }
@@ -11241,8 +11254,11 @@ function renderFreqCallActions(disc, data, entry) {
       <div class="freq-call-sub">${formatDateKeyPtBr(data)} · P ${stats.presentes} · CJ ${stats.comJust} · SJ ${stats.semJust} · ${stats.documentos} documento${stats.documentos === 1 ? '' : 's'}</div>
     </div>
     <div class="freq-call-buttons">
+      <label class="freq-day-toggle" title="Quando estiver ativado, a falta lançada em um módulo vale para todos os módulos desse aluno no dia.">
+        <input type="checkbox" id="freqApplyWholeDay">
+        Falta no dia inteiro
+      </label>
       <button class="freq-call-btn primary" onclick="setAllFreqMods('${discArg}','${dataArg}','P')">Todos presentes</button>
-      <button class="freq-call-btn" onclick="setAllFreqMods('${discArg}','${dataArg}','CJ')">Todos justificados</button>
       <button class="freq-call-btn warn" onclick="clearFreqJustificativas('${discArg}','${dataArg}')">Limpar justificativas</button>
     </div>
   </div>`;
@@ -11394,7 +11410,15 @@ function clearFreqJustificativas(disc, data) {
 function setModStatus(disc, data, nome, modIdx, status) {
   if (!professorCanEditFreq(disc, data, nome, 'mods', modIdx)) { showToast('Na versão do professor, só é possível preencher chamadas que ainda estavam em branco.'); return; }
   const entry = getFreqEntry(disc, data);
-  entry.alunos[nome].mods[modIdx] = status;
+  const applyWholeDay = document.getElementById('freqApplyWholeDay')?.checked && (status === 'CJ' || status === 'SJ');
+  if (applyWholeDay) {
+    const moduleCount = getClassModuleCountForDate(data);
+    for (let i = 0; i < moduleCount; i++) {
+      if (professorCanEditFreq(disc, data, nome, 'mods', i)) entry.alunos[nome].mods[i] = status;
+    }
+  } else {
+    entry.alunos[nome].mods[modIdx] = status;
+  }
   saveData(); renderFreq();
 }
 
