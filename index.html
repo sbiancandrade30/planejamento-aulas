@@ -185,7 +185,7 @@
   .detail-meta { font-size: 11px; color: var(--text3); margin-bottom: 4px; font-family: 'DM Mono', monospace; }
   .detail-title-text { font-size: 17px; font-weight: 600; letter-spacing: -.02em; }
   .module-materials-box { border:1px solid var(--border); background:var(--surface2); border-radius:var(--radius); padding:10px; display:flex; flex-direction:column; gap:8px; }
-  .module-material-toolbar { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; }
+  .module-material-toolbar { display:grid; grid-template-columns:minmax(180px,1fr) minmax(150px,190px) auto; gap:8px; align-items:center; }
   .module-material-list { display:flex; flex-direction:column; gap:6px; max-height:190px; overflow:auto; }
   .module-material-row { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; background:#fff; border:1px solid var(--border); border-radius:8px; padding:8px 9px; font-size:12px; }
   .module-material-title { color:var(--text); font-weight:700; line-height:1.3; }
@@ -2190,7 +2190,8 @@
   }
   #tagButtonsContainer .tag-toggle.active-tag {
     opacity:1!important;
-    box-shadow:0 0 0 2px rgba(22,65,148,.08)!important;
+    box-shadow:0 0 0 2px rgba(22,65,148,.2), 0 6px 16px rgba(22,65,148,.12)!important;
+    transform:translateY(-1px)!important;
   }
   .ead-type-options {
     display:flex!important;
@@ -2208,7 +2209,8 @@
   }
   .ead-type-toggle.active {
     opacity:1!important;
-    box-shadow:0 0 0 2px rgba(22,65,148,.08)!important;
+    box-shadow:0 0 0 2px rgba(22,65,148,.2), 0 6px 16px rgba(22,65,148,.12)!important;
+    transform:translateY(-1px)!important;
   }
   .tag-leitura,
   .ead-type-toggle[data-tipo="leitura"] {
@@ -4235,6 +4237,18 @@
         <div class="module-materials-box">
           <div class="module-material-toolbar">
             <input type="text" class="form-input" id="fMaterialSearch" placeholder="Buscar material por título, tema ou link..." oninput="renderModuleMaterialPicker()">
+            <select class="form-input" id="fMaterialType" onchange="renderModuleMaterialPicker()">
+              <option value="">Todos os tipos</option>
+              <option value="aula">Aula</option>
+              <option value="atividade">Atividade</option>
+              <option value="prova">Prova</option>
+              <option value="trabalho">Trabalho</option>
+              <option value="video">Vídeo</option>
+              <option value="material de estudo">Material de estudo</option>
+              <option value="slide">Slide</option>
+              <option value="gabarito">Gabarito</option>
+              <option value="outro">Outro</option>
+            </select>
             <button type="button" class="btn btn-outline" onclick="openDiscLibrary(document.getElementById('fDisc').value)">📚 Abrir Biblioteca</button>
           </div>
           <div class="module-material-list" id="moduleAttachedMaterials"></div>
@@ -4355,9 +4369,12 @@
       </div>
       <div class="form-group">
         <label class="form-label">Disciplina / área</label>
-        <select class="form-input" id="efDisc">
-          <option value="">Livre / Curso externo</option>
-        </select>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+          <select class="form-input" id="efDisc">
+            <option value="">Livre / Curso externo</option>
+          </select>
+          <button type="button" class="btn btn-outline" onclick="openDiscClassroom(document.getElementById('efDisc').value)">Classroom</button>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -6882,25 +6899,6 @@ function getPlannerLibraryMaterials() {
     });
 }
 
-function selectedModuleTypeNames() {
-  const tipos = getTiposAula();
-  const aliases = {
-    teoria: ['aula', 'teoria', 'slide', 'consulta'],
-    atividade: ['atividade', 'exercicio', 'exercício', 'pratica', 'prática'],
-    prova: ['prova', 'avaliacao', 'avaliação', 'avaliativa'],
-    trabalho: ['trabalho', 'relatorio', 'relatório']
-  };
-  return [...document.querySelectorAll('#tagButtonsContainer .tag-toggle.active-tag')]
-    .map(btn => {
-      const id = btn.dataset.tag || '';
-      const tipo = tipos.find(t => t.id === id);
-      return [id, tipo?.nome || btn.textContent || '', ...(aliases[id] || [])].filter(Boolean);
-    })
-    .flat()
-    .map(normalizeMaterialText)
-    .filter(Boolean);
-}
-
 function moduleMaterialKey(item={}) {
   return item.id || item.link || item.title || '';
 }
@@ -6935,7 +6933,7 @@ function renderModuleMaterialPicker() {
   const disc = document.getElementById('fDisc')?.value || '';
   const search = normalizeMaterialText(document.getElementById('fMaterialSearch')?.value || '');
   const discNorm = normalizeMaterialText(disc);
-  const selectedTypes = selectedModuleTypeNames();
+  const materialType = normalizeMaterialText(document.getElementById('fMaterialType')?.value || '');
   const attachedKeys = new Set(moduleDraftMaterials.map(moduleMaterialKey));
 
   attachedWrap.innerHTML = moduleDraftMaterials.length
@@ -6955,7 +6953,7 @@ function renderModuleMaterialPicker() {
   const matches = getPlannerLibraryMaterials()
     .filter(m => !attachedKeys.has(moduleMaterialKey(m)))
     .filter(m => !discNorm || normalizeMaterialText(m.disc).includes(discNorm) || m.searchText.includes(discNorm))
-    .filter(m => !selectedTypes.length || selectedTypes.some(type => m.typeText.includes(type)))
+    .filter(m => !materialType || m.typeText.includes(materialType))
     .filter(m => !search || m.searchText.includes(search))
     .slice(0, 8);
 
@@ -6970,7 +6968,7 @@ function renderModuleMaterialPicker() {
           <button type="button" class="module-material-btn" onclick="attachModuleMaterial('${escapeJsString(m.id)}')">Anexar</button>
         </div>
       </div>`).join('')
-    : `<div class="module-material-empty">Nenhum material encontrado para esta disciplina${selectedTypes.length ? ' e tipo selecionado' : ''}.</div>`;
+    : `<div class="module-material-empty">Nenhum material encontrado para esta disciplina${materialType ? ' e tipo de material' : ''}.</div>`;
 }
 
 function moduleMaterialsHtml(materials=[]) {
@@ -11066,6 +11064,7 @@ function editModule() {
   document.getElementById('fExecStatus').value = mod.executionStatus || 'planejada';
   document.getElementById('fExecObs').value = mod.executionObs || '';
   document.getElementById('fMaterialSearch').value = '';
+  document.getElementById('fMaterialType').value = '';
   moduleDraftMaterials = Array.isArray(mod.materials) ? classClone(mod.materials, []) : [];
 
   rebuildTagButtons();
@@ -11107,6 +11106,7 @@ function duplicateModule() {
   document.getElementById('fExecStatus').value = mod.executionStatus || 'planejada';
   document.getElementById('fExecObs').value = mod.executionObs || '';
   document.getElementById('fMaterialSearch').value = '';
+  document.getElementById('fMaterialType').value = '';
   moduleDraftMaterials = Array.isArray(mod.materials) ? classClone(mod.materials, []) : [];
 
   rebuildTagButtons();
@@ -11166,6 +11166,7 @@ function openModal(dateKey, modNum) {
   document.getElementById('fExecStatus').value = 'planejada';
   document.getElementById('fExecObs').value = '';
   document.getElementById('fMaterialSearch').value = '';
+  document.getElementById('fMaterialType').value = '';
   moduleDraftMaterials = [];
 
   if (!dateKey && !modNum) {
@@ -11217,7 +11218,6 @@ function closeModal() {
 function toggleTag(btn) {
   btn.classList.toggle('active-tag');
   btn.style.opacity = btn.classList.contains('active-tag') ? '1' : '0.62';
-  renderModuleMaterialPicker();
 }
 
 function saveModule() {
