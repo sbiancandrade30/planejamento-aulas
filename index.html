@@ -831,13 +831,10 @@
   .disc-mini-pill.adjust { background:var(--amber-bg); color:var(--amber); border-color:rgba(154,98,0,.22); }
   .disc-mini-pill.alert { background:var(--red-bg); color:var(--red); border-color:rgba(185,50,50,.22); }
   .disc-strategy-note { margin-top:10px; font-size:11px; line-height:1.5; color:var(--text2); background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:8px 10px; }
-  .disc-help-card { background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:12px 14px; margin-bottom:12px; display:grid; grid-template-columns:1.1fr 1fr; gap:12px; color:var(--text2); font-size:12px; line-height:1.5; }
-  .disc-help-title { color:var(--text); font-weight:800; margin-bottom:4px; }
-  .disc-help-list { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
-  .disc-help-chip { display:inline-flex; align-items:center; gap:5px; border:1px solid var(--border); background:var(--surface2); border-radius:999px; padding:4px 8px; font-size:11px; color:var(--text2); }
-  .disc-link-status { display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; }
-  .disc-link-chip { display:inline-flex; align-items:center; gap:5px; border:1px solid var(--border); border-radius:999px; padding:3px 8px; font-size:10px; color:var(--text2); background:#fff; }
-  .disc-link-chip.ready { color:var(--green); border-color:rgba(42,125,79,.24); background:var(--green-bg); }
+  .disc-title-row { display:flex; align-items:center; gap:8px; }
+  .disc-help-tip { position:relative; display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border:1px solid var(--border2); border-radius:50%; background:#fff; color:var(--text2); font-size:12px; font-weight:800; cursor:help; }
+  .disc-help-tip::after { content:attr(data-tip); position:absolute; left:50%; top:calc(100% + 8px); transform:translateX(-50%); width:min(420px,82vw); background:var(--text); color:#fff; border-radius:8px; padding:10px 12px; font-size:11px; font-weight:500; line-height:1.45; opacity:0; pointer-events:none; z-index:30; box-shadow:0 8px 24px rgba(0,0,0,.18); white-space:normal; }
+  .disc-help-tip:hover::after, .disc-help-tip:focus::after { opacity:1; }
   .disc-view-toolbar { display:flex; justify-content:flex-end; gap:7px; margin:-8px 0 12px; }
   .disc-compact-item { display:block; padding:0; }
   .disc-compact-summary { display:grid; grid-template-columns:minmax(240px,1.7fr) minmax(180px,1fr) auto; gap:14px; align-items:center; padding:10px 14px; min-height:58px; }
@@ -3101,7 +3098,11 @@
 
   /* Disciplinas: visão administrativa mais limpa */
   .disc-page-head {
-    margin-bottom:12px!important;
+    margin-bottom:10px!important;
+    display:flex!important;
+    align-items:flex-start!important;
+    justify-content:space-between!important;
+    gap:12px!important;
   }
   .disc-page-head .disc-view-toolbar {
     margin:0!important;
@@ -3119,14 +3120,14 @@
   .disc-overview {
     grid-template-columns:repeat(4,minmax(150px,1fr))!important;
     gap:10px!important;
-    margin-bottom:12px!important;
+    margin-bottom:10px!important;
   }
   .disc-filter-panel {
     background:#fff!important;
     border:1px solid var(--border)!important;
     border-radius:var(--radius-lg)!important;
-    padding:12px!important;
-    margin-bottom:12px!important;
+    padding:10px 12px!important;
+    margin-bottom:10px!important;
     display:grid!important;
     grid-template-columns:minmax(220px,1fr) 180px 180px auto!important;
     gap:10px!important;
@@ -3158,7 +3159,7 @@
     background:#fff!important;
     border:1px solid var(--border)!important;
     border-radius:var(--radius-lg)!important;
-    padding:12px 14px!important;
+    padding:10px 12px!important;
     box-shadow:none!important;
   }
   .disc-overview-label {
@@ -3167,7 +3168,7 @@
     color:var(--text3)!important;
   }
   .disc-overview-value {
-    font-size:26px!important;
+    font-size:24px!important;
     font-weight:850!important;
   }
   .disc-manager-grid {
@@ -3191,41 +3192,9 @@
     font-size:13px!important;
     text-align:center!important;
   }
-  .disc-quick-actions {
-    display:flex!important;
-    flex-wrap:wrap!important;
-    gap:6px!important;
-    margin-top:10px!important;
-  }
-  .disc-quick-btn {
-    border:1px solid var(--border)!important;
-    background:#fff!important;
-    color:var(--text2)!important;
-    border-radius:999px!important;
-    padding:6px 10px!important;
-    font-size:11px!important;
-    font-weight:700!important;
-    cursor:pointer!important;
-    font-family:'DM Sans',sans-serif!important;
-    display:inline-flex!important;
-    align-items:center!important;
-    gap:6px!important;
-  }
-  .disc-quick-btn img {
-    width:16px!important;
-    height:16px!important;
-    display:block!important;
-  }
-  .disc-quick-btn:hover {
-    background:var(--surface2)!important;
-    color:var(--accent)!important;
-  }
   @media(max-width:900px){
     .disc-overview {
       grid-template-columns:repeat(2,1fr)!important;
-    }
-    .disc-help-card {
-      grid-template-columns:1fr!important;
     }
     .disc-filter-panel {
       grid-template-columns:1fr 1fr!important;
@@ -3234,21 +3203,26 @@
   @media(max-width:620px){
     .disc-page-head {
       align-items:stretch!important;
+      flex-direction:column!important;
     }
     .disc-page-head .disc-view-toolbar,
     .disc-page-head .btn {
       width:100%!important;
     }
-    .disc-overview {
-      grid-template-columns:1fr 1fr!important;
+    .disc-page-head .disc-view-toolbar {
+      display:none!important;
     }
     .disc-filter-panel {
-      grid-template-columns:1fr!important;
+      grid-template-columns:1fr 1fr!important;
+      gap:8px!important;
+      padding:9px!important;
     }
+    .disc-filter-field:first-child { grid-column:1/-1!important; }
     .disc-filter-actions,
     .disc-filter-actions .btn {
       width:100%!important;
     }
+    .disc-overview { display:none!important; }
     .disc-overview-value {
       font-size:22px!important;
     }
@@ -4001,7 +3975,10 @@
     <div id="viewDisciplinas" style="display:none">
       <div class="page-head disc-page-head">
         <div>
-          <div class="page-title">Disciplinas</div>
+          <div class="disc-title-row">
+            <div class="page-title">Disciplinas</div>
+            <button class="disc-help-tip" type="button" aria-label="Ajuda sobre disciplinas" data-tip="Use + Adicionar disciplina no grupo correto ou o lápis para editar. Selos: Sem registros = ainda não usada; Em andamento = tem planejamento ou notas; Atenção = há módulo não realizado; Carga concluída = módulos realizados atingiram a carga.">?</button>
+          </div>
           <div class="page-sub">Organize unidades curriculares presenciais, EaD e mistas usadas no planejamento da turma.</div>
         </div>
         <div class="disc-view-toolbar">
@@ -4035,21 +4012,6 @@
         </label>
         <div class="disc-filter-actions">
           <button class="btn btn-outline" onclick="clearDiscFilters()">Limpar</button>
-        </div>
-      </div>
-      <div class="disc-help-card">
-        <div>
-          <div class="disc-help-title">Como cadastrar ou atualizar</div>
-          Use o botão <strong>+ Adicionar disciplina</strong> no grupo correto ou o botão de lápis em uma disciplina já existente. Ali você altera nome, carga horária, período, link do Classroom e atalho da Biblioteca.
-        </div>
-        <div>
-          <div class="disc-help-title">O que significam os selos</div>
-          <div class="disc-help-list">
-            <span class="disc-help-chip">Sem registros: ainda não foi usada</span>
-            <span class="disc-help-chip">Em andamento: tem planejamento/notas</span>
-            <span class="disc-help-chip">Atenção: há módulo não realizado</span>
-            <span class="disc-help-chip">Carga concluída: módulos atingidos</span>
-          </div>
         </div>
       </div>
       <div class="disc-overview" id="discOverview"></div>
@@ -6927,8 +6889,6 @@ function renderDiscManager() {
           : '';
 
       const diasRegistrados = state.freq && state.freq[d] ? Object.keys(state.freq[d]).length : 0;
-      const classroomReady = !!(ex.classroomUrl || '').trim();
-      const bibliotecaReady = !!((ex.bibliotecaUrl || '').trim() || getLibraryUrl());
       const fonteLabel = ajusteManual !== null
         ? `<span style="color:var(--amber);font-size:10px">✎ ajustado manualmente</span>`
         : diasRegistrados > 0
@@ -6976,10 +6936,6 @@ function renderDiscManager() {
               ${periodoInfo?`<span>${periodoInfo}</span>`:''}
               <span>${summary.notasPresAvaliacoes + summary.notasEadAtividades} avaliação${summary.notasPresAvaliacoes + summary.notasEadAtividades === 1 ? '' : 'ões'}</span>
             </div>
-            <div class="disc-link-status">
-              <span class="disc-link-chip ${classroomReady?'ready':''}">Classroom ${classroomReady?'configurado':'sem link'}</span>
-              <span class="disc-link-chip ${bibliotecaReady?'ready':''}">Biblioteca ${bibliotecaReady?'pronta':'sem atalho'}</span>
-            </div>
           </div>
           <div class="disc-compact-progress">${compactProgress}</div>
           <div class="disc-item-actions">
@@ -7004,14 +6960,6 @@ function renderDiscManager() {
           </div>
           ${progressBar}
           <div class="disc-strategy-note">${escapeHtml(strategy.note)}</div>
-          <div class="disc-quick-actions">
-            <button class="disc-quick-btn" onclick="jumpToDiscArea('presencial','${escapeJsString(d)}')">Planejamento presencial</button>
-            ${t.key !== 'presencial' ? `<button class="disc-quick-btn" onclick="jumpToDiscArea('ead','${escapeJsString(d)}')">Planejamento EaD</button>` : ''}
-            <button class="disc-quick-btn" onclick="jumpToDiscArea('frequencia','${escapeJsString(d)}')">Frequência</button>
-            ${t.key === 'ead' ? `<button class="disc-quick-btn" onclick="jumpToDiscArea('notasead','${escapeJsString(d)}')">Notas EaD</button>` : `<button class="disc-quick-btn" onclick="jumpToDiscArea('notaspres','${escapeJsString(d)}')">Notas presenciais</button>`}
-            <button class="disc-quick-btn" onclick="openDiscClassroom('${escapeJsString(d)}')"><img src="file:///C:/Users/Bianca/Downloads/icons8-google-classroom-48.png" alt="">Classroom</button>
-            <button class="disc-quick-btn" onclick="openDiscLibrary('${escapeJsString(d)}')">📚 Biblioteca</button>
-          </div>
         </div>
       </div>`;
     }).join('');
