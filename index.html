@@ -831,6 +831,13 @@
   .disc-mini-pill.adjust { background:var(--amber-bg); color:var(--amber); border-color:rgba(154,98,0,.22); }
   .disc-mini-pill.alert { background:var(--red-bg); color:var(--red); border-color:rgba(185,50,50,.22); }
   .disc-strategy-note { margin-top:10px; font-size:11px; line-height:1.5; color:var(--text2); background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:8px 10px; }
+  .disc-help-card { background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:12px 14px; margin-bottom:12px; display:grid; grid-template-columns:1.1fr 1fr; gap:12px; color:var(--text2); font-size:12px; line-height:1.5; }
+  .disc-help-title { color:var(--text); font-weight:800; margin-bottom:4px; }
+  .disc-help-list { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .disc-help-chip { display:inline-flex; align-items:center; gap:5px; border:1px solid var(--border); background:var(--surface2); border-radius:999px; padding:4px 8px; font-size:11px; color:var(--text2); }
+  .disc-link-status { display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; }
+  .disc-link-chip { display:inline-flex; align-items:center; gap:5px; border:1px solid var(--border); border-radius:999px; padding:3px 8px; font-size:10px; color:var(--text2); background:#fff; }
+  .disc-link-chip.ready { color:var(--green); border-color:rgba(42,125,79,.24); background:var(--green-bg); }
   .disc-view-toolbar { display:flex; justify-content:flex-end; gap:7px; margin:-8px 0 12px; }
   .disc-compact-item { display:block; padding:0; }
   .disc-compact-summary { display:grid; grid-template-columns:minmax(240px,1.7fr) minmax(180px,1fr) auto; gap:14px; align-items:center; padding:10px 14px; min-height:58px; }
@@ -3200,6 +3207,14 @@
     font-weight:700!important;
     cursor:pointer!important;
     font-family:'DM Sans',sans-serif!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    gap:6px!important;
+  }
+  .disc-quick-btn img {
+    width:16px!important;
+    height:16px!important;
+    display:block!important;
   }
   .disc-quick-btn:hover {
     background:var(--surface2)!important;
@@ -3208,6 +3223,9 @@
   @media(max-width:900px){
     .disc-overview {
       grid-template-columns:repeat(2,1fr)!important;
+    }
+    .disc-help-card {
+      grid-template-columns:1fr!important;
     }
     .disc-filter-panel {
       grid-template-columns:1fr 1fr!important;
@@ -4017,6 +4035,21 @@
         </label>
         <div class="disc-filter-actions">
           <button class="btn btn-outline" onclick="clearDiscFilters()">Limpar</button>
+        </div>
+      </div>
+      <div class="disc-help-card">
+        <div>
+          <div class="disc-help-title">Como cadastrar ou atualizar</div>
+          Use o botão <strong>+ Adicionar disciplina</strong> no grupo correto ou o botão de lápis em uma disciplina já existente. Ali você altera nome, carga horária, período, link do Classroom e atalho da Biblioteca.
+        </div>
+        <div>
+          <div class="disc-help-title">O que significam os selos</div>
+          <div class="disc-help-list">
+            <span class="disc-help-chip">Sem registros: ainda não foi usada</span>
+            <span class="disc-help-chip">Em andamento: tem planejamento/notas</span>
+            <span class="disc-help-chip">Atenção: há módulo não realizado</span>
+            <span class="disc-help-chip">Carga concluída: módulos atingidos</span>
+          </div>
         </div>
       </div>
       <div class="disc-overview" id="discOverview"></div>
@@ -5042,7 +5075,7 @@
 
 <!-- MODAL DISCIPLINA -->
 <div class="ead-modal-overlay" id="discModalOverlay">
-  <div class="modal" style="width:480px">
+  <div class="modal" style="width:620px;max-width:95vw">
     <div class="modal-head">
       <h2 id="discModalTitle">Nova disciplina</h2>
       <button class="close-btn" onclick="closeDiscModal()"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 1l12 12M13 1L1 13"/></svg></button>
@@ -5056,7 +5089,7 @@
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Carga hor ria (horas)</label>
+          <label class="form-label">Carga horária (horas)</label>
           <input type="number" class="form-input" id="discModalCarga" placeholder="ex: 60" min="0" step="0.5" oninput="updateDiscModCalc()">
           <div id="discModCalc" style="font-size:11px;color:var(--accent);margin-top:4px;font-weight:500"></div>
         </div>
@@ -5076,8 +5109,24 @@
           <input type="date" class="form-input" id="discModalFim">
         </div>
       </div>
+      <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:2px">
+        <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:8px">Atalhos da disciplina</div>
+        <div class="form-group">
+          <label class="form-label">Link do Google Classroom</label>
+          <input type="url" class="form-input" id="discModalClassroomUrl" placeholder="https://classroom.google.com/...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Link direto da disciplina na Biblioteca</label>
+          <input type="url" class="form-input" id="discModalBibliotecaUrl" placeholder="Opcional: cole um link específico da Biblioteca">
+          <div style="font-size:10px;color:var(--text3);margin-top:4px">Se ficar vazio, o botão abre a Biblioteca configurada usando o termo abaixo.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Termo para buscar na Biblioteca</label>
+          <input type="text" class="form-input" id="discModalBibliotecaTermo" placeholder="Vazio = usa o nome da disciplina">
+        </div>
+      </div>
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;font-size:12px;color:var(--text2)">
-        ?? Cada módulo dura <strong>45 minutos</strong>. O progresso   calculado automaticamente a partir das chamadas registradas na aba <strong>Frequ ncia</strong>. O ajuste manual serve para corrigir casos especiais (ex: aulas antes do sistema existir).
+        Cada módulo dura <strong>45 minutos</strong>. O progresso é calculado automaticamente a partir das chamadas registradas na aba <strong>Frequência</strong>. O ajuste manual serve para corrigir casos especiais, como aulas feitas antes do sistema existir.
       </div>
     </div>
     <div class="modal-foot">
@@ -6625,7 +6674,7 @@ function getDiscExtra(nome) {
   const classExtra = classStore?.discExtras?.[nome];
   if (classExtra) return classClone(classExtra, {});
   if (classStore) {
-    return { cargaHoras:DISC_CARGAS_PADRAO[nome] || '', dataInicio:'', dataFim:'', modRealizados:'' };
+    return { cargaHoras:DISC_CARGAS_PADRAO[nome] || '', dataInicio:'', dataFim:'', modRealizados:'', classroomUrl:'', bibliotecaUrl:'', bibliotecaTermo:'' };
   }
   try {
     const s = localStorage.getItem('oficial_disc_extra_' + nome);
@@ -6635,7 +6684,10 @@ function getDiscExtra(nome) {
     cargaHoras: DISC_CARGAS_PADRAO[nome] || '',
     dataInicio: '',
     dataFim: '',
-    modRealizados: ''
+    modRealizados: '',
+    classroomUrl: '',
+    bibliotecaUrl: '',
+    bibliotecaTermo: ''
   };
 }
 function saveDiscExtra(nome, obj) {
@@ -6734,6 +6786,39 @@ function jumpToDiscArea(view, disc) {
       if (view === 'notaspres') onNpDiscChange();
     }
   }, 40);
+}
+
+function openDiscClassroom(disc) {
+  const ex = getDiscExtra(disc);
+  const url = (ex.classroomUrl || '').trim();
+  if (!url) {
+    alert('Abra o lápis desta disciplina e cole o link do Google Classroom.');
+    return;
+  }
+  window.open(url, '_blank', 'noopener');
+}
+
+function buildLibraryDisciplineUrl(baseUrl, term) {
+  const cleanBase = String(baseUrl || '').split('#')[0];
+  const params = new URLSearchParams({ search: term || '', disciplina: term || '' });
+  return cleanBase + '#' + params.toString();
+}
+
+function openDiscLibrary(disc) {
+  const ex = getDiscExtra(disc);
+  const directUrl = (ex.bibliotecaUrl || '').trim();
+  if (directUrl) {
+    window.open(directUrl, '_blank', 'noopener');
+    return;
+  }
+  const baseUrl = getLibraryUrl();
+  if (!baseUrl) {
+    alert('Cadastre primeiro o atalho geral da Biblioteca em Configurações, ou cole um link direto no lápis desta disciplina.');
+    goToLibraryConfig();
+    return;
+  }
+  const term = (ex.bibliotecaTermo || disc || '').trim();
+  window.open(buildLibraryDisciplineUrl(baseUrl, term), '_blank', 'noopener');
 }
 
 function renderDiscOverview(allSummaries) {
@@ -6842,6 +6927,8 @@ function renderDiscManager() {
           : '';
 
       const diasRegistrados = state.freq && state.freq[d] ? Object.keys(state.freq[d]).length : 0;
+      const classroomReady = !!(ex.classroomUrl || '').trim();
+      const bibliotecaReady = !!((ex.bibliotecaUrl || '').trim() || getLibraryUrl());
       const fonteLabel = ajusteManual !== null
         ? `<span style="color:var(--amber);font-size:10px">✎ ajustado manualmente</span>`
         : diasRegistrados > 0
@@ -6874,7 +6961,7 @@ function renderDiscManager() {
       const isExpanded = getExpandedDisciplines().has(expansionId);
       const compactProgress = totalMod
         ? `<div class="disc-compact-progress-label"><span>${realizados} de ${totalMod} módulos</span><span>${pct}%</span></div><div class="disc-compact-bar"><span style="width:${pct}%;background:${pct>=100?'var(--green)':pct>=70?'var(--accent)':'var(--amber)'}"></span></div>`
-        : `<div class="disc-compact-progress-label"><span>Carga hor ria n o configurada</span></div><div class="disc-compact-bar"><span style="width:0"></span></div>`;
+        : `<div class="disc-compact-progress-label"><span>Carga horária não configurada</span></div><div class="disc-compact-bar"><span style="width:0"></span></div>`;
 
       return `<div class="disc-item disc-compact-item ${isExpanded?'expanded':''}">
         <div class="disc-compact-summary">
@@ -6884,14 +6971,20 @@ function renderDiscManager() {
               <span class="disc-status-pill ${strategy.cls}">${strategy.label}</span>
             </div>
             <div class="disc-compact-meta">
-              ${horasInfo?`<span>⏱ ${horasInfo}</span>`:''}
-              ${modInfo?`<span>?? ${modInfo}</span>`:''}
-              ${periodoInfo?`<span>?? ${periodoInfo}</span>`:''}
+              ${horasInfo?`<span>${horasInfo}</span>`:''}
+              ${modInfo?`<span>${modInfo}</span>`:''}
+              ${periodoInfo?`<span>${periodoInfo}</span>`:''}
               <span>${summary.notasPresAvaliacoes + summary.notasEadAtividades} avaliação${summary.notasPresAvaliacoes + summary.notasEadAtividades === 1 ? '' : 'ões'}</span>
+            </div>
+            <div class="disc-link-status">
+              <span class="disc-link-chip ${classroomReady?'ready':''}">Classroom ${classroomReady?'configurado':'sem link'}</span>
+              <span class="disc-link-chip ${bibliotecaReady?'ready':''}">Biblioteca ${bibliotecaReady?'pronta':'sem atalho'}</span>
             </div>
           </div>
           <div class="disc-compact-progress">${compactProgress}</div>
           <div class="disc-item-actions">
+            <button class="disc-action-btn" onclick="openDiscClassroom('${escapeJsString(d)}')" title="Abrir Google Classroom"><img src="file:///C:/Users/Bianca/Downloads/icons8-google-classroom-48.png" alt="" style="width:14px;height:14px;display:block"></button>
+            <button class="disc-action-btn" onclick="openDiscLibrary('${escapeJsString(d)}')" title="Abrir na Biblioteca">📚</button>
             <button class="disc-action-btn disc-expand-btn" onclick="toggleDiscDetails('${t.key}','${escapeJsString(d)}')">${isExpanded?'▴ Recolher':'▾ Expandir'}</button>
             ${isProfessorMode() ? '' : `<button class="disc-action-btn" onclick="openDiscModal('${t.key}',${i})">✎</button><button class="disc-action-btn danger" onclick="removeDisc('${t.key}',${i})">×</button>`}
           </div>
@@ -6916,6 +7009,8 @@ function renderDiscManager() {
             ${t.key !== 'presencial' ? `<button class="disc-quick-btn" onclick="jumpToDiscArea('ead','${escapeJsString(d)}')">Planejamento EaD</button>` : ''}
             <button class="disc-quick-btn" onclick="jumpToDiscArea('frequencia','${escapeJsString(d)}')">Frequência</button>
             ${t.key === 'ead' ? `<button class="disc-quick-btn" onclick="jumpToDiscArea('notasead','${escapeJsString(d)}')">Notas EaD</button>` : `<button class="disc-quick-btn" onclick="jumpToDiscArea('notaspres','${escapeJsString(d)}')">Notas presenciais</button>`}
+            <button class="disc-quick-btn" onclick="openDiscClassroom('${escapeJsString(d)}')"><img src="file:///C:/Users/Bianca/Downloads/icons8-google-classroom-48.png" alt="">Classroom</button>
+            <button class="disc-quick-btn" onclick="openDiscLibrary('${escapeJsString(d)}')">📚 Biblioteca</button>
           </div>
         </div>
       </div>`;
@@ -6948,6 +7043,9 @@ function openDiscModal(tipo, idx) {
   document.getElementById('discModalInicio').value = ex.dataInicio || '';
   document.getElementById('discModalFim').value = ex.dataFim || '';
   document.getElementById('discModalRealizados').value = ex.modRealizados || '';
+  document.getElementById('discModalClassroomUrl').value = ex.classroomUrl || '';
+  document.getElementById('discModalBibliotecaUrl').value = ex.bibliotecaUrl || '';
+  document.getElementById('discModalBibliotecaTermo').value = ex.bibliotecaTermo || '';
   updateDiscModCalc();
 
   document.getElementById('discModalOverlay').classList.add('open');
@@ -6978,6 +7076,9 @@ function saveDisc() {
   const realizadosManual = document.getElementById('discModalRealizados').value.trim();
   const dataInicio = document.getElementById('discModalInicio').value;
   const dataFim = document.getElementById('discModalFim').value;
+  const classroomUrl = document.getElementById('discModalClassroomUrl').value.trim();
+  const bibliotecaUrl = document.getElementById('discModalBibliotecaUrl').value.trim();
+  const bibliotecaTermo = document.getElementById('discModalBibliotecaTermo').value.trim();
   if (carga && Number(carga) <= 0) {
     alert('Informe uma carga horária maior que zero ou deixe o campo vazio.');
     return;
@@ -7000,7 +7101,10 @@ function saveDisc() {
     cargaHoras: carga,
     dataInicio,
     dataFim,
-    modRealizados: realizadosManual
+    modRealizados: realizadosManual,
+    classroomUrl,
+    bibliotecaUrl,
+    bibliotecaTermo
   };
   saveDiscExtra(exKey, ex);
   // Se renomeou, copiar extras para novo nome e limpar antigo
