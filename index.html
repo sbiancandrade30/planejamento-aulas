@@ -2679,7 +2679,23 @@
 
   /* Notas EaD/Presencial: mesmo acabamento compacto da Biblioteca */
   .notes-page-head {
+    background:#fff!important;
+    border:1px solid var(--border)!important;
+    border-radius:var(--radius-lg)!important;
+    padding:16px 18px!important;
     margin-bottom:10px!important;
+  }
+  .notes-page-head .page-title {
+    font-size:24px!important;
+    font-weight:800!important;
+    line-height:1.15!important;
+    color:var(--text)!important;
+  }
+  .notes-page-head .page-sub {
+    margin-top:4px!important;
+    font-size:13px!important;
+    line-height:1.45!important;
+    color:var(--text2)!important;
   }
   .nead-toolbar {
     background:#fff!important;
@@ -2751,8 +2767,28 @@
     font-size:9px!important;
   }
   .nead-resumo-wrap {
-    grid-template-columns:repeat(auto-fill,minmax(260px,1fr))!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
     gap:10px!important;
+  }
+  .notes-student-search {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:0 14px;
+    height:42px;
+    max-width:420px;
+    margin:0 0 12px;
+  }
+  .notes-student-search input {
+    border:0;
+    outline:0;
+    background:transparent;
+    width:100%;
+    font-size:13px;
+    color:var(--text);
   }
   .notes-empty-card {
     background:#fff;
@@ -2800,8 +2836,10 @@
   }
   @media(max-width:900px){
     .notes-kpi-grid { grid-template-columns:repeat(2,1fr); }
+    .nead-resumo-wrap { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
   }
   @media(max-width:720px){
+    .nead-resumo-wrap { grid-template-columns:1fr!important; }
     .nead-toolbar {
       display:grid!important;
       grid-template-columns:1fr 1fr!important;
@@ -3697,7 +3735,7 @@
         <button class="btn btn-outline" id="neadBtnResumo" onclick="setNeadView('resumo')" style="display:none;margin-left:auto">Ver resumo</button>
         <button class="btn btn-outline" id="neadBtnNotas" onclick="setNeadView('notas')" style="display:none">← Notas</button>
       </div>
-      <div id="neadNotasView"><p style="color:var(--text3);font-size:13px;padding:20px 0">Selecione a disciplina para ver as notas.</p></div>
+      <div id="neadNotasView"><div class="notes-empty-card"><div class="notes-empty-title">Escolha uma disciplina</div><div class="notes-empty-text">Depois de selecionar, você acompanha entregas, atrasos, notas e situação dos alunos nas atividades do Classroom.</div></div></div>
       <div id="neadLancarView" style="display:none"></div>
       <div id="neadResumoView" style="display:none"></div>
     </div>
@@ -3719,7 +3757,7 @@
         <button class="btn btn-outline" id="npBtnResumo" onclick="setNpView('resumo')" style="display:none;margin-left:auto">Ver resumo</button>
         <button class="btn btn-outline" id="npBtnNotas" onclick="document.getElementById('npAtivSel').value='';setNpView('notas')" style="display:none">← Notas</button>
       </div>
-      <div id="npNotasView"><p style="color:var(--text3);font-size:13px;padding:20px 0">Selecione a disciplina para ver as notas.</p></div>
+      <div id="npNotasView"><div class="notes-empty-card"><div class="notes-empty-title">Escolha uma disciplina</div><div class="notes-empty-text">Depois de selecionar, você lança provas, trabalhos, atividades, recuperação e acompanha a situação final.</div></div></div>
       <div id="npLancarView" style="display:none"></div>
       <div id="npResumoView" style="display:none"></div>
     </div>
@@ -4228,7 +4266,7 @@
       </button>
     </div>
     <div class="modal-body">
-      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Cadastre as atividades desta disciplina. Resumos valem 5 pts fixos. Question rios t m nota vari vel.</p>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Cadastre as atividades desta disciplina. Informe a pontuação de questionários, resumos e outras entregas do Classroom.</p>
       <div id="neadAtivList"></div>
       <button class="btn btn-outline" style="margin-top:12px;width:100%" onclick="addNeadAtiv()">+ Adicionar atividade</button>
     </div>
@@ -4447,7 +4485,7 @@
 <div class="ead-modal-overlay" id="npConfigOverlay">
   <div class="modal" style="width:520px">
     <div class="modal-head">
-      <h2 id="npConfigTitle">Configurar avalia  es</h2>
+      <h2 id="npConfigTitle">Configurar avaliações</h2>
       <button class="close-btn" onclick="closeNpConfig()">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 1l12 12M13 1L1 13"/></svg>
       </button>
@@ -4460,7 +4498,7 @@
         <label style="font-size:12px;color:var(--text2)">valem 15 pts no total</label>
       </div>
       <div id="npAtivList"></div>
-      <button class="btn btn-outline" style="margin-top:12px;width:100%" onclick="addNpAtiv()">+ Adicionar avalia  o</button>
+      <button class="btn btn-outline" style="margin-top:12px;width:100%" onclick="addNpAtiv()">+ Adicionar avaliação</button>
     </div>
     <div class="modal-foot">
       <button class="btn btn-outline" onclick="closeNpConfig()">Cancelar</button>
@@ -11706,8 +11744,8 @@ function getNeadDisc(disc) {
 
 function neadAtivValorMax(a) {
   if (!a) return 0;
-  if (a.tipo === 'resumo') return 5;
   const valor = parseFloat(a.valor);
+  if (a.tipo === 'resumo') return Number.isFinite(valor) && valor > 0 ? valor : 5;
   return Number.isFinite(valor) && valor > 0 ? valor : 0;
 }
 
@@ -11733,7 +11771,10 @@ function onNeadDiscChange() {
   document.getElementById('neadBtnNotas').style.display = 'none';
 
   if (!disc) {
-    document.getElementById('neadNotasView').innerHTML = '<p style="color:var(--text3);font-size:13px;padding:20px 0">Selecione a disciplina para ver as notas.</p>';
+    document.getElementById('neadNotasView').innerHTML = `<div class="notes-empty-card">
+      <div class="notes-empty-title">Escolha uma disciplina</div>
+      <div class="notes-empty-text">Depois de selecionar, você acompanha entregas, atrasos, notas e situação dos alunos nas atividades do Classroom.</div>
+    </div>`;
     document.getElementById('neadNotasView').style.display = '';
     document.getElementById('neadLancarView').style.display = 'none';
     document.getElementById('neadResumoView').style.display = 'none';
@@ -11749,7 +11790,7 @@ function onNeadDiscChange() {
     data.atividades.forEach(a => {
       const opt = document.createElement('option');
       opt.value = a.id;
-      const tipoLabel = a.tipo === 'resumo' ? 'Resumo (5pts)' : (neadQuestionarioSemValor(a) ? 'Questionário (definir pts)' : ('Questionário (' + neadAtivValorMax(a) + 'pts)'));
+      const tipoLabel = a.tipo === 'resumo' ? 'Resumo (' + neadAtivValorMax(a) + ' pts)' : (neadQuestionarioSemValor(a) ? 'Questionário (definir pts)' : ('Questionário (' + neadAtivValorMax(a) + ' pts)'));
       opt.textContent = a.aula + ' - ' + tipoLabel;
       ativSel.appendChild(opt);
     });
@@ -11801,7 +11842,7 @@ function renderNotasEad() {
   </div>`;
   html += '<div style="overflow-x:auto"><table class="nead-table"><thead><tr><th class="th-l">Aluno</th>';
   ativs.forEach(a => {
-    const pts = a.tipo === 'resumo' ? '5 pts' : (neadQuestionarioSemValor(a) ? 'Definir pts' : (neadAtivValorMax(a) + ' pts'));
+    const pts = neadQuestionarioSemValor(a) ? 'Definir pts' : (neadAtivValorMax(a) + ' pts');
     html += '<th><div class="ativ-header"><span>' + a.aula + '</span><span style="font-size:9px;color:var(--text3)">' + (a.tipo==='resumo'?'Resumo':'Quest.') + '</span><span class="ativ-pts">' + pts + '</span></div></th>';
   });
   html += '<th>Total</th></tr></thead><tbody>';
@@ -11818,8 +11859,8 @@ function renderNotasEad() {
       totalMax += valorMax;
       let notaCalc = 0;
       if (a.tipo === 'resumo') {
-        notaCalc = entry.status==='prazo'?5:entry.status==='atrasado'?2.5:0;
-        const cor = notaCalc===5?'var(--green)':notaCalc>0?'var(--amber)':'var(--red)';
+        notaCalc = entry.status==='prazo'?valorMax:entry.status==='atrasado'?valorMax/2:0;
+        const cor = notaCalc===valorMax?'var(--green)':notaCalc>0?'var(--amber)':'var(--red)';
         const stBtns = [['prazo','Fez','ns-prazo'],['atrasado','Atrasado','ns-atrasado'],['nao','Não fez','ns-nao']]
           .map(([k,lbl,cls]) => '<button class="nead-status-btn ' + cls + (entry.status===k?' sel':'') + '" onclick="setNeadStatus(\'' + disc + '\',\'' + nome + '\',\'' + key + '\',\'' + k + '\')">' + lbl + '</button>').join('');
         html += '<td><div style="display:flex;flex-direction:column;gap:3px;align-items:center">' + stBtns + '<span style="font-size:11px;font-weight:600;color:' + cor + '">' + notaCalc + '</span></div></td>';
@@ -11900,7 +11941,7 @@ function renderNeadLancar(atvId) {
     const e = data.alunos[nome][atvId] || { status: 'prazo', nota: '' };
     const bruta = parseFloat(e.nota) || 0;
     let calc = 0;
-    if (isResumo) calc = e.status==='prazo'?5:e.status==='atrasado'?2.5:0;
+    if (isResumo) calc = e.status==='prazo'?valorMax:e.status==='atrasado'?valorMax/2:0;
     else calc = valorPendente ? 0 : (e.status==='nao'?0:e.status==='atrasado'?bruta/2:bruta);
     const calcFmt = valorPendente ? '—' : (calc%1===0?calc:calc.toFixed(1));
     const cor = valorPendente ? 'var(--text3)' : calc===0&&e.status!=='prazo'?'var(--red)':e.status==='atrasado'?'var(--amber)':'var(--green)';
@@ -12010,10 +12051,12 @@ function setNeadView(v) {
 function renderNeadResumo() {
   const wrap = document.getElementById('neadResumoView');
   if (Object.keys(state.notasEad).length === 0) {
-    wrap.innerHTML = '<p style="color:var(--text3);font-size:13px;padding:20px 0">Nenhuma nota lan ada ainda.</p>';
+    wrap.innerHTML = '<div class="notes-empty-card"><div class="notes-empty-title">Nenhuma nota lançada ainda</div><div class="notes-empty-text">Quando houver atividades preenchidas, o resumo por disciplina e por aluno aparece aqui.</div></div>';
     return;
   }
-  let html = '<div class="nead-resumo-wrap">';
+  const filtroAluno = (document.getElementById('neadAlunoResumoBusca')?.value || '').trim();
+  const filtroAlunoNorm = filtroAluno.toLowerCase();
+  let html = '<label class="notes-student-search"><span>⌕</span><input id="neadAlunoResumoBusca" value="' + escapeHtml(filtroAluno) + '" placeholder="Buscar aluno no resumo..." oninput="renderNeadResumo()"></label><div class="nead-resumo-wrap">';
   Object.entries(state.notasEad).forEach(([disc, data]) => {
     if (!data.atividades || data.atividades.length === 0) return;
     const discShort = disc.length > 34 ? disc.slice(0,32)+'...' : disc;
@@ -12024,12 +12067,16 @@ function renderNeadResumo() {
       html += '<div style="margin-bottom:8px;padding:8px 10px;background:var(--amber-bg);border:1px solid rgba(154,98,0,.24);border-radius:var(--radius);color:var(--amber);font-size:11px;line-height:1.45">Question rio sem pontua  o definida. O total fica suspenso at  esse ajuste.</div>';
     }
     ALUNOS.forEach(nome => {
+      if (filtroAlunoNorm && !nome.toLowerCase().includes(filtroAlunoNorm)) return;
       const alunoData = data.alunos[nome] || {};
       let total = 0;
       data.atividades.forEach(a => {
         const e = alunoData[a.id] || { status:'prazo', nota:'' };
         const bruta = parseFloat(e.nota) || 0;
-        if (a.tipo === 'resumo') total += e.status==='prazo'?5:e.status==='atrasado'?2.5:0;
+        if (a.tipo === 'resumo') {
+          const valorMax = neadAtivValorMax(a);
+          total += e.status==='prazo'?valorMax:e.status==='atrasado'?valorMax/2:0;
+        }
         else total += e.status==='prazo'?bruta:e.status==='atrasado'?bruta/2:0;
       });
       const totalFmt = total%1===0?total:total.toFixed(1);
@@ -12084,11 +12131,11 @@ function renderNeadAtivList() {
         ${['Aula 1','Aula 2','Aula 3','Aula 4','Aula 5'].map(au=>`<option${a.aula===au?' selected':''}>${au}</option>`).join('')}
       </select>
       <select class="form-input" style="width:120px" onchange="updateNeadAtiv(${i},'tipo',this.value)">
-        <option value="resumo"${a.tipo==='resumo'?' selected':''}>Resumo (5 pts)</option>
+        <option value="resumo"${a.tipo==='resumo'?' selected':''}>Resumo</option>
         <option value="questionario"${a.tipo==='questionario'?' selected':''}>Questionário</option>
       </select>
-      ${a.tipo==='questionario'?`<input class="form-input" style="width:70px" type="number" placeholder="Valor" value="${a.valor||''}" onchange="updateNeadAtiv(${i},'valor',this.value)">`:
-      '<span style="font-size:12px;color:var(--text3);width:70px">5 pts fixo</span>'}
+      <input class="form-input" style="width:76px" type="number" min="0" step="0.5" placeholder="Pts" value="${a.valor || (a.tipo==='resumo' ? 5 : '')}" onchange="updateNeadAtiv(${i},'valor',this.value)">
+      <span style="font-size:11px;color:var(--text3)">pts</span>
       <button onclick="removeNeadAtiv(${i})" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;padding:0 4px"> </button>
     </div>`).join('');
 }
@@ -13695,7 +13742,10 @@ function onNpDiscChange() {
   document.getElementById('npBtnNotas').style.display = 'none';
 
   if (!disc) {
-    document.getElementById('npNotasView').innerHTML = '<p style="color:var(--text3);font-size:13px;padding:20px 0">Selecione a disciplina para ver as notas.</p>';
+    document.getElementById('npNotasView').innerHTML = `<div class="notes-empty-card">
+      <div class="notes-empty-title">Escolha uma disciplina</div>
+      <div class="notes-empty-text">Depois de selecionar, você lança provas, trabalhos, atividades, recuperação e acompanha a situação final.</div>
+    </div>`;
     document.getElementById('npNotasView').style.display = '';
     document.getElementById('npLancarView').style.display = 'none';
     document.getElementById('npResumoView').style.display = 'none';
@@ -13989,16 +14039,19 @@ function setNpRecup(disc, nome, val) {
 function renderNpResumo() {
   const wrap = document.getElementById('npResumoView');
   if (!state.notasPres || Object.keys(state.notasPres).length === 0) {
-    wrap.innerHTML = '<p style="color:var(--text3);font-size:13px;padding:20px 0">Nenhuma nota lan ada ainda.</p>';
+    wrap.innerHTML = '<div class="notes-empty-card"><div class="notes-empty-title">Nenhuma nota lançada ainda</div><div class="notes-empty-text">Quando houver avaliações preenchidas, o resumo por disciplina e por aluno aparece aqui.</div></div>';
     return;
   }
-  let html = '<div class="nead-resumo-wrap">';
+  const filtroAluno = (document.getElementById('npAlunoResumoBusca')?.value || '').trim();
+  const filtroAlunoNorm = filtroAluno.toLowerCase();
+  let html = '<label class="notes-student-search"><span>⌕</span><input id="npAlunoResumoBusca" value="' + escapeHtml(filtroAluno) + '" placeholder="Buscar aluno no resumo..." oninput="renderNpResumo()"></label><div class="nead-resumo-wrap">';
   Object.entries(state.notasPres).forEach(([disc, data]) => {
     if (!data.avals || data.avals.length === 0) return;
     const discShort = disc.length > 34 ? disc.slice(0,32)+'...' : disc;
     const totalMax = data.avals.reduce((s,a) => s + parseFloat(a.valor||0), 0) + (data.totalAtiv > 0 ? 15 : 0);
     html += '<div class="resumo-card"><div class="resumo-card-title">' + discShort + '</div>';
     ALUNOS.forEach(nome => {
+      if (filtroAlunoNorm && !nome.toLowerCase().includes(filtroAlunoNorm)) return;
       const al = data.alunos[nome] || {};
       let total = 0;
       data.avals.forEach(a => { total += parseFloat(al[a.id]||0); });
@@ -14028,13 +14081,13 @@ function renderNpResumo() {
 let npConfigAtivs = [];
 
 function openNpConfig() {
-  if (isProfessorMode()) { showToast('A configura  o de avalia  es fica bloqueada na vers o do professor.'); return; }
+  if (isProfessorMode()) { showToast('A configuração de avaliações fica bloqueada na versão do professor.'); return; }
   const disc = document.getElementById('npDisc').value;
   if (!disc) return;
   const data = getNpDisc(disc);
   npConfigAtivs = JSON.parse(JSON.stringify(data.avals));
   document.getElementById('npTotalAtiv').value = data.totalAtiv || '';
-  document.getElementById('npConfigTitle').textContent = 'Avalia  es   ' + disc.split(' ').slice(0,3).join(' ') + '...';
+  document.getElementById('npConfigTitle').textContent = 'Avaliações - ' + disc.split(' ').slice(0,3).join(' ') + '...';
   renderNpAtivList();
   document.getElementById('npConfigOverlay').classList.add('open');
 }
@@ -14046,7 +14099,7 @@ function closeNpConfig() {
 function renderNpAtivList() {
   const wrap = document.getElementById('npAtivList');
   if (npConfigAtivs.length === 0) {
-    wrap.innerHTML = '<p style="color:var(--text3);font-size:13px;margin-bottom:8px">Nenhuma avalia  o ainda.</p>';
+    wrap.innerHTML = '<p style="color:var(--text3);font-size:13px;margin-bottom:8px">Nenhuma avaliação ainda.</p>';
     return;
   }
   wrap.innerHTML = npConfigAtivs.map((a, i) =>
@@ -14080,7 +14133,7 @@ function saveNpConfig() {
   data.avals = npConfigAtivs;
   data.totalAtiv = parseInt(document.getElementById('npTotalAtiv').value) || 0;
   saveData(); closeNpConfig(); renderNpNotas();
-  showToast('Configura  o salva!');
+  showToast('Configuração salva!');
 }
 
 // --- INIT ------------------------------------------------
