@@ -2296,6 +2296,17 @@
   .freq-page-head {
     margin-bottom:10px!important;
   }
+  .freq-page-head .page-title {
+    font-size:26px!important;
+    font-weight:800!important;
+    color:var(--text)!important;
+    line-height:1.15!important;
+  }
+  .freq-page-head .page-sub {
+    font-size:13px!important;
+    color:var(--text2)!important;
+    margin-top:4px!important;
+  }
   .freq-toolbar {
     background:#fff!important;
     border:1px solid var(--border)!important;
@@ -2370,6 +2381,28 @@
     min-height:30px!important;
     border-radius:10px!important;
     background:#f8fafc!important;
+  }
+  .freq-doc-actions {
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-wrap:wrap;
+  }
+  .freq-doc-btn {
+    border:1px solid var(--border);
+    background:#fff;
+    color:var(--text2);
+    border-radius:999px;
+    min-height:28px;
+    padding:0 9px;
+    font-size:11px;
+    font-weight:800;
+    cursor:pointer;
+  }
+  .freq-doc-btn.primary {
+    color:var(--accent);
+    background:var(--accent-bg);
+    border-color:rgba(45,91,227,.22);
   }
   .resumo-grid {
     grid-template-columns:repeat(auto-fill,minmax(260px,1fr))!important;
@@ -11160,7 +11193,7 @@ function getFreqInsights() {
           if (status === 'CJ') { resumo.comJust++; discTotal.comJust++; resumo.porAluno[nome].comJust++; }
           if (status === 'SJ') { resumo.semJust++; discTotal.semJust++; resumo.porAluno[nome].semJust++; }
         });
-        if ((aluno.link || '').trim()) resumo.docs++;
+        if ((aluno.link || '').trim() || (aluno.docData || '').trim()) resumo.docs++;
       });
     });
     if (discTemRegistro) resumo.disciplinas++;
@@ -11239,10 +11272,12 @@ function getFreqEntryStats(entry) {
       if (status === 'CJ') stats.comJust++;
       if (status === 'SJ') stats.semJust++;
     });
-    if ((aluno.link || '').trim()) stats.documentos++;
+    if ((aluno.link || '').trim() || (aluno.docData || '').trim()) stats.documentos++;
   });
   return stats;
 }
+
+let freqApplyWholeDay = false;
 
 function renderFreqCallActions(disc, data, entry) {
   const stats = getFreqEntryStats(entry);
@@ -11254,11 +11289,12 @@ function renderFreqCallActions(disc, data, entry) {
       <div class="freq-call-sub">${formatDateKeyPtBr(data)} · P ${stats.presentes} · CJ ${stats.comJust} · SJ ${stats.semJust} · ${stats.documentos} documento${stats.documentos === 1 ? '' : 's'}</div>
     </div>
     <div class="freq-call-buttons">
-      <label class="freq-day-toggle" title="Quando estiver ativado, a falta lançada em um módulo vale para todos os módulos desse aluno no dia.">
-        <input type="checkbox" id="freqApplyWholeDay">
-        Falta no dia inteiro
+      <label class="freq-day-toggle" title="Quando estiver ativado, o lançamento feito em um módulo vale para todos os módulos desse aluno no dia.">
+        <input type="checkbox" id="freqApplyWholeDay" ${freqApplyWholeDay ? 'checked' : ''} onchange="freqApplyWholeDay=this.checked">
+        Aplicar no dia inteiro
       </label>
       <button class="freq-call-btn primary" onclick="setAllFreqMods('${discArg}','${dataArg}','P')">Todos presentes</button>
+      <button class="freq-call-btn" onclick="setClassModuleCountForDate('${dataArg}', getClassModuleCountForDate('${dataArg}'))">Ajustar módulos</button>
       <button class="freq-call-btn warn" onclick="clearFreqJustificativas('${discArg}','${dataArg}')">Limpar justificativas</button>
     </div>
   </div>`;
@@ -11335,6 +11371,11 @@ function renderFreq() {
     const canEditAfastTipo = afastamentoVeioDeOcorrencia ? false : professorCanEditFreq(disc, data, nome, 'afastamentoTipo');
     const canEditAfastDias = afastamentoVeioDeOcorrencia ? false : professorCanEditFreq(disc, data, nome, 'afastamentoDias');
     const diasField = afastTipoVisual ? `<div class="freq-dias-row"><input class="freq-dias-input${canEditAfastDias?'':' professor-locked-field'}" type="number" min="1" step="1" value="${afastDiasVisual || ''}" placeholder="Dias corridos afastado" ${canEditAfastDias ? '' : 'disabled'} ${afastamentoVeioDeOcorrencia ? 'title="Suspensão registrada pela ocorrência. Edite pela aba Ocorrências."' : ''} onchange="setAfastamentoDias('${disc}','${data}','${nome}',this.value)">${retornoChip}</div>` : '';
+    const docId = `freqDoc_${i}`;
+    const discArg = encodeURIComponent(disc);
+    const dataArg = encodeURIComponent(data);
+    const nomeArg = encodeURIComponent(nome);
+    const docName = a.docName || '';
 
     html += `<tr>
       <td class="td-left"><div class="aluno-nome">${nomeShort}</div></td>
@@ -11344,8 +11385,15 @@ function renderFreq() {
           ${professorCanEditFreq(disc, data, nome, 'obs') ? '' : 'disabled'} onchange="setFreqField('${disc}','${data}','${nome}','obs',this.value)">
       </td>
       <td class="td-left">
-        <input class="freq-link-input${professorCanEditFreq(disc, data, nome, 'link')?'':' professor-locked-field'}" value="${a.link||''}" placeholder="Link atestado/doc..."
-          ${professorCanEditFreq(disc, data, nome, 'link') ? '' : 'disabled'} onchange="setFreqField('${disc}','${data}','${nome}','link',this.value)">
+        <div class="freq-extra">
+          <input class="freq-link-input${professorCanEditFreq(disc, data, nome, 'link')?'':' professor-locked-field'}" value="${a.link||''}" placeholder="Link atestado/doc..."
+            ${professorCanEditFreq(disc, data, nome, 'link') ? '' : 'disabled'} onchange="setFreqField('${disc}','${data}','${nome}','link',this.value)">
+          <div class="freq-doc-actions">
+            <input id="${docId}" type="file" accept="image/*,.pdf" style="display:none" onchange="attachFreqDoc('${discArg}','${dataArg}','${nomeArg}',this)">
+            <button type="button" class="freq-doc-btn" onclick="document.getElementById('${docId}').click()">Anexar</button>
+            ${a.docData ? `<button type="button" class="freq-doc-btn primary" title="${escapeHtml(docName)}" onclick="openFreqDoc('${discArg}','${dataArg}','${nomeArg}')">Ver anexo</button>` : ''}
+          </div>
+        </div>
       </td>
       <td class="td-left">
         <div class="freq-afastamento-wrap">
@@ -11395,6 +11443,8 @@ function clearFreqJustificativas(disc, data) {
     });
     if (professorCanEditFreq(disc, data, nome, 'obs')) aluno.obs = '';
     if (professorCanEditFreq(disc, data, nome, 'link')) aluno.link = '';
+    aluno.docData = '';
+    aluno.docName = '';
     if (professorCanEditFreq(disc, data, nome, 'afastamentoTipo')) {
       aluno.afastamentoTipo = '';
       aluno.afastamentoDias = '';
@@ -11410,7 +11460,8 @@ function clearFreqJustificativas(disc, data) {
 function setModStatus(disc, data, nome, modIdx, status) {
   if (!professorCanEditFreq(disc, data, nome, 'mods', modIdx)) { showToast('Na versão do professor, só é possível preencher chamadas que ainda estavam em branco.'); return; }
   const entry = getFreqEntry(disc, data);
-  const applyWholeDay = document.getElementById('freqApplyWholeDay')?.checked && (status === 'CJ' || status === 'SJ');
+  freqApplyWholeDay = !!document.getElementById('freqApplyWholeDay')?.checked;
+  const applyWholeDay = freqApplyWholeDay;
   if (applyWholeDay) {
     const moduleCount = getClassModuleCountForDate(data);
     for (let i = 0; i < moduleCount; i++) {
@@ -11427,6 +11478,44 @@ function setFreqField(disc, data, nome, field, val) {
   const entry = getFreqEntry(disc, data);
   entry.alunos[nome][field] = val;
   saveData();
+}
+
+function attachFreqDoc(disc, data, nome, input) {
+  disc = decodeURIComponent(disc);
+  data = decodeURIComponent(data);
+  nome = decodeURIComponent(nome);
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  if (file.size > 2.5 * 1024 * 1024) {
+    showToast('Arquivo muito grande. Use imagem/PDF de até 2,5 MB.', true);
+    return;
+  }
+  const entry = getFreqEntry(disc, data);
+  const aluno = entry.alunos[nome];
+  const reader = new FileReader();
+  reader.onload = () => {
+    aluno.docData = String(reader.result || '');
+    aluno.docName = file.name || 'Atestado';
+    saveData();
+    renderFreq();
+    showToast('Documento anexado.');
+  };
+  reader.readAsDataURL(file);
+}
+
+function openFreqDoc(disc, data, nome) {
+  disc = decodeURIComponent(disc);
+  data = decodeURIComponent(data);
+  nome = decodeURIComponent(nome);
+  const doc = getFreqEntry(disc, data).alunos[nome]?.docData || '';
+  if (!doc) return;
+  const win = window.open('', '_blank', 'noopener');
+  if (!win) {
+    showToast('O navegador bloqueou a abertura do anexo.', true);
+    return;
+  }
+  win.document.write(`<iframe src="${doc}" style="border:0;width:100%;height:100vh"></iframe>`);
 }
 
 function setAfastamentoTipo(disc, data, nome, tipo) {
