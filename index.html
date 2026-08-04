@@ -655,6 +655,7 @@
 
   /* -- ALUNOS -------------------------------------------- */
   .alunos-toolbar { display:flex; align-items:center; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+  .alunos-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
   .aluno-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:12px; }
   .aluno-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px; cursor:pointer; transition:all .15s; }
   .aluno-card:hover { border-color:var(--border2); box-shadow:0 2px 10px rgba(0,0,0,.07); transform:translateY(-1px); }
@@ -2951,8 +2952,19 @@
     .alunos-page-head {
       align-items:stretch!important;
     }
-    .alunos-page-head .btn {
+    .alunos-actions {
+      display:grid!important;
+      grid-template-columns:1fr 1fr!important;
+      gap:8px!important;
+    }
+    .alunos-actions .btn {
       width:100%!important;
+      min-width:0!important;
+      padding-left:10px!important;
+      padding-right:10px!important;
+    }
+    .alunos-actions .btn-primary {
+      grid-column:1 / -1!important;
     }
   }
 
@@ -3839,7 +3851,7 @@
           <div class="page-title">Alunos</div>
           <div class="page-sub">Consulte a turma, aniversários, observações, faltas e ocorrências em um só lugar.</div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <div class="alunos-actions">
           <button class="btn btn-outline" onclick="baixarModeloAlunos()">Baixar modelo</button>
           <button class="btn btn-outline" onclick="document.getElementById('alunosImportInput').click()">Importar planilha</button>
           <button class="btn btn-primary" onclick="openAlunoModal()">+ Novo aluno</button>
