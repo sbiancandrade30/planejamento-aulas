@@ -4234,20 +4234,20 @@ function planSectionHtml(discId,mats){
     byTema.get(key).push(m);
   });
   const assessmentsBlock=assessments.length?`
-    <div class="material-group assessment-group">
+    <div class="material-group assessment-group" ondragover="materialDragOver(event)" ondragleave="materialDragLeave(event)" ondrop="materialDrop(event,'${escJsStr(discId)}','')">
       <div class="material-group-title"><div class="tipo-dot" style="background:var(--red)"></div>Avaliações e trabalhos gerais</div>
       ${assessments.map(planCardHtml).join('')}
     </div>
   `:'';
   const themeBlocks=[...byTema.entries()].sort((a,b)=>labelTema(a[0]).localeCompare(labelTema(b[0]),'pt-BR')).map(([temaId,items])=>`
-    <div class="material-group">
-      <div class="material-group-title"><div class="tipo-dot" style="background:var(--accent)"></div>${escH(temaId?labelTema(temaId):'Sem tema')}</div>
+    <div class="material-group" ondragover="materialDragOver(event)" ondragleave="materialDragLeave(event)" ondrop="materialDrop(event,'${escJsStr(discId)}','${escJsStr(temaId)}')">
+      <div class="material-group-title" title="Arraste um material para este tema"><div class="tipo-dot" style="background:var(--accent)"></div>${escH(temaId?labelTema(temaId):'Sem tema')}<span class="drop-hint">Solte aqui para mover</span></div>
       ${items.map(planCardHtml).join('')}
     </div>
   `).join('');
   const body=themeBlocks+assessmentsBlock;
   const review=mats.filter(needsMaterialReview).length;
-  return `<section class="theme-section" data-disc-id="${escH(discId)}">
+  return `<section class="theme-section" data-disc-id="${escH(discId)}" ondragover="materialDragOver(event)" ondragleave="materialDragLeave(event)" ondrop="materialDrop(event,'${escJsStr(discId)}','')">
     <div class="theme-head">
       <div>
         <div class="theme-name">${escH(labelDisc(discId))}</div>
