@@ -10926,6 +10926,8 @@ function render() {
     const isT = isToday(date);
     const dateKey = fmtDateKey(date);
     const dayModuleCount = getClassModuleCountForDate(date);
+    col.addEventListener('dragover', e=>e.preventDefault());
+    col.addEventListener('drop', e=>handlePresencialDrop(e,dateKey,dayModuleCount+1));
     col.innerHTML = `<div class="day-head ${isT?'day-today':''}">
       <div class="day-name">${DAY_NAMES[di]}</div>
       <div class="day-date">${fmtDate(date)}</div>
@@ -10938,6 +10940,12 @@ function render() {
       if (mod) {
         card.className = 'mod-card' + (planningHasActiveFilters('presencial') && !planningModuleMatches('presencial', mod) ? ' planning-filter-muted' : '');
         card.dataset.key = key;
+        card.draggable = true;
+        card.addEventListener('dragstart', e=>{ draggedPresencialKey=key; e.dataTransfer.setData('text/plain',key); e.dataTransfer.effectAllowed='move'; card.classList.add('dragging'); });
+        card.addEventListener('dragend', ()=>{ draggedPresencialKey=null; card.classList.remove('dragging'); });
+        card.addEventListener('dragover', e=>{e.preventDefault(); e.stopPropagation(); card.classList.add('drop-target');});
+        card.addEventListener('dragleave', ()=>card.classList.remove('drop-target'));
+        card.addEventListener('drop', e=>{card.classList.remove('drop-target'); handlePresencialDrop(e,dateKey,m);});
 
         const tiposAula = getTiposAula();
         const tagsHtml = (mod.tags||[]).map(t => {
@@ -11467,8 +11475,6 @@ function renderEad() {
   dates.forEach((date, di) => {
     const col = document.createElement('div');
     col.className = 'day-col';
-    col.addEventListener('dragover', e=>e.preventDefault());
-    col.addEventListener('drop', e=>handlePresencialDrop(e,dateKey,dayModuleCount+1));
     const isT = isToday(date);
     col.innerHTML = `<div class="day-head ${isT?'day-today':''}">
       <div class="day-name">${DAY_NAMES[di]}</div>
@@ -11483,12 +11489,6 @@ function renderEad() {
       if (mod) {
         card.className = 'ead-card' + (planningHasActiveFilters('ead') && !planningModuleMatches('ead', mod) ? ' planning-filter-muted' : '');
         card.dataset.key = key;
-        card.draggable = true;
-        card.addEventListener('dragstart', e=>{ draggedPresencialKey=key; e.dataTransfer.setData('text/plain',key); e.dataTransfer.effectAllowed='move'; card.classList.add('dragging'); });
-        card.addEventListener('dragend', ()=>{ draggedPresencialKey=null; card.classList.remove('dragging'); });
-        card.addEventListener('dragover', e=>{e.preventDefault(); e.stopPropagation(); card.classList.add('drop-target');});
-        card.addEventListener('dragleave', ()=>card.classList.remove('drop-target'));
-        card.addEventListener('drop', e=>{card.classList.remove('drop-target'); handlePresencialDrop(e,dateKey,m);});
         const tipos = getEadTipos(mod);
         const tagsHtml = tipos.map(tipo => `<span class="tag tag-${tipo}">${TIPO_LABELS[tipo] || tipo}</span>`).join('');
         const discShort = mod.disc || 'Livre / Curso externo';
