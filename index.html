@@ -11358,6 +11358,7 @@ function setView(v, btn) {
     return;
   }
   state.view = v;
+  localStorage.setItem('oficial_app_last_view', v);
   document.querySelectorAll('.sidebar-item').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   document.getElementById('viewInicio').style.display = v === 'inicio' ? '' : 'none';
@@ -11394,6 +11395,7 @@ function setView(v, btn) {
   if (v === 'ocorrencias') renderOcorrencias();
   if (v === 'disciplinas') renderDiscManager();
   if (v === 'configuracoes') renderConfiguracoes();
+  setTimeout(() => window.scrollTo(0, Number(localStorage.getItem('oficial_app_scroll_y') || 0)), 0);
 }
 
 // --- EAD RENDER ------------------------------------------
@@ -15469,13 +15471,15 @@ scheduleTaskNotifications();
 // Ao abrir, confere a planilha com cuidado. Dados locais mais recentes n o são substitu dos automaticamente.
 setTimeout(() => syncFromSheets({ startup:true, silent:true }), 700);
 
-// Ao abrir o sistema, come ar sempre pela p gina Início.
+// Ao abrir o sistema, restaurar a última página e posição visitadas.
 (function() {
-  state.view = 'inicio';
-  const btnInicio = document.querySelector('.sidebar-item[onclick*="inicio"]');
-  if (btnInicio) setView('inicio', btnInicio);
+  const view = localStorage.getItem('oficial_app_last_view') || state.view || 'inicio';
+  const btn = document.querySelector(`.sidebar-item[onclick*="${view}"]`) || document.querySelector('.sidebar-item[onclick*="inicio"]');
+  if (btn) setView(view, btn);
   else renderInicio();
 })();
+
+window.addEventListener('scroll', () => localStorage.setItem('oficial_app_scroll_y', String(window.scrollY)), {passive:true});
 
 checkLogin();
 
