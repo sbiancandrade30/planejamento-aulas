@@ -4148,7 +4148,7 @@
       <div class="detail-grid" style="margin-bottom:12px">
         <div>
           <div class="detail-section-label" style="margin-bottom:6px">Status</div>
-          <div class="detail-field" id="detailExecStatus"></div>
+          <select class="form-input" id="detailExecStatus" onchange="updateExecutionStatus(this.value)"><option value="planejada">Planejada</option><option value="realizada">Realizada</option><option value="parcial">Realizada parcialmente</option><option value="nao_realizada">Não realizada</option><option value="remanejada">Remanejada</option></select>
         </div>
         <div>
           <div class="detail-section-label" style="margin-bottom:6px">Registro</div>
@@ -4245,8 +4245,9 @@
         <label class="form-label">Tipo</label>
         <div id="tagButtonsContainer" style="display:flex;gap:6px;flex-wrap:wrap"></div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Materiais da Biblioteca</label>
+      <details class="module-extra-fields module-library-details">
+        <summary>Materiais da Biblioteca</summary>
+        <div class="form-group">
         <div class="module-materials-box">
           <div class="module-material-toolbar">
             <input type="text" class="form-input" id="fMaterialSearch" placeholder="Buscar material por título, tema ou link..." oninput="renderModuleMaterialPicker()">
@@ -4267,7 +4268,7 @@
           <div class="module-material-list" id="moduleAttachedMaterials"></div>
           <div class="module-material-list" id="moduleLibraryMatches"></div>
         </div>
-      </div>
+      </details>
       <div class="form-group">
         <label class="form-label">Descrição breve da aula</label>
         <textarea class="form-input" id="fTeoria" placeholder="Resuma em poucas palavras o que será feito nesta aula..."></textarea>
@@ -11005,7 +11006,7 @@ function openDetail(key) {
   setField('detailAval', mod.aval);
   setField('detailAtiv', mod.ativ);
   setField('detailObs', mod.obs);
-  setField('detailExecStatus', moduleExecutionLabel(mod.executionStatus || 'planejada'));
+  document.getElementById('detailExecStatus').value = mod.executionStatus || 'planejada';
   setField('detailExecObs', mod.executionObs || '');
   const materialsWrap = document.getElementById('detailMaterials');
   if (materialsWrap) materialsWrap.innerHTML = moduleMaterialsHtml(mod.materials || []);
@@ -11095,6 +11096,12 @@ function editModule() {
   document.getElementById('modalOverlay').classList.add('open');
   editingKey = currentDetailKey;
   renderModuleMaterialPicker();
+}
+function updateExecutionStatus(value){
+  if(!currentDetailKey||!state.modules[currentDetailKey]) return;
+  state.modules[currentDetailKey].executionStatus=value||'planejada';
+  saveData(); render();
+  showToast('Status do módulo atualizado.');
 }
 let draggedPresencialKey=null;
 function movePresencialModule(sourceKey,targetDateKey,targetModule){
