@@ -10926,6 +10926,7 @@ function render() {
     const isT = isToday(date);
     const dateKey = fmtDateKey(date);
     const dayModuleCount = getClassModuleCountForDate(date);
+    col.dataset.dateKey = dateKey;
     col.addEventListener('dragover', e=>e.preventDefault());
     col.addEventListener('drop', e=>handlePresencialDrop(e,dateKey,dayModuleCount+1));
     col.innerHTML = `<div class="day-head ${isT?'day-today':''}">
@@ -11143,6 +11144,7 @@ function movePresencialModule(sourceKey,targetDateKey,targetModule){
 }
 function handlePresencialDrop(event,dateKey,targetModule){
   event.preventDefault(); event.stopPropagation();
+  dateKey = event.currentTarget?.dataset?.dateKey || dateKey;
   const source=event.dataTransfer?.getData('text/plain')||draggedPresencialKey;
   if(!source) return;
   let target=Number(targetModule)||1;
