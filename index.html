@@ -185,6 +185,16 @@
   .detail-meta { font-size: 11px; color: var(--text3); margin-bottom: 4px; font-family: 'DM Mono', monospace; }
   .detail-title-text { font-size: 17px; font-weight: 600; letter-spacing: -.02em; }
   .module-materials-box { border:1px solid var(--border); background:var(--surface2); border-radius:var(--radius); padding:10px; display:flex; flex-direction:column; gap:8px; }
+  #modalOverlay .modal-body{display:flex;flex-direction:column;gap:0}
+  #modalOverlay .modal-body>.form-row:first-child{order:0}
+  #modalOverlay .modal-body>.form-group:has(#fTitle){order:1}
+  #modalOverlay .modal-body>.form-group:has(#fTemplate){order:2}
+  #modalOverlay .modal-body>.form-group:has(#fDisc){order:3}
+  #modalOverlay .modal-body>.form-group:has(#tagButtonsContainer){order:4}
+  #modalOverlay .modal-body>.form-group:has(#fTeoria){order:5;margin-bottom:8px}
+  #modalOverlay .modal-body>.module-library-details{order:6;margin-bottom:8px}
+  #modalOverlay .modal-body>.module-extra-fields:not(.module-library-details){order:7}
+  #tagButtonsContainer .tag-toggle.active-tag{opacity:1!important;box-shadow:0 0 0 2px rgba(22,65,148,.18);transform:translateY(-1px)}
   .module-material-toolbar { display:grid; grid-template-columns:minmax(240px,1fr) minmax(170px,210px) auto; gap:8px; align-items:center; }
   .module-material-list { display:flex; flex-direction:column; gap:6px; max-height:190px; overflow:auto; }
   .module-material-row { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; background:#fff; border:1px solid var(--border); border-radius:8px; padding:8px 9px; font-size:12px; }
