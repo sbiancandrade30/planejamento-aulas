@@ -4231,6 +4231,12 @@
         <input type="text" class="form-input" id="fTitle" placeholder="ex: Contato de selo e diagrama de comando">
       </div>
       <div class="form-group">
+        <label class="form-label">Modelo rápido</label>
+        <select class="form-input" id="fTemplate" onchange="applyModuleTemplate(this.value)">
+          <option value="">Escolher modelo...</option><option value="teoria">Teoria</option><option value="individual">Atividade individual</option><option value="grupo">Atividade em grupo</option><option value="quiz">Quiz</option><option value="trabalho">Trabalho</option><option value="retomada">Retomada</option><option value="continuidade">Continuação de conteúdo</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label class="form-label">Disciplina</label>
         <select class="form-input" id="fDisc" onchange="renderModuleMaterialPicker()">
         </select>
@@ -4285,14 +4291,15 @@
             <label class="form-label">Status da execução</label>
             <select class="form-input" id="fExecStatus">
               <option value="planejada">Planejada</option>
-              <option value="realizada">Realizada conforme planejado</option>
-              <option value="ajustes">Realizada com ajustes</option>
+              <option value="realizada">Realizada</option>
+              <option value="parcial">Realizada parcialmente</option>
+              <option value="remanejada">Remanejada</option>
               <option value="nao_realizada">Não realizada</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Ajustes / registro da execução</label>
-            <textarea class="form-input" id="fExecObs" placeholder="Ex.: troquei a atividade, avancei menos módulos, prática ficou para a próxima aula..."></textarea>
+            <label class="form-label">Ocorrências, ajustes e remanejamento</label>
+            <textarea class="form-input" id="fExecObs" placeholder="Registre apresentação prolongada, saída antecipada, falta de energia, mudança de horário, conteúdo transferido ou módulo parcialmente realizado..."></textarea>
           </div>
         </div>
       </details>
@@ -4805,7 +4812,7 @@
   </div>
   <div class="detail-body" id="alunoDetailBody"></div>
   <div class="detail-actions">
-    <button class="btn btn-outline aluno-report-btn" onclick="generateAlunoReportFromDetail()">??? Gerar relatério</button>
+    <button class="btn btn-outline aluno-report-btn" onclick="generateAlunoReportFromDetail()">Gerar relatório</button>
     <button class="btn btn-outline aluno-detail-edit-btn" onclick="editAlunoFromDetail()">Editar</button>
     <button class="btn btn-outline aluno-detail-delete-btn" style="color:var(--red);border-color:var(--red)" onclick="deleteAlunoFromDetail()">Excluir</button>
     <button class="btn btn-primary" onclick="closeAlunoDetail()">Fechar</button>
@@ -8087,7 +8094,7 @@ function generateAlunoReport(id) {
 <body>
   <div class="actions">
     <button class="close" onclick="window.close()">Fechar</button>
-    <button class="print" onclick="window.print()">Imprimir relatério</button>
+    <button class="print" onclick="window.print()">Imprimir relatório</button>
   </div>
   <main class="page">
     <header class="header">
@@ -8143,7 +8150,7 @@ function generateAlunoReport(id) {
 
   const reportWindow = window.open('', '_blank');
   if (!reportWindow) {
-    alert('O navegador bloqueou a abertura do relatério. Permita pop-ups para este arquivo e tente novamente.');
+    alert('O navegador bloqueou a abertura do relatório. Permita pop-ups para este arquivo e tente novamente.');
     return;
   }
   reportWindow.document.open();
@@ -9915,7 +9922,7 @@ function printOccurrenceGeneralReport() {
 <body>
   <div class="actions">
     <button class="close" onclick="window.close()">Fechar</button>
-    <button class="print" onclick="window.print()">Imprimir relatério</button>
+    <button class="print" onclick="window.print()">Imprimir relatório</button>
   </div>
   <main class="page">
     <header class="header">
@@ -9949,7 +9956,7 @@ function printOccurrenceGeneralReport() {
 
   const reportWindow = window.open('', '_blank');
   if (!reportWindow) {
-    alert('O navegador bloqueou a abertura do relatério. Permita pop-ups para este arquivo e tente novamente.');
+    alert('O navegador bloqueou a abertura do relatório. Permita pop-ups para este arquivo e tente novamente.');
     return;
   }
   reportWindow.document.open();
@@ -10264,7 +10271,7 @@ function renderInicio() {
           ${prioChip(t.priority||'baixa')}
         </div>`;
       }).join('')
-    : `<div class="dash-empty">Sem tarefas pendentes para hoje ??</div>`;
+    : `<div class="dash-empty">Sem tarefas pendentes para hoje</div>`;
 
   const printHtml = pendImpressao.length
     ? pendImpressao.map(({mod,modNum,dateFmt}) => `<div class="dash-print-item">
@@ -10873,9 +10880,11 @@ function renderPlanningConsult(kind = 'presencial') {
 }
 const MODULE_EXECUTION_STATUS = {
   planejada: 'Planejada',
-  realizada: 'Realizada conforme planejado',
-  ajustes: 'Realizada com ajustes',
-  nao_realizada: 'Não realizada'
+  realizada: 'Realizada',
+  parcial: 'Realizada parcialmente',
+  ajustes: 'Realizada parcialmente',
+  nao_realizada: 'Não realizada',
+  remanejada: 'Remanejada'
 };
 
 function moduleExecutionLabel(status) {
@@ -10884,7 +10893,8 @@ function moduleExecutionLabel(status) {
 
 function moduleExecutionClass(status) {
   if (status === 'realizada') return 'mod-exec-done';
-  if (status === 'ajustes') return 'mod-exec-adjusted';
+  if (status === 'ajustes' || status === 'parcial') return 'mod-exec-adjusted';
+  if (status === 'remanejada') return 'mod-exec-adjusted';
   if (status === 'nao_realizada') return 'mod-exec-notdone';
   return 'mod-exec-planned';
 }
@@ -11085,6 +11095,32 @@ function editModule() {
   document.getElementById('modalOverlay').classList.add('open');
   editingKey = currentDetailKey;
   renderModuleMaterialPicker();
+}
+let draggedPresencialKey=null;
+function movePresencialModule(sourceKey,targetDateKey,targetModule){
+  if(!sourceKey||sourceKey===`${targetDateKey}_${targetModule}`) return;
+  const source=state.modules[sourceKey]; if(!source) return;
+  const dates=getWeekDates(state.weekOffset).map(fmtDateKey);
+  const all=[];
+  dates.forEach(date=>{ for(let n=1;n<=8;n++){ const key=`${date}_${n}`; if(state.modules[key]) all.push({date,key,mod:state.modules[key]}); } });
+  const sourceIndex=all.findIndex(x=>x.key===sourceKey); if(sourceIndex<0) return;
+  const moving=all.splice(sourceIndex,1)[0];
+  let insert=all.findIndex(x=>x.date===targetDateKey && Number(x.key.split('_').pop())>=Number(targetModule));
+  if(insert<0) insert=all.filter(x=>x.date<targetDateKey).length;
+  all.splice(insert,0,moving);
+  dates.forEach(date=>{ for(let n=1;n<=8;n++) delete state.modules[`${date}_${n}`]; });
+  const perDay={}; all.forEach(item=>{ (perDay[item.date]??=[]).push(item.mod); });
+  Object.entries(perDay).forEach(([date,mods])=>mods.forEach((mod,i)=>{state.modules[`${date}_${i+1}`]=mod;}));
+  saveData(); render(); showToast('Módulo reorganizado e salvo.');
+}
+function handlePresencialDrop(event,dateKey,targetModule){
+  event.preventDefault(); event.stopPropagation();
+  const source=event.dataTransfer?.getData('text/plain')||draggedPresencialKey;
+  if(!source) return;
+  let target=Number(targetModule)||1;
+  const card=event.target.closest?.('.mod-card[data-key]');
+  if(card){ const r=card.getBoundingClientRect(); target=Number(card.dataset.key.split('_').pop())+(event.clientY>r.top+r.height/2?1:0); }
+  movePresencialModule(source,dateKey,target); draggedPresencialKey=null;
 }
 
 function duplicateModule() {
@@ -11342,6 +11378,24 @@ function getEadTipos(mod) {
   const tipos = Array.isArray(mod?.tipos) ? mod.tipos : [mod?.tipo || 'leitura'];
   return tipos.filter(Boolean);
 }
+function applyModuleTemplate(template){
+  const presets={
+    teoria:{title:'Aula teórica',teoria:'Apresentação e explicação dos conceitos principais.',tag:'teoria'},
+    individual:{title:'Atividade individual',ativ:'Atividade individual para fixação do conteúdo.',tag:'atividade'},
+    grupo:{title:'Atividade em grupo',ativ:'Atividade colaborativa em grupo.',tag:'atividade'},
+    quiz:{title:'Quiz de revisão',ativ:'Quiz para verificar a compreensão do conteúdo.',tag:'avaliacao'},
+    trabalho:{title:'Trabalho',aval:'Orientações e entrega do trabalho.',tag:'trabalho'},
+    retomada:{title:'Retomada de conteúdo',teoria:'Retomada dos pontos principais e esclarecimento de dúvidas.',tag:'teoria'},
+    continuidade:{title:'Continuação de conteúdo',obs:'Continuação do módulo anterior.',tag:'teoria'}
+  };
+  const p=presets[template]; if(!p) return;
+  document.getElementById('fTitle').value=p.title;
+  if(p.teoria) document.getElementById('fTeoria').value=p.teoria;
+  if(p.ativ) document.getElementById('fAtiv').value=p.ativ;
+  if(p.aval) document.getElementById('fAval').value=p.aval;
+  if(p.obs) document.getElementById('fObs').value=p.obs;
+  document.querySelectorAll('#tagButtonsContainer .tag-toggle').forEach(b=>b.classList.toggle('active-tag',b.dataset.tag===p.tag));
+}
 function setEadTipos(tipos) {
   const selected = new Set(tipos && tipos.length ? tipos : ['leitura']);
   document.querySelectorAll('.ead-type-toggle').forEach(btn => {
@@ -11396,6 +11450,8 @@ function renderEad() {
   dates.forEach((date, di) => {
     const col = document.createElement('div');
     col.className = 'day-col';
+    col.addEventListener('dragover', e=>e.preventDefault());
+    col.addEventListener('drop', e=>handlePresencialDrop(e,dateKey,dayModuleCount+1));
     const isT = isToday(date);
     col.innerHTML = `<div class="day-head ${isT?'day-today':''}">
       <div class="day-name">${DAY_NAMES[di]}</div>
@@ -11410,6 +11466,12 @@ function renderEad() {
       if (mod) {
         card.className = 'ead-card' + (planningHasActiveFilters('ead') && !planningModuleMatches('ead', mod) ? ' planning-filter-muted' : '');
         card.dataset.key = key;
+        card.draggable = true;
+        card.addEventListener('dragstart', e=>{ draggedPresencialKey=key; e.dataTransfer.setData('text/plain',key); e.dataTransfer.effectAllowed='move'; card.classList.add('dragging'); });
+        card.addEventListener('dragend', ()=>{ draggedPresencialKey=null; card.classList.remove('dragging'); });
+        card.addEventListener('dragover', e=>{e.preventDefault(); e.stopPropagation(); card.classList.add('drop-target');});
+        card.addEventListener('dragleave', ()=>card.classList.remove('drop-target'));
+        card.addEventListener('drop', e=>{card.classList.remove('drop-target'); handlePresencialDrop(e,dateKey,m);});
         const tipos = getEadTipos(mod);
         const tagsHtml = tipos.map(tipo => `<span class="tag tag-${tipo}">${TIPO_LABELS[tipo] || tipo}</span>`).join('');
         const discShort = mod.disc || 'Livre / Curso externo';
