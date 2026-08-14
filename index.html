@@ -11135,7 +11135,10 @@ function movePresencialModule(sourceKey,targetDateKey,targetModule){
   all.splice(insert,0,moving);
   dates.forEach(date=>{ for(let n=1;n<=8;n++) delete state.modules[`${date}_${n}`]; });
   const perDay={}; all.forEach(item=>{ (perDay[item.date]??=[]).push(item.mod); });
-  Object.entries(perDay).forEach(([date,mods])=>mods.forEach((mod,i)=>{state.modules[`${date}_${i+1}`]=mod;}));
+  Object.entries(perDay).forEach(([date,mods])=>{
+    if(mods.length>getClassModuleCountForDate(date)) setClassModuleCountForDate(date,mods.length);
+    mods.forEach((mod,i)=>{state.modules[`${date}_${i+1}`]=mod;});
+  });
   saveData(); render(); showToast('Módulo reorganizado e salvo.');
 }
 function handlePresencialDrop(event,dateKey,targetModule){
