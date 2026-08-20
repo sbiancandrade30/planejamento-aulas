@@ -153,6 +153,9 @@
   .mod-card.active { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(45,91,227,.1); }
   .mod-card.empty { border-style: dashed; background: transparent; display: flex; align-items: center; justify-content: center; min-height: 64px; color: var(--text3); font-size: 12px; gap: 4px; }
   .mod-card.empty:hover { border-color: var(--border2); color: var(--text2); background: var(--surface2); }
+  .day-col.drag-over { outline: 2px dashed rgba(45,91,227,.45); outline-offset: 3px; background: rgba(238,241,253,.35); }
+  .mod-card.dragging { opacity: .45; }
+  .mod-card.drop-target { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(45,91,227,.16); }
   .mod-num { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); margin-bottom: 3px; }
   .mod-title { font-size: 12px; font-weight: 500; color: var(--text); line-height: 1.4; margin-bottom: 7px; }
   .mod-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px; }
@@ -10939,8 +10942,10 @@ function render() {
     const dateKey = fmtDateKey(date);
     const dayModuleCount = getVisibleClassModuleCountForDate(date);
     col.dataset.dateKey = dateKey;
-    col.addEventListener('dragover', e=>e.preventDefault());
-    col.addEventListener('drop', e=>handlePresencialDrop(e,dateKey,dayModuleCount+1));
+    col.addEventListener('dragenter', e=>{e.preventDefault(); col.classList.add('drag-over');});
+    col.addEventListener('dragover', e=>{e.preventDefault(); e.dataTransfer.dropEffect='move'; col.classList.add('drag-over');});
+    col.addEventListener('dragleave', e=>{if(!col.contains(e.relatedTarget)) col.classList.remove('drag-over');});
+    col.addEventListener('drop', e=>{col.classList.remove('drag-over'); handlePresencialDrop(e,dateKey,dayModuleCount+1);});
     col.innerHTML = `<div class="day-head ${isT?'day-today':''}">
       <div class="day-name">${DAY_NAMES[di]}</div>
       <div class="day-date">${fmtDate(date)}</div>
@@ -10956,9 +10961,9 @@ function render() {
         card.draggable = true;
         card.addEventListener('dragstart', e=>{ draggedPresencialKey=key; e.dataTransfer.setData('text/plain',key); e.dataTransfer.effectAllowed='move'; card.classList.add('dragging'); });
         card.addEventListener('dragend', ()=>{ draggedPresencialKey=null; card.classList.remove('dragging'); });
-        card.addEventListener('dragover', e=>{e.preventDefault(); e.stopPropagation(); card.classList.add('drop-target');});
+        card.addEventListener('dragover', e=>{e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect='move'; card.classList.add('drop-target');});
         card.addEventListener('dragleave', ()=>card.classList.remove('drop-target'));
-        card.addEventListener('drop', e=>{card.classList.remove('drop-target'); handlePresencialDrop(e,dateKey,m);});
+        card.addEventListener('drop', e=>{card.classList.remove('drop-target'); e.stopPropagation(); handlePresencialDrop(e,dateKey,m);});
 
         const tiposAula = getTiposAula();
         const tagsHtml = (mod.tags||[]).map(t => {
@@ -10990,7 +10995,10 @@ function render() {
       } else {
         card.className = 'mod-card empty';
         card.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2v8M2 6h8"/></svg> Módulo ${m}`;
-        card.addEventListener('click', () => openModal(dateKey, m));
+        card.addEventListener('dragover', e=>{if(!draggedPresencialKey)return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect='move'; card.classList.add('drop-target');});
+        card.addEventListener('dragleave', ()=>card.classList.remove('drop-target'));
+        card.addEventListener('drop', e=>{e.preventDefault(); e.stopPropagation(); card.classList.remove('drop-target'); handlePresencialDrop(e,dateKey,m);});
+        card.addEventListener('click', () => { if(suppressPresencialClick)return; openModal(dateKey, m); });
       }
       col.appendChild(card);
     }
@@ -11223,27 +11231,38 @@ function updateExecutionStatus(value){
   showToast('Status do módulo atualizado.');
 }
 let draggedPresencialKey=null;
+let suppressPresencialClick=false;
 function movePresencialModule(sourceKey,targetDateKey,targetModule){
-  if(!sourceKey||sourceKey===`${targetDateKey}_${targetModule}`) return;
-  const source=state.modules[sourceKey]; if(!source) return;
-  const dates=getWeekDates(state.weekOffset).map(fmtDateKey);
-  const all=[];
-  dates.forEach(date=>{ for(let n=1;n<=8;n++){ const key=`${date}_${n}`; if(state.modules[key]) all.push({date,key,mod:state.modules[key]}); } });
-  const sourceIndex=all.findIndex(x=>x.key===sourceKey); if(sourceIndex<0) return;
-  const moving=all.splice(sourceIndex,1)[0];
-  let insert=all.findIndex(x=>x.date===targetDateKey && Number(x.key.split('_').pop())>=Number(targetModule));
-  if(insert<0) insert=all.filter(x=>x.date<targetDateKey).length;
-  all.splice(insert,0,moving);
-  dates.forEach(date=>{ for(let n=1;n<=8;n++) delete state.modules[`${date}_${n}`]; });
-  const perDay={}; all.forEach(item=>{ (perDay[item.date]??=[]).push(item.mod); });
-  Object.entries(perDay).forEach(([date,mods])=>{
-    if(mods.length>getClassModuleCountForDate(date)) setClassModuleCountForDate(date,mods.length);
-    mods.forEach((mod,i)=>{state.modules[`${date}_${i+1}`]=mod;});
+  if(!sourceKey||!targetDateKey) return;
+  const sourceDateKey=sourceKey.slice(0,sourceKey.lastIndexOf('_'));
+  const sourceNumber=Number(sourceKey.slice(sourceKey.lastIndexOf('_')+1));
+  if(!sourceDateKey||!Number.isFinite(sourceNumber)) return;
+  const readDay=(dateKey)=>Array.from({length:8},(_,i)=>state.modules[`${dateKey}_${i+1}`]).filter(Boolean);
+  const sourceDay=readDay(sourceDateKey);
+  const sourceModule=state.modules[sourceKey];
+  const sourceIndex=sourceDay.indexOf(sourceModule);
+  if(!sourceModule||sourceIndex<0) return;
+  const targetDay=sourceDateKey===targetDateKey?sourceDay:readDay(targetDateKey);
+  if(sourceDateKey!==targetDateKey&&targetDay.length>=8){showToast('Este dia já possui 8 módulos. Remova ou mova um antes de incluir outro.',true);return;}
+  const moving=sourceDay.splice(sourceIndex,1)[0];
+  const targetIndex=Math.max(0,Math.min(Number(targetModule||1)-1,targetDay.length));
+  targetDay.splice(targetIndex,0,moving);
+  [sourceDateKey,targetDateKey].filter((key,index,list)=>list.indexOf(key)===index).forEach(dateKey=>{
+    for(let n=1;n<=8;n++) delete state.modules[`${dateKey}_${n}`];
   });
-  saveData(); render(); showToast('Módulo reorganizado e salvo.');
+  const writeDay=(dateKey,mods)=>{
+    if(mods.length>getClassModuleCountForDate(dateKey)) setClassModuleCountForDate(dateKey,mods.length);
+    mods.slice(0,8).forEach((mod,index)=>{state.modules[`${dateKey}_${index+1}`]=mod;});
+  };
+  if(sourceDateKey===targetDateKey) writeDay(sourceDateKey,targetDay);
+  else { writeDay(sourceDateKey,sourceDay); writeDay(targetDateKey,targetDay); }
+  saveData(); render(); showToast('Módulo movido e salvo.');
 }
 function handlePresencialDrop(event,dateKey,targetModule){
   event.preventDefault(); event.stopPropagation();
+  suppressPresencialClick=true;
+  setTimeout(()=>{suppressPresencialClick=false;},500);
+  document.querySelectorAll('.day-col.drag-over,.mod-card.drop-target').forEach(el=>el.classList.remove('drag-over','drop-target'));
   dateKey = event.currentTarget?.dataset?.dateKey || dateKey;
   const source=event.dataTransfer?.getData('text/plain')||draggedPresencialKey;
   if(!source) return;
