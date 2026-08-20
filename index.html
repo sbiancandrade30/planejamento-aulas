@@ -11027,6 +11027,7 @@ function openDetail(key) {
   setField('detailObs', mod.obs);
   document.getElementById('detailExecStatus').value = mod.executionStatus || 'planejada';
   setField('detailExecObs', mod.executionObs || '');
+  compactEmptyDetailSections();
   const materialsWrap = document.getElementById('detailMaterials');
   if (materialsWrap) materialsWrap.innerHTML = moduleMaterialsHtml(mod.materials || []);
 
@@ -11115,6 +11116,12 @@ function editModule() {
   document.getElementById('modalOverlay').classList.add('open');
   editingKey = currentDetailKey;
   renderModuleMaterialPicker();
+}
+function compactEmptyDetailSections(){
+  ['detailTeoria','detailAval','detailAtiv','detailObs','detailExecObs'].forEach(id=>{
+    const el=document.getElementById(id), section=el?.closest('.detail-section');
+    if(section) section.style.display=el?.classList.contains('empty-field')?'none':'';
+  });
 }
 function updateExecutionStatus(value){
   if(!currentDetailKey||!state.modules[currentDetailKey]) return;
