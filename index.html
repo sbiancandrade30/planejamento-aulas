@@ -11163,6 +11163,12 @@ function printSelectedPlanning(mode='week'){
   const filledText=(value)=>{const raw=String(value||'').trim();return raw?escapeHtml(raw).replace(/\n/g,'<br>'):'';};
   const tags=(mod)=>Array.isArray(mod.tags)?mod.tags.filter(Boolean):[];
   const tagHtml=(mod)=>tags(mod).map(tag=>`<span class="print-tag">${escapeHtml(tag)}</span>`).join('');
+  const weeklyTagLabels={teoria:'T',atividade:'Atv',prova:'P',trabalho:'Trab',gabarito:'Gab',video:'V','material de estudo':'ME',aula:'A',outro:'O',retomada:'Ret',continuidade:'Cont'};
+  const weeklyTagHtml=(mod)=>tags(mod).map(tag=>{
+    const normalized=normalizeMaterialText(tag);
+    const label=weeklyTagLabels[normalized]||String(tag).trim().slice(0,4);
+    return `<span class="print-tag" title="${escapeHtml(tag)}">${escapeHtml(label)}</span>`;
+  }).join('');
   const status=(mod)=>mod.executionStatus||'planejada';
   const statusClass=(mod)=>status(mod).replace(/[^a-z_]/g,'-');
   const assessmentTags=['prova','trabalho','gabarito','avaliacao','avaliação'];
@@ -11175,9 +11181,7 @@ function printSelectedPlanning(mode='week'){
   };
   const moduleShortHtml=(mod,i)=>{
     if(!mod) return '<article class="week-module week-module-empty" aria-hidden="true"></article>';
-    const details=[['Conteúdo',mod.teoria],['Atividade',mod.ativ],['Avaliação',mod.aval],['Observações',mod.obs]].filter(([,value])=>String(value||'').trim());
-    const materials=(Array.isArray(mod.materials)?mod.materials:[]).map(material=>String(material.title||'').trim()).filter(Boolean);
-    return `<article class="week-module"><div class="week-module-top"><strong>Módulo ${i+1}</strong></div><h3>${escapeHtml(mod.title||'')}</h3>${mod.disc?`<div class="print-muted">${escapeHtml(mod.disc)}</div>`:''}${tagHtml(mod)?`<div class="print-tags">${tagHtml(mod)}</div>`:''}${details.map(([label,value])=>`<div class="week-detail-line"><b>${label}:</b> ${filledText(value)}</div>`).join('')}${materials.length?`<div class="week-detail-line"><b>Materiais:</b> ${escapeHtml(materials.join(' · '))}</div>`:''}</article>`;
+    return `<article class="week-module"><div class="week-module-top"><strong>Módulo ${i+1}</strong></div><h3>${escapeHtml(mod.title||'')}</h3>${mod.disc?`<div class="print-muted">${escapeHtml(mod.disc)}</div>`:''}${weeklyTagHtml(mod)?`<div class="print-tags">${weeklyTagHtml(mod)}</div>`:''}</article>`;
   };
   const selectedDates=selected.map(i=>({i,d:dates[i]}));
   const weeklySlotCount=Math.max(7,...selectedDates.map(({d})=>Math.max(getClassModuleCountForDate(d),existingModuleCountFor(d))));
