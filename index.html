@@ -5812,6 +5812,17 @@ function getClassModuleCountForDate(dateOrKey) {
   if (!schedule || !schedule.ativo) return 0;
   return Math.max(0, Number(schedule.modulos) || 0);
 }
+function getExistingModuleCountForDate(dateOrKey) {
+  const dateKey = dateOrKey instanceof Date ? fmtDateKey(dateOrKey) : String(dateOrKey || '');
+  return Object.keys(state.modules || {}).reduce((max, key) => {
+    if (!key.startsWith(`${dateKey}_`)) return max;
+    const number = Number(key.slice(dateKey.length + 1));
+    return Number.isFinite(number) ? Math.max(max, number) : max;
+  }, 0);
+}
+function getVisibleClassModuleCountForDate(dateOrKey) {
+  return Math.max(getClassModuleCountForDate(dateOrKey), getExistingModuleCountForDate(dateOrKey));
+}
 function setClassModuleCountForDate(dateKey, currentCount) {
   if (isProfessorMode()) {
     showToast('Apenas o painel administrativo pode ajustar os módulos do dia.');
@@ -10926,7 +10937,7 @@ function render() {
     col.className = 'day-col';
     const isT = isToday(date);
     const dateKey = fmtDateKey(date);
-    const dayModuleCount = getClassModuleCountForDate(date);
+    const dayModuleCount = getVisibleClassModuleCountForDate(date);
     col.dataset.dateKey = dateKey;
     col.addEventListener('dragover', e=>e.preventDefault());
     col.addEventListener('drop', e=>handlePresencialDrop(e,dateKey,dayModuleCount+1));
@@ -11134,7 +11145,19 @@ function printSelectedPlanning(mode='week'){
   const selected=[...document.querySelectorAll('#planningPrintDays input:checked')].map(x=>Number(x.value));
   if(!selected.length){ showToast('Selecione pelo menos um dia para imprimir.',true); return; }
   const dates=getWeekDates(state.weekOffset);
-  const modulesFor=(date)=>{const key=fmtDateKey(date), total=getClassModuleCountForDate(date);return Array.from({length:total},(_,i)=>state.modules[`${key}_${i+1}`]).filter(Boolean);};
+  const existingModuleCountFor=(date)=>{
+    const dateKey=fmtDateKey(date);
+    return Object.keys(state.modules||{}).reduce((max,key)=>{
+      if(!key.startsWith(`${dateKey}_`)) return max;
+      const number=Number(key.slice(dateKey.length+1));
+      return Number.isFinite(number)?Math.max(max,number):max;
+    },0);
+  };
+  const actualModulesFor=(date)=>{
+    const key=fmtDateKey(date);
+    const total=Math.max(0,getClassModuleCountForDate(date),existingModuleCountFor(date));
+    return Array.from({length:total},(_,i)=>state.modules[`${key}_${i+1}`]).filter(Boolean);
+  };
   const onlyDaily=mode==='daily';
   const text=(value,empty='Não preenchido')=>escapeHtml(String(value||'').trim()||empty).replace(/\n/g,'<br>');
   const filledText=(value)=>{const raw=String(value||'').trim();return raw?escapeHtml(raw).replace(/\n/g,'<br>'):'';};
@@ -11144,25 +11167,28 @@ function printSelectedPlanning(mode='week'){
   const statusClass=(mod)=>status(mod).replace(/[^a-z_]/g,'-');
   const assessmentTags=['prova','trabalho','gabarito','avaliacao','avaliação'];
   const isAssessment=(mod)=>tags(mod).some(tag=>assessmentTags.includes(normalizeMaterialText(tag)));
-  const printLogo=localStorage.getItem('oficial_app_logo')||DEFAULT_APP_LOGO;
+  const printLogo=new URL('senai-planner-logo.png',document.baseURI).href;
   const materialsHtml=(mod)=>{
     const materials=Array.isArray(mod.materials)?mod.materials:[];
     if(!materials.length) return '';
     return `<ul class="print-list">${materials.map(material=>`<li>${escapeHtml(material.title||'Material da Biblioteca')}${material.origem?` <span class="print-muted">· ${escapeHtml(material.origem)}</span>`:''}</li>`).join('')}</ul>`;
   };
   const moduleShortHtml=(mod,i)=>{
+    if(!mod) return '<article class="week-module week-module-empty" aria-hidden="true"></article>';
     const details=[['Conteúdo',mod.teoria],['Atividade',mod.ativ],['Avaliação',mod.aval],['Observações',mod.obs]].filter(([,value])=>String(value||'').trim());
     const materials=(Array.isArray(mod.materials)?mod.materials:[]).map(material=>String(material.title||'').trim()).filter(Boolean);
     return `<article class="week-module"><div class="week-module-top"><strong>Módulo ${i+1}</strong></div><h3>${escapeHtml(mod.title||'')}</h3>${mod.disc?`<div class="print-muted">${escapeHtml(mod.disc)}</div>`:''}${tagHtml(mod)?`<div class="print-tags">${tagHtml(mod)}</div>`:''}${details.map(([label,value])=>`<div class="week-detail-line"><b>${label}:</b> ${filledText(value)}</div>`).join('')}${materials.length?`<div class="week-detail-line"><b>Materiais:</b> ${escapeHtml(materials.join(' · '))}</div>`:''}</article>`;
   };
   const selectedDates=selected.map(i=>({i,d:dates[i]}));
-  const overview=`<section class="weekly-page"><header class="print-header"><div><h1>Planejamento semanal</h1><p>${escapeHtml(document.getElementById('weekLabel')?.textContent||'')}</p></div><div class="print-brand"><img class="print-logo" src="${escapeHtml(printLogo)}" alt="Logo do Planner"></div></header><div class="week-grid">${selectedDates.map(({i,d})=>{const mods=modulesFor(d);return `<article class="week-column"><div class="week-column-head"><h2>${DAY_NAMES[i]}</h2><span>${fmtDate(d)}</span></div>${mods.map((m,index)=>moduleShortHtml(m,index)).join('')}</article>`}).join('')}</div></section>`;
+  const weeklySlotCount=Math.max(7,...selectedDates.map(({d})=>Math.max(getClassModuleCountForDate(d),existingModuleCountFor(d))));
+  const weeklySlotsFor=(date)=>{const key=fmtDateKey(date);return Array.from({length:weeklySlotCount},(_,i)=>state.modules[`${key}_${i+1}`]);};
+  const overview=`<section class="weekly-page"><header class="print-header"><div><h1>Planejamento semanal</h1><p>${escapeHtml(document.getElementById('weekLabel')?.textContent||'')}</p></div><div class="print-brand"><img class="print-logo" src="${escapeHtml(printLogo)}" alt="Logo SENAI Planner"></div></header><div class="week-grid">${selectedDates.map(({i,d})=>{const slots=weeklySlotsFor(d);return `<article class="week-column"><div class="week-column-head"><h2>${DAY_NAMES[i]}</h2><span>${fmtDate(d)}</span></div>${slots.map((m,index)=>moduleShortHtml(m,index)).join('')}</article>`}).join('')}</div></section>`;
   const dailyModuleHtml=(mod,index)=>{
     const assessment=isAssessment(mod);
     const assessmentNames=tags(mod).filter(tag=>assessmentTags.includes(normalizeMaterialText(tag))).join(', ');
     return `<article class="daily-module"><div class="daily-module-head"><div><span class="print-kicker">MÓDULO ${index+1}${mod.disc?' · '+escapeHtml(mod.disc):''}</span><h2>${escapeHtml(mod.title||'')}</h2></div></div><div class="daily-grid"><section class="daily-block"><h3>O que será feito</h3><p>${filledText(mod.teoria)}</p></section><section class="daily-block"><h3>Atividade prática</h3><p>${filledText(mod.ativ)}</p></section><section class="daily-block ${assessment?'assessment-block':''}"><h3>Avaliação / entregável${assessment?' · '+escapeHtml(assessmentNames):''}</h3><p>${filledText(mod.aval)}</p></section><section class="daily-block"><h3>Materiais da Biblioteca</h3>${materialsHtml(mod)}</section><section class="daily-block"><h3>Observações</h3><p>${filledText(mod.obs)}</p></section><section class="daily-block"><h3>Ocorrências, ajustes e remanejamento</h3><p>${filledText(mod.executionObs)}</p></section></div></article>`;
   };
-  const daily=selectedDates.map(({i,d})=>{const mods=modulesFor(d);const content=mods.length?mods.map(dailyModuleHtml).join(''):'<div class="daily-empty">Nenhum módulo cadastrado neste dia.</div>';return `<section class="daily-page"><header class="print-header"><div><h1>${DAY_NAMES[i]} - ${fmtDate(d)}</h1><p>Planejamento detalhado do dia</p></div><div class="print-brand"><img class="print-logo" src="${escapeHtml(printLogo)}" alt="Logo do Planner"></div></header>${content}</section>`}).join('');
+  const daily=selectedDates.map(({i,d})=>{const mods=actualModulesFor(d);const content=mods.length?mods.map(dailyModuleHtml).join(''):'<div class="daily-empty">Nenhum módulo cadastrado neste dia.</div>';return `<section class="daily-page"><header class="print-header"><div><h1>${DAY_NAMES[i]} - ${fmtDate(d)}</h1><p>Planejamento detalhado do dia</p></div><div class="print-brand"><img class="print-logo" src="${escapeHtml(printLogo)}" alt="Logo SENAI Planner"></div></header>${content}</section>`}).join('');
   const documentTitle=onlyDaily?'Planejamento diário':'Planejamento semanal';
   const documentBody=onlyDaily?daily:overview;
   const w=window.open('','_blank'); if(!w){showToast('Permita pop-ups para gerar a impressão.',true);return;} w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${documentTitle}</title><style>
