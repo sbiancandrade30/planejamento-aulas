@@ -3757,6 +3757,7 @@
           <span id="syncLabel">Não conectado</span>
         </div>
         <button type="button" class="btn btn-outline" id="modalBtnPresencial" onclick="openPresencialModuleModalFromToolbar(event)">+ Novo módulo</button>
+        <button type="button" class="btn btn-outline" onclick="openPlanningPrintDialog()">Imprimir planejamento</button>
         <button class="btn btn-outline btn-professor-preview" id="btnPreviewProfessor" onclick="visualizarComoProfessor()" title="Ver como ficará a versão compartilhada com o professor">Visualizar como professor</button>
         <button class="btn btn-outline btn-professor-generate" id="btnGerarProfessor" onclick="gerarVersaoProfessor()" title="Gerar um HTML de visualização para compartilhar">Gerar versão para professor</button>
         <button class="btn btn-outline" id="btnVoltarProfessorPreview" onclick="voltarDaVisualizacaoProfessor()">← Voltar ao painel completo</button>
@@ -11117,9 +11118,30 @@ function editModule() {
   editingKey = currentDetailKey;
   renderModuleMaterialPicker();
 }
+function openPlanningPrintDialog(){
+  let overlay=document.getElementById('planningPrintOverlay');
+  if(!overlay){
+    overlay=document.createElement('div'); overlay.id='planningPrintOverlay'; overlay.className='modal-overlay';
+    overlay.innerHTML='<div class="modal" style="width:min(520px,calc(100vw - 28px))"><div class="modal-head"><h2>Imprimir planejamento</h2><button class="close-btn" type="button" onclick="closePlanningPrintDialog()">×</button></div><div class="modal-body"><p style="font-size:12px;color:var(--text2);margin-bottom:12px">A página geral da semana será incluída. Selecione também os dias que deseja imprimir em páginas separadas.</p><div id="planningPrintDays" style="display:grid;gap:8px"></div></div><div class="modal-foot"><button class="btn btn-outline" onclick="closePlanningPrintDialog()">Cancelar</button><button class="btn btn-primary" onclick="printSelectedPlanning()">Gerar impressão</button></div></div>';
+    document.body.appendChild(overlay);
+  }
+  const dates=getWeekDates(state.weekOffset), wrap=document.getElementById('planningPrintDays');
+  wrap.innerHTML=dates.map((d,i)=>`<label class="check-line"><input type="checkbox" value="${i}"> ${DAY_NAMES[i]} - ${fmtDate(d)}</label>`).join('');
+  overlay.classList.add('open');
+}
+function closePlanningPrintDialog(){ document.getElementById('planningPrintOverlay')?.classList.remove('open'); }
+function printSelectedPlanning(){
+  const selected=[...document.querySelectorAll('#planningPrintDays input:checked')].map(x=>Number(x.value));
+  const dates=getWeekDates(state.weekOffset);
+  const modulesFor=(date)=>{const key=fmtDateKey(date), total=getClassModuleCountForDate(date);return Array.from({length:total},(_,i)=>state.modules[`${key}_${i+1}`]).filter(Boolean);};
+  const row=(mod,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(mod.title||'Sem título')}</td><td>${escapeHtml(mod.disc||'')}</td><td>${escapeHtml(moduleExecutionLabel(mod.executionStatus||'planejada'))}</td><td>${escapeHtml(mod.teoria||mod.ativ||mod.obs||'')}</td></tr>`;
+  const overview=`<section><h2>Planejamento semanal</h2><p>${escapeHtml(document.getElementById('weekLabel')?.textContent||'')}</p><table><thead><tr><th>Dia</th><th>Módulo</th><th>Título</th><th>Disciplina</th><th>Status</th></tr></thead><tbody>${dates.flatMap((d,di)=>modulesFor(d).map((m,i)=>`<tr><td>${DAY_NAMES[di]}</td><td>${i+1}</td><td>${escapeHtml(m.title||'Sem título')}</td><td>${escapeHtml(m.disc||'')}</td><td>${escapeHtml(moduleExecutionLabel(m.executionStatus||'planejada'))}</td></tr>`)).join('')}</tbody></table></section>`;
+  const daily=selected.map(di=>{const d=dates[di], mods=modulesFor(d);return `<section class="page-break"><h2>${DAY_NAMES[di]} - ${fmtDate(d)}</h2><table><thead><tr><th>Módulo</th><th>Título</th><th>Disciplina</th><th>Status</th><th>Descrição</th></tr></thead><tbody>${mods.map(row).join('')}</tbody></table></section>`}).join('');
+  const w=window.open('','_blank'); if(!w){showToast('Permita pop-ups para gerar a impressão.',true);return;} w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Planejamento semanal</title><style>body{font-family:Arial,sans-serif;color:#111;margin:28px;font-size:12px}h2{margin:0 0 6px}p{color:#555}section{margin-bottom:28px}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #bbb;padding:7px;text-align:left;vertical-align:top}th{background:#eef2f7}.page-break{page-break-before:always}@media print{.page-break{break-before:page}}</style></head><body>${overview}${daily}</body></html>`); w.document.close(); w.focus(); setTimeout(()=>w.print(),250); closePlanningPrintDialog();
+}
 function compactEmptyDetailSections(){
   ['detailTeoria','detailAval','detailAtiv','detailObs','detailExecObs'].forEach(id=>{
-    const el=document.getElementById(id), section=el?.closest('.detail-section');
+    const el=document.getElementById(id), section=id==='detailExecObs'?el?.parentElement:el?.closest('.detail-section');
     if(section) section.style.display=el?.classList.contains('empty-field')?'none':'';
   });
 }
