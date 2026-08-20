@@ -11172,11 +11172,13 @@ function printSelectedPlanning(mode='week'){
   const tags=(mod)=>Array.isArray(mod.tags)?mod.tags.filter(Boolean):[];
   const tagHtml=(mod)=>tags(mod).map(tag=>`<span class="print-tag">${escapeHtml(tag)}</span>`).join('');
   const weeklyTagLabels={teoria:'Teoria',atividade:'Atividade',prova:'Prova',trabalho:'Trabalho',gabarito:'Gabarito',video:'Vídeo','material de estudo':'Material',aula:'Aula',outro:'Outro',retomada:'Retomada',continuidade:'Continuação'};
+  const weeklyTagColors={teoria:'#1d4d9b',atividade:'#12b76a',prova:'#f04438',trabalho:'#f79009',gabarito:'#6941c6',video:'#b692f6','material de estudo':'#667085',aula:'#1d4d9b',outro:'#98a2b3',retomada:'#0e9384',continuidade:'#0e9384'};
   const weeklyTagHtml=(mod)=>tags(mod).map(tag=>{
     const normalized=normalizeMaterialText(tag);
     const typeClass=normalized.replace(/[^a-z0-9]+/g,'-');
     const label=weeklyTagLabels[normalized]||String(tag).trim();
-    return `<span class="print-type-chip type-${typeClass}" title="${escapeHtml(tag)}"><span class="print-type-dot"></span>${escapeHtml(label)}</span>`;
+    const color=weeklyTagColors[normalized]||'#667085';
+    return `<span class="print-type-chip type-${typeClass}" style="color:${color};border-color:${color};background:${hexToRgba(color,0.08)}" title="${escapeHtml(tag)}"><span class="print-type-dot" style="background:${color}"></span>${escapeHtml(label)}</span>`;
   }).join('');
   const disciplinePalette=['#1d4d9b','#0e9384','#b54708','#6941c6','#c11574','#027a48','#b42318','#175cd3','#087443','#667085'];
   const disciplineColor=(discipline)=>{
