@@ -11178,14 +11178,25 @@ function printSelectedPlanning(mode='week'){
     const typeClass=normalized.replace(/[^a-z0-9]+/g,'-');
     const label=weeklyTagLabels[normalized]||String(tag).trim();
     const color=weeklyTagColors[normalized]||'#667085';
-    return `<span class="print-type-chip type-${typeClass}" style="color:${color};border-color:${color};background:${hexToRgba(color,0.08)}" title="${escapeHtml(tag)}"><span class="print-type-dot" style="background:${color}"></span>${escapeHtml(label)}</span>`;
+    return `<span class="print-type-chip type-${typeClass}" title="${escapeHtml(tag)}"><span class="print-type-dot" style="background:${color}"></span>${escapeHtml(label)}</span>`;
   }).join('');
-  const disciplinePalette=['#1d4d9b','#0e9384','#b54708','#6941c6','#c11574','#027a48','#b42318','#175cd3','#087443','#667085'];
+  const disciplineColors={
+    'praticas inovadoras':'#eab308',
+    'tecnologia do plastico':'#12b76a',
+    'gestao da qualidade':'#f97316',
+    'fundamentos da eletromecanica':'#2563eb',
+    'processos de transformacao de termoplasticos e acabamento':'#d9468b',
+    'processos de transformacao de termoplasticos':'#d9468b',
+    'ensaios':'#7f56d9',
+    'saude e seguranca do trabalho':'#14b8a6',
+    'fundamentos da comunicacao e informacao':'#2563eb',
+    'relacoes socioprofissionais, cidadania e etica':'#eab308',
+    'planejamento e organizacao do trabalho':'#d9468b',
+    'raciocinio logico e analise de dados':'#12b76a',
+    'transformacao digital no setor industrial':'#f97316'
+  };
   const disciplineColor=(discipline)=>{
-    const value=String(discipline||'').trim();
-    let hash=0;
-    for(let i=0;i<value.length;i++) hash=((hash<<5)-hash)+value.charCodeAt(i);
-    return disciplinePalette[Math.abs(hash)%disciplinePalette.length];
+    return disciplineColors[normalizeMaterialText(discipline)]||'#667085';
   };
   const status=(mod)=>mod.executionStatus||'planejada';
   const statusClass=(mod)=>status(mod).replace(/[^a-z_]/g,'-');
@@ -11199,9 +11210,18 @@ function printSelectedPlanning(mode='week'){
     if(!materials.length) return '';
     return `<ul class="print-list">${materials.map(material=>`<li>${escapeHtml(material.title||'Material da Biblioteca')}${material.origem?` <span class="print-muted">· ${escapeHtml(material.origem)}</span>`:''}</li>`).join('')}</ul>`;
   };
+  const weeklyDisciplineLabels={
+    'processos de transformacao de termoplasticos e acabamento':'Processos de Termoplásticos',
+    'processos de transformacao de termoplasticos':'Processos de Termoplásticos'
+  };
+  const weeklyDisciplineLabel=(discipline)=>{
+    const raw=String(discipline||'').trim();
+    return weeklyDisciplineLabels[normalizeMaterialText(raw)]||raw;
+  };
   const moduleShortHtml=(mod,i)=>{
     if(!mod) return '<article class="week-module week-module-empty" aria-hidden="true"></article>';
-    return `<article class="week-module"><div class="week-module-top"><strong>Módulo ${i+1}</strong>${weeklyTagHtml(mod)?`<div class="print-type-dots">${weeklyTagHtml(mod)}</div>`:''}</div><h3>${escapeHtml(mod.title||'')}</h3>${mod.disc?`<div class="print-discipline" style="--discipline-color:${disciplineColor(mod.disc)};color:${disciplineColor(mod.disc)}">${escapeHtml(mod.disc)}</div>`:''}</article>`;
+    const disciplineLabel=weeklyDisciplineLabel(mod.disc);
+    return `<article class="week-module"><div class="week-module-top"><strong>Módulo ${i+1}</strong>${weeklyTagHtml(mod)?`<div class="print-type-dots">${weeklyTagHtml(mod)}</div>`:''}</div><h3>${escapeHtml(mod.title||'')}</h3>${mod.disc?`<div class="print-discipline" style="--discipline-color:${disciplineColor(mod.disc)};color:${disciplineColor(mod.disc)}">${escapeHtml(disciplineLabel)}</div>`:''}</article>`;
   };
   const selectedDates=selected.map(i=>({i,d:dates[i]}));
   const weeklySlotCount=Math.max(7,...selectedDates.map(({d})=>Math.max(getClassModuleCountForDate(d),existingModuleCountFor(d))));
