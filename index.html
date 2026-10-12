@@ -5056,6 +5056,13 @@
           <label class="form-label">Situação</label>
           <select class="form-input" id="occClassStatus"><option value="ativa">Ativa</option><option value="arquivada">Arquivada</option></select>
         </div>
+        <div class="form-group class-config-full" id="occClassTemplateGroup">
+          <label class="form-label">Estrutura básica</label>
+          <select class="form-input" id="occClassTemplate">
+            <option value="">Não copiar de outra turma</option>
+          </select>
+          <div class="config-mini-card-note" style="margin-top:6px">Copia apenas disciplinas e seus dados de referência. Alunos, planejamento, notas, frequência e ocorrências continuam vazios.</div>
+        </div>
         <div class="form-group">
           <label class="form-label">Data de início</label>
           <input type="date" class="form-input" id="occClassStart">
@@ -5956,6 +5963,22 @@ function ensureClassDataStore() {
     if (!state.classData[t.id]) state.classData[t.id] = createEmptyClassData();
     if (!Array.isArray(state.classData[t.id].alunos)) state.classData[t.id].alunos = [];
   });
+  // Quando há exatamente uma turma com a estrutura preenchida e uma turma nova
+  // vazia, reaproveita a base curricular uma única vez. Planejamento e registros
+  // continuam separados para que a nova turma comece sem histórico do dia a dia.
+  if (!state._classBasicStructureAutoCopyVersion) {
+    const basicDiscCount = data => Object.values(data?.discs || {}).reduce((sum, list) => sum + (Array.isArray(list) ? list.length : 0), 0);
+    const populated = turmas.filter(t => basicDiscCount(state.classData[t.id]) > 0);
+    const empty = turmas.filter(t => basicDiscCount(state.classData[t.id]) === 0);
+    if (populated.length === 1 && empty.length === 1) {
+      const source = state.classData[populated[0].id];
+      const target = state.classData[empty[0].id];
+      target.discs = classClone(source.discs, { presencial:[], ead:[], presEad:[] });
+      target.discExtras = classClone(source.discExtras || {}, {});
+      target.schemaVersion = 1;
+      state._classBasicStructureAutoCopyVersion = 1;
+    }
+  }
   return activeId;
 }
 function captureCurrentClassData() {
@@ -6040,6 +6063,52 @@ function rebuildOccurrenceStudentFilter() {
     return `<option value="${a.id}">${escapeHtml(label)}</option>`;
   }).join('');
   if ([...sel.options].some(o => o.value === old)) sel.value = old;
+}
+
+function populateClassTemplateSelect(editId='') {
+  const select = document.getElementById('occClassTemplate');
+  const group = document.getElementById('occClassTemplateGroup');
+  if (!select || !group) return;
+  const classes = getOccurrenceClasses();
+  group.style.display = editId ? 'none' : '';
+  select.innerHTML = '<option value="">Não copiar de outra turma</option>' + classes
+    .filter(t => t.id !== editId)
+    .map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.nome)}</option>`)
+    .join('');
+  select.value = '';
+}
+
+function copyClassBasicStructure(sourceId, targetId=getActiveClassId(), ask=true) {
+  if (!sourceId || !targetId || sourceId === targetId) {
+    showToast('Escolha outra turma como modelo.');
+    return false;
+  }
+  ensureClassDataStore();
+  captureCurrentClassData();
+  const source = state.classData?.[sourceId];
+  const target = state.classData?.[targetId];
+  const sourceClass = getOccurrenceClasses().find(t => t.id === sourceId);
+  const targetClass = getOccurrenceClasses().find(t => t.id === targetId);
+  if (!source || !target || !sourceClass || !targetClass) {
+    showToast('Não foi possível localizar as turmas.');
+    return false;
+  }
+  const sourceDiscs = source.discs || { presencial:[], ead:[], presEad:[] };
+  const discCount = Object.values(sourceDiscs).reduce((sum, list) => sum + (Array.isArray(list) ? list.length : 0), 0);
+  const question = `Copiar a estrutura básica de "${sourceClass.nome}" para "${targetClass.nome}"?\n\nSerão copiadas ${discCount} disciplinas e os dados de referência delas.\n\nAlunos, módulos, materiais anexados ao planejamento, notas, frequência, tarefas e ocorrências não serão copiados.`;
+  if (ask && !confirm(question)) return false;
+  target.discs = classClone(sourceDiscs, { presencial:[], ead:[], presEad:[] });
+  target.discExtras = classClone(source.discExtras || {}, {});
+  target.schemaVersion = 1;
+  state.classData[targetId] = target;
+  if (targetId === (state._activeClassDataId || getActiveClassId())) {
+    activateClassData(targetId);
+  }
+  saveData();
+  renderConfiguracoes();
+  renderAllClassDependentViews();
+  showToast(`Estrutura básica copiada para ${targetClass.nome}.`);
+  return true;
 }
 
 // -------------------------------------------------------
@@ -6503,6 +6572,7 @@ function renderConfiguracoes() {
             <div class="config-item-row">
               <span class="config-item-label">${escapeHtml(t.nome)}${t.id === getActiveClassId() ? '<span class="class-active-pill">● Turma ativa</span>' : ''}<small style="display:block;color:var(--text3);margin-top:3px">${escapeHtml(t.modalidade || 'Presencial')} · ${Math.max(...(t.horarios || []).map(h => Number(h.modulos)||0), 0)} módulo(s) no maior dia</small></span>
               <div style="display:flex;gap:4px">
+                ${t.id !== getActiveClassId() ? `<button class="config-action-btn" onclick="copyClassBasicStructure('${escapeJsString(t.id)}')" title="Copiar disciplinas e dados de referência para a turma ativa">Copiar base</button>` : ''}
                 <button class="config-action-btn" onclick="openOccurrenceClassModal('${t.id}')">Editar</button>
                 <button class="config-action-btn danger" onclick="removeOccurrenceClass('${t.id}')">×</button>
               </div>
@@ -8383,6 +8453,7 @@ function openOccurrenceClassModal(editId='') {
   document.getElementById('occClassModuleMinutes').value = config.duracaoModulo || 45;
   document.getElementById('occClassAverage').value = config.mediaMinima ?? 60;
   document.getElementById('occClassNotes').value = config.observacoes || '';
+  populateClassTemplateSelect(editId);
   renderClassScheduleEditor(config.horarios);
   document.getElementById('occClassModalOverlay').classList.add('open');
   setTimeout(() => document.getElementById('occClassName')?.focus(), 60);
@@ -8416,6 +8487,7 @@ function saveOccurrenceClass() {
   const nome = document.getElementById('occClassName').value.trim();
   if (!nome) { alert('Digite o nome da turma.'); return; }
   const editId = document.getElementById('occClassEditId').value;
+  const templateId = !editId ? (document.getElementById('occClassTemplate')?.value || '') : '';
   const turmas = getOccurrenceClasses();
   const dados = {
     nome,
@@ -8440,9 +8512,14 @@ function saveOccurrenceClass() {
     };
     turmas.push(nova);
   }
+  if (!editId && templateId) captureCurrentClassData();
   saveOccurrenceClasses(turmas);
   ensureClassDataStore();
-  captureCurrentClassData();
+  if (!editId && templateId) {
+    copyClassBasicStructure(templateId, turmas[turmas.length - 1].id, false);
+  } else {
+    captureCurrentClassData();
+  }
   closeOccurrenceClassModal();
   renderConfiguracoes();
   renderOcorrencias();
@@ -8940,9 +9017,11 @@ function normalizeLoadedState() {
   if (!state.ocorrencias) state.ocorrencias = [];
   if (!state.alunos) state.alunos = [];
   ensureTaskCategories();
+  const basicStructureCopyBeforeLoad = state._classBasicStructureAutoCopyVersion || 0;
   const activeClassId = ensureClassDataStore();
   activateClassData(activeClassId);
-  if (limparFrequenciasFantasmasSuspensaoSemDisciplina()) {
+  const cleanedGhostFrequencies = limparFrequenciasFantasmasSuspensaoSemDisciplina();
+  if (basicStructureCopyBeforeLoad !== state._classBasicStructureAutoCopyVersion || cleanedGhostFrequencies) {
     captureCurrentClassData();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }
