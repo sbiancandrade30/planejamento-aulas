@@ -4247,8 +4247,15 @@
       <div class="form-group">
         <label class="form-label">Modelo rápido</label>
         <select class="form-input" id="fTemplate" onchange="applyModuleTemplate(this.value)">
-          <option value="">Escolher modelo...</option><option value="teoria">Teoria</option><option value="individual">Atividade individual</option><option value="grupo">Atividade em grupo</option><option value="quiz">Quiz</option><option value="trabalho">Trabalho</option><option value="retomada">Retomada</option><option value="continuidade">Continuação de conteúdo</option>
+          <option value="">Escolher modelo...</option><option value="apresentacao">Apresentação institucional</option><option value="teoria">Teoria</option><option value="individual">Atividade individual</option><option value="grupo">Atividade em grupo</option><option value="quiz">Quiz</option><option value="trabalho">Trabalho</option><option value="retomada">Retomada</option><option value="continuidade">Continuação de conteúdo</option>
         </select>
+      </div>
+      <div class="form-group" id="fCopyModuleGroup">
+        <label class="form-label">Copiar informações de outro módulo</label>
+        <select class="form-input" id="fCopyModule" onchange="applyModuleCopy(this.value)">
+          <option value="">Começar em branco</option>
+        </select>
+        <div class="config-mini-card-note" style="margin-top:6px">Copia conteúdo, tipos, observações e materiais. O dia e o número do novo módulo permanecem como você escolheu.</div>
       </div>
       <div class="form-group">
         <label class="form-label">Disciplina</label>
@@ -4404,6 +4411,13 @@
           </select>
           <button type="button" class="btn btn-outline" onclick="openDiscClassroom(document.getElementById('efDisc').value)">Classroom</button>
         </div>
+      </div>
+      <div class="form-group" id="efCopyModuleGroup">
+        <label class="form-label">Copiar informações de outra tarefa EaD</label>
+        <select class="form-input" id="efCopyModule" onchange="applyEadModuleCopy(this.value)">
+          <option value="">Começar em branco</option>
+        </select>
+        <div class="config-mini-card-note" style="margin-top:6px">Copia disciplina, aula, tipos, orientação e observações. O dia e o módulo EaD permanecem como você escolheu.</div>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -5227,13 +5241,20 @@ const TIPOS_AULA_DEFAULT = [
   { id:'atividade', nome:'Atividade',  cor:'#2f8f5b' },
   { id:'prova',     nome:'Prova',      cor:'#b93232' },
   { id:'trabalho',  nome:'Trabalho',   cor:'#b7791f' },
+  { id:'apresentacao', nome:'Apresentação institucional', cor:'#7c3aed' },
 ];
 
 function getTiposAula() {
-  const fixed = { teoria:'#2f6fe4', atividade:'#2f8f5b', prova:'#b93232', trabalho:'#b7791f' };
+  const fixed = { teoria:'#2f6fe4', atividade:'#2f8f5b', prova:'#b93232', trabalho:'#b7791f', apresentacao:'#7c3aed' };
   try {
     const s = localStorage.getItem('oficial_app_tipos_aula');
-    if (s) return JSON.parse(s).map(t => ({ ...t, cor: fixed[t.id] || t.cor }));
+    if (s) {
+      const saved = JSON.parse(s);
+      if (Array.isArray(saved) && !saved.some(t => t.id === 'apresentacao')) {
+        saved.push(TIPOS_AULA_DEFAULT.find(t => t.id === 'apresentacao'));
+      }
+      if (Array.isArray(saved)) return saved.map(t => ({ ...t, cor: fixed[t.id] || t.cor }));
+    }
   } catch(e) {}
   return JSON.parse(JSON.stringify(TIPOS_AULA_DEFAULT));
 }
@@ -11219,6 +11240,8 @@ function editModule() {
   });
 
   document.getElementById('modalTitle').textContent = 'Editar módulo';
+  document.getElementById('fCopyModuleGroup').style.display = 'none';
+  document.getElementById('fCopyModule').value = '';
   document.getElementById('modalOverlay').classList.add('open');
   editingKey = currentDetailKey;
   renderModuleMaterialPicker();
@@ -11257,8 +11280,8 @@ function printSelectedPlanning(mode='week'){
   const filledText=(value)=>{const raw=String(value||'').trim();return raw?escapeHtml(raw).replace(/\n/g,'<br>'):'';};
   const tags=(mod)=>Array.isArray(mod.tags)?mod.tags.filter(Boolean):[];
   const tagHtml=(mod)=>tags(mod).map(tag=>`<span class="print-tag">${escapeHtml(tag)}</span>`).join('');
-  const weeklyTagLabels={teoria:'Teoria',atividade:'Atividade',prova:'Prova',trabalho:'Trabalho',gabarito:'Gabarito',video:'Vídeo','material de estudo':'Material',aula:'Aula',outro:'Outro',retomada:'Retomada',continuidade:'Continuação'};
-  const weeklyTagColors={teoria:'#1d4d9b',atividade:'#12b76a',prova:'#f04438',trabalho:'#f79009',gabarito:'#6941c6',video:'#b692f6','material de estudo':'#667085',aula:'#1d4d9b',outro:'#98a2b3',retomada:'#0e9384',continuidade:'#0e9384'};
+  const weeklyTagLabels={teoria:'Teoria',atividade:'Atividade',prova:'Prova',trabalho:'Trabalho',apresentacao:'Apresentação',gabarito:'Gabarito',video:'Vídeo','material de estudo':'Material',aula:'Aula',outro:'Outro',retomada:'Retomada',continuidade:'Continuação'};
+  const weeklyTagColors={teoria:'#1d4d9b',atividade:'#12b76a',prova:'#f04438',trabalho:'#f79009',apresentacao:'#7c3aed',gabarito:'#6941c6',video:'#b692f6','material de estudo':'#667085',aula:'#1d4d9b',outro:'#98a2b3',retomada:'#0e9384',continuidade:'#0e9384'};
   const weeklyTagHtml=(mod)=>tags(mod).map(tag=>{
     const normalized=normalizeMaterialText(tag);
     const typeClass=normalized.replace(/[^a-z0-9]+/g,'-');
@@ -11423,10 +11446,57 @@ function duplicateModule() {
   });
 
   document.getElementById('modalTitle').textContent = 'Duplicar módulo';
+  document.getElementById('fCopyModuleGroup').style.display = '';
+  populateModuleCopySelect();
+  document.getElementById('fCopyModule').value = currentDetailKey;
   closeDetail();
   document.getElementById('modalOverlay').classList.add('open');
   renderModuleMaterialPicker();
   setTimeout(() => document.getElementById('fTitle')?.focus(), 60);
+}
+
+function moduleCopyLabel(key, mod, kind='presencial') {
+  const cleanKey = String(key || '');
+  const dateStr = kind === 'ead' ? cleanKey.split('_')[1] : cleanKey.slice(0, cleanKey.lastIndexOf('_'));
+  const number = kind === 'ead' ? cleanKey.split('_')[2] : cleanKey.slice(cleanKey.lastIndexOf('_') + 1);
+  const date = new Date(`${dateStr}T12:00:00`);
+  const day = Number.isNaN(date.getTime()) ? '' : `${DAY_NAMES[Math.max(0, date.getDay() - 1)]} ${fmtDate(date)}`;
+  const title = kind === 'ead' ? (mod?.disc || mod?.aula || 'Tarefa EaD') : (mod?.title || 'Módulo sem título');
+  return `${kind === 'ead' ? 'Módulo EaD' : 'Módulo'} ${number || ''} — ${day} — ${title}`;
+}
+
+function populateModuleCopySelect() {
+  const select = document.getElementById('fCopyModule');
+  if (!select) return;
+  const entries = Object.entries(state.modules || {}).sort(([a], [b]) => a.localeCompare(b));
+  select.innerHTML = '<option value="">Começar em branco</option>' + entries.map(([key, mod]) =>
+    `<option value="${escapeHtml(key)}">${escapeHtml(moduleCopyLabel(key, mod))}</option>`
+  ).join('');
+  select.value = '';
+}
+
+function applyModuleCopy(sourceKey) {
+  const mod = state.modules?.[sourceKey];
+  if (!mod) return;
+  document.getElementById('fTemplate').value = '';
+  document.getElementById('fTitle').value = mod.title || '';
+  document.getElementById('fDisc').value = mod.disc || '';
+  document.getElementById('fTeoria').value = mod.teoria || '';
+  document.getElementById('fAval').value = mod.aval || '';
+  document.getElementById('fAtiv').value = mod.ativ || '';
+  document.getElementById('fObs').value = mod.obs || '';
+  document.getElementById('fExecStatus').value = mod.executionStatus || 'planejada';
+  document.getElementById('fExecObs').value = mod.executionObs || '';
+  document.getElementById('fMaterialSearch').value = '';
+  document.getElementById('fMaterialType').value = '';
+  moduleDraftMaterials = Array.isArray(mod.materials) ? classClone(mod.materials, []) : [];
+  rebuildTagButtons();
+  document.querySelectorAll('#tagButtonsContainer .tag-toggle').forEach(btn => {
+    const active = (mod.tags || []).includes(btn.dataset.tag);
+    btn.classList.toggle('active-tag', active);
+    btn.style.opacity = active ? '1' : '0.62';
+  });
+  renderModuleMaterialPicker();
 }
 
 function deleteModule() {
@@ -11464,6 +11534,10 @@ function findFirstFreePlanningSlot(kind = 'presencial') {
 function openModal(dateKey, modNum) {
   editingKey = null;
   document.getElementById('modalTitle').textContent = 'Novo módulo';
+  document.getElementById('fCopyModuleGroup').style.display = '';
+  document.getElementById('fTemplate').value = '';
+  populateModuleCopySelect();
+  document.getElementById('fCopyModule').value = '';
   document.getElementById('fTitle').value = '';
   document.getElementById('fTeoria').value = '';
   document.getElementById('fAtiv').value = '';
@@ -11645,6 +11719,7 @@ function getEadTipos(mod) {
 }
 function applyModuleTemplate(template){
   const presets={
+    apresentacao:{title:'Apresentação institucional',teoria:'Apresentação da empresa, do curso, da rotina de formação e das orientações gerais para a turma.',obs:'Alinhar horários, frequência, regras de convivência, canais de comunicação e dúvidas iniciais.',tag:'apresentacao'},
     teoria:{title:'Aula teórica',teoria:'Apresentação e explicação dos conceitos principais.',tag:'teoria'},
     individual:{title:'Atividade individual',ativ:'Atividade individual para fixação do conteúdo.',tag:'atividade'},
     grupo:{title:'Atividade em grupo',ativ:'Atividade colaborativa em grupo.',tag:'atividade'},
@@ -11880,6 +11955,8 @@ function editEadModule() {
   document.getElementById('efDesc').value = mod.desc || '';
   document.getElementById('efObs').value = mod.obs || '';
   document.getElementById('eadModalTitle').textContent = 'Editar tarefa EaD';
+  document.getElementById('efCopyModuleGroup').style.display = 'none';
+  document.getElementById('efCopyModule').value = '';
   document.getElementById('eadModalOverlay').classList.add('open');
   eadEditingKey = currentEadKey;
 }
@@ -11908,6 +11985,9 @@ function duplicateEadModule() {
   setEadTipos(getEadTipos(mod));
   document.getElementById('efDesc').value = mod.desc || '';
   document.getElementById('efObs').value = mod.obs || '';
+  document.getElementById('efCopyModuleGroup').style.display = '';
+  populateEadModuleCopySelect();
+  document.getElementById('efCopyModule').value = currentEadKey;
 
   document.getElementById('eadModalTitle').textContent = 'Duplicar tarefa EaD';
   closeEadDetail();
@@ -11930,9 +12010,33 @@ function deleteEadModule() {
 // --- EAD MODAL -------------------------------------------
 let eadEditingKey = null;
 
+function populateEadModuleCopySelect() {
+  const select = document.getElementById('efCopyModule');
+  if (!select) return;
+  const entries = Object.entries(state.eadModules || {}).sort(([a], [b]) => a.localeCompare(b));
+  select.innerHTML = '<option value="">Começar em branco</option>' + entries.map(([key, mod]) =>
+    `<option value="${escapeHtml(key)}">${escapeHtml(moduleCopyLabel(key, mod, 'ead'))}</option>`
+  ).join('');
+}
+
+function applyEadModuleCopy(sourceKey) {
+  const mod = state.eadModules?.[sourceKey];
+  if (!mod) return;
+  document.getElementById('efDisc').value = mod.disc || '';
+  document.getElementById('efAula').value = mod.aula || 'Aula 1';
+  setEadTipos(getEadTipos(mod));
+  document.getElementById('efDesc').value = mod.desc || '';
+  document.getElementById('efObs').value = mod.obs || '';
+}
+
 function openEadModal(dateKey, modNum) {
   eadEditingKey = null;
   document.getElementById('eadModalTitle').textContent = 'Nova tarefa EaD';
+  document.getElementById('efCopyModuleGroup').style.display = '';
+  populateEadModuleCopySelect();
+  document.getElementById('efCopyModule').value = '';
+  document.getElementById('efDisc').value = '';
+  document.getElementById('efAula').value = 'Aula 1';
   document.getElementById('efDesc').value = '';
   document.getElementById('efObs').value = '';
   setEadTipos(['leitura']);
