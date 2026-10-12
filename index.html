@@ -6000,6 +6000,14 @@ function ensureClassDataStore() {
       state._classBasicStructureAutoCopyVersion = 1;
     }
   }
+  if (!state._courseDisciplinesSeedVersion) {
+    turmas.forEach(t => ensureCourseDisciplinesForClass(t.id));
+    state._courseDisciplinesSeedVersion = 1;
+  } else {
+    // Turmas criadas depois da migração também recebem a estrutura base.
+    turmas.filter(t => Object.values(state.classData[t.id]?.discs || {}).every(list => !Array.isArray(list) || list.length === 0))
+      .forEach(t => ensureCourseDisciplinesForClass(t.id));
+  }
   return activeId;
 }
 function captureCurrentClassData() {
@@ -6702,7 +6710,8 @@ const DISC_DEFAULTS = {
     'Tecnologia do Plástico',
     'Processos de Transformação de Termoplásticos e Acabamento',
     'Gestão da Qualidade',
-    'Ensaios'
+    'Ensaios',
+    'Sistemas de Trabalho'
   ],
   ead: [
     'Fundamentos da Comunicação e Informação',
@@ -6718,6 +6727,25 @@ const DISC_DEFAULTS = {
     'Ensaios'
   ]
 };
+
+function ensureCourseDisciplinesForClass(classId) {
+  const data = state.classData?.[classId];
+  if (!data) return false;
+  if (!data.discs || typeof data.discs !== 'object') data.discs = { presencial:[], ead:[], presEad:[] };
+  let changed = false;
+  Object.entries(DISC_DEFAULTS).forEach(([tipo, nomes]) => {
+    if (!Array.isArray(data.discs[tipo])) data.discs[tipo] = [];
+    const existing = new Set(data.discs[tipo].map(nome => normalizar(nome)));
+    nomes.forEach(nome => {
+      if (!existing.has(normalizar(nome))) {
+        data.discs[tipo].push(nome);
+        existing.add(normalizar(nome));
+        changed = true;
+      }
+    });
+  });
+  return changed;
+}
 
 function getDiscs(tipo) {
   const classId = state?._activeClassDataId || getActiveClassId();
@@ -9039,10 +9067,11 @@ function normalizeLoadedState() {
   if (!state.alunos) state.alunos = [];
   ensureTaskCategories();
   const basicStructureCopyBeforeLoad = state._classBasicStructureAutoCopyVersion || 0;
+  const courseDisciplinesSeedBeforeLoad = state._courseDisciplinesSeedVersion || 0;
   const activeClassId = ensureClassDataStore();
   activateClassData(activeClassId);
   const cleanedGhostFrequencies = limparFrequenciasFantasmasSuspensaoSemDisciplina();
-  if (basicStructureCopyBeforeLoad !== state._classBasicStructureAutoCopyVersion || cleanedGhostFrequencies) {
+  if (basicStructureCopyBeforeLoad !== state._classBasicStructureAutoCopyVersion || courseDisciplinesSeedBeforeLoad !== state._courseDisciplinesSeedVersion || cleanedGhostFrequencies) {
     captureCurrentClassData();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }
