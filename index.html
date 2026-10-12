@@ -158,6 +158,7 @@
   .mod-card.drop-target { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(45,91,227,.16); }
   .mod-num { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); margin-bottom: 3px; }
   .mod-title { font-size: 12px; font-weight: 500; color: var(--text); line-height: 1.4; margin-bottom: 7px; }
+  .mod-topic { font-size: 10px; color: var(--text3); line-height: 1.3; margin: -2px 0 7px; }
   .mod-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px; }
   .tags { display: flex; gap: 3px; flex-wrap: wrap; }
   .tag { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 20px; height: var(--tag-h); display: inline-flex; align-items: center; }
@@ -193,10 +194,11 @@
   #modalOverlay .modal-body>.form-group:has(#fTitle){order:1}
   #modalOverlay .modal-body>.form-group:has(#fTemplate){order:2}
   #modalOverlay .modal-body>.form-group:has(#fDisc){order:3}
-  #modalOverlay .modal-body>.form-group:has(#tagButtonsContainer){order:4}
-  #modalOverlay .modal-body>.form-group:has(#fTeoria){order:5;margin-bottom:8px}
-  #modalOverlay .modal-body>.module-library-details{order:6;margin-bottom:8px}
-  #modalOverlay .modal-body>.module-extra-fields:not(.module-library-details){order:7}
+  #modalOverlay .modal-body>.form-group:has(#fTopic){order:4}
+  #modalOverlay .modal-body>.form-group:has(#tagButtonsContainer){order:5}
+  #modalOverlay .modal-body>.form-group:has(#fTeoria){order:6;margin-bottom:8px}
+  #modalOverlay .modal-body>.module-library-details{order:7;margin-bottom:8px}
+  #modalOverlay .modal-body>.module-extra-fields:not(.module-library-details){order:8}
   #tagButtonsContainer .tag-toggle.active-tag{opacity:1!important;box-shadow:0 0 0 2px rgba(22,65,148,.18);transform:translateY(-1px)}
   .module-material-toolbar { display:grid; grid-template-columns:minmax(240px,1fr) minmax(170px,210px) auto; gap:8px; align-items:center; }
   .module-material-list { display:flex; flex-direction:column; gap:6px; max-height:190px; overflow:auto; }
@@ -4132,6 +4134,10 @@
         <div class="detail-field" id="detailDisc"></div>
       </div>
       <div class="detail-section">
+        <div class="detail-section-label">Tópico da Biblioteca</div>
+        <div class="detail-field" id="detailTopic"></div>
+      </div>
+      <div class="detail-section">
         <div class="detail-section-label">Tipo</div>
         <div class="detail-field" id="detailTipo"></div>
       </div>
@@ -4259,8 +4265,15 @@
       </div>
       <div class="form-group">
         <label class="form-label">Disciplina</label>
-        <select class="form-input" id="fDisc" onchange="renderModuleMaterialPicker()">
+        <select class="form-input" id="fDisc" onchange="renderModuleTopicSelect();renderModuleMaterialPicker()">
         </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tópico da Biblioteca <span style="font-weight:400;color:var(--text3)">(opcional)</span></label>
+        <select class="form-input" id="fTopic">
+          <option value="">Sem tópico selecionado</option>
+        </select>
+        <div class="config-mini-card-note" style="margin-top:6px">A lista mostra somente os tópicos cadastrados para a disciplina escolhida na Biblioteca.</div>
       </div>
       <div class="form-group">
         <label class="form-label">Tipo</label>
@@ -4356,6 +4369,10 @@
         <div class="detail-section-label">Aula</div>
         <div class="detail-field" id="eadDetailAula"></div>
       </div>
+      <div class="detail-section">
+        <div class="detail-section-label">Tópico da Biblioteca</div>
+        <div class="detail-field" id="eadDetailTopic"></div>
+      </div>
     </div>
     <div class="detail-section">
       <div class="detail-section-label">Descrição / instrução</div>
@@ -4406,11 +4423,17 @@
       <div class="form-group">
         <label class="form-label">Disciplina / área</label>
         <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
-          <select class="form-input" id="efDisc">
+          <select class="form-input" id="efDisc" onchange="renderEadTopicSelect()">
             <option value="">Livre / Curso externo</option>
           </select>
           <button type="button" class="btn btn-outline" onclick="openDiscClassroom(document.getElementById('efDisc').value)">Classroom</button>
         </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tópico da Biblioteca <span style="font-weight:400;color:var(--text3)">(opcional)</span></label>
+        <select class="form-input" id="efTopic">
+          <option value="">Sem tópico selecionado</option>
+        </select>
       </div>
       <div class="form-group" id="efCopyModuleGroup">
         <label class="form-label">Copiar informações de outra tarefa EaD</label>
@@ -6806,6 +6829,87 @@ function rebuildAllDiscSelects() {
       + '<optgroup label="Presenciais">' + p.map(d=>`<option>${d}</option>`).join('') + '</optgroup>'
       + '<optgroup label="EaD">' + e.map(d=>`<option>${d}</option>`).join('') + '</optgroup>';
   }
+  renderModuleTopicSelect();
+}
+
+function getPlannerLibraryData() {
+  try {
+    const raw = localStorage.getItem('mat_v8_teste');
+    const data = raw ? JSON.parse(raw) : null;
+    return data && Array.isArray(data.disciplinas) && Array.isArray(data.temas) ? data : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function getLibraryTopicsForPlannerDiscipline(disciplineName) {
+  const data = getPlannerLibraryData();
+  if (!data || !disciplineName) return [];
+  const name = normalizeMaterialText(disciplineName);
+  const aliases = {
+    'processos de transformacao de termoplasticos e acabamento': ['processos de transformacao de termoplasticos'],
+    'relacoes socioprofissionais': ['relacoes socioprofissionais cidadania e etica'],
+    'planejamento': ['planejamento e organizacao do trabalho'],
+    'raciocinio logico': ['raciocinio logico e analise de dados']
+  };
+  const names = [name, ...(aliases[name] || [])];
+  const discipline = data.disciplinas.find(item => names.includes(normalizeMaterialText(item.nome)));
+  if (!discipline) return [];
+  return data.temas
+    .filter(topic => topic.disciplinaId === discipline.id)
+    .sort((a,b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+}
+
+function renderModuleTopicSelect(selectedId='', selectedName='') {
+  const select = document.getElementById('fTopic');
+  const discipline = document.getElementById('fDisc')?.value || '';
+  if (!select) return;
+  const currentId = selectedId || select.value || '';
+  const topics = getLibraryTopicsForPlannerDiscipline(discipline);
+  let html = '<option value="">Sem tópico selecionado</option>';
+  html += topics.map(topic => `<option value="${escapeHtml(topic.id)}">${escapeHtml(topic.nome)}</option>`).join('');
+  if (selectedName && !topics.some(topic => topic.id === currentId)) {
+    html += `<option value="__legacy_topic__">${escapeHtml(selectedName)}</option>`;
+  }
+  select.innerHTML = html;
+  if (topics.some(topic => topic.id === currentId)) select.value = currentId;
+  else if (selectedName) select.value = '__legacy_topic__';
+  else select.value = '';
+}
+
+function getSelectedPlannerTopic() {
+  const select = document.getElementById('fTopic');
+  const option = select?.selectedOptions?.[0];
+  return {
+    topicId: select?.value && select.value !== '__legacy_topic__' ? select.value : '',
+    topic: select?.value ? String(option?.textContent || '').trim() : ''
+  };
+}
+
+function renderEadTopicSelect(selectedId='', selectedName='') {
+  const select = document.getElementById('efTopic');
+  const discipline = document.getElementById('efDisc')?.value || '';
+  if (!select) return;
+  const currentId = selectedId || select.value || '';
+  const topics = getLibraryTopicsForPlannerDiscipline(discipline);
+  let html = '<option value="">Sem tópico selecionado</option>';
+  html += topics.map(topic => `<option value="${escapeHtml(topic.id)}">${escapeHtml(topic.nome)}</option>`).join('');
+  if (selectedName && !topics.some(topic => topic.id === currentId)) {
+    html += `<option value="__legacy_topic__">${escapeHtml(selectedName)}</option>`;
+  }
+  select.innerHTML = html;
+  if (topics.some(topic => topic.id === currentId)) select.value = currentId;
+  else if (selectedName) select.value = '__legacy_topic__';
+  else select.value = '';
+}
+
+function getSelectedEadTopic() {
+  const select = document.getElementById('efTopic');
+  const option = select?.selectedOptions?.[0];
+  return {
+    topicId: select?.value && select.value !== '__legacy_topic__' ? select.value : '',
+    topic: select?.value ? String(option?.textContent || '').trim() : ''
+  };
 }
 
 // Conta módulos efetivamente lecionados para uma disciplina,
@@ -11122,6 +11226,7 @@ function render() {
         card.innerHTML = `
           <div class="mod-num">Módulo ${m}</div>
           <div class="mod-title">${mod.title||'Sem título'}</div>
+          ${mod.topic ? `<div class="mod-topic">${escapeHtml(mod.topic)}</div>` : ''}
           ${execBadgeHtml}
           <div class="mod-footer">
             <div class="tags">${tagsHtml}</div>
@@ -11176,6 +11281,7 @@ function openDetail(key) {
   document.getElementById('detailTags').innerHTML = `<div class="tags">${tagsHtml}</div>`;
 
   setField('detailDisc', mod.disc);
+  setField('detailTopic', mod.topic || '');
   setField('detailTipo', (mod.tags||[]).map(t=>t.charAt(0).toUpperCase()+t.slice(1)).join(', '));
   setField('detailTeoria', mod.teoria);
   setField('detailAval', mod.aval);
@@ -11251,6 +11357,7 @@ function editModule() {
   document.getElementById('fMod').value = mNum;
   document.getElementById('fTitle').value = mod.title || '';
   document.getElementById('fDisc').value = mod.disc || '';
+  renderModuleTopicSelect(mod.topicId || '', mod.topic || '');
   document.getElementById('fTeoria').value = mod.teoria || '';
   document.getElementById('fAval').value = mod.aval || '';
   document.getElementById('fAtiv').value = mod.ativ || '';
@@ -11385,7 +11492,7 @@ function printSelectedPlanning(mode='week'){
   </style></head><body>${documentBody}</body></html>`); w.document.close(); const printImages=Array.from(w.document.images); Promise.all(printImages.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',resolve,{once:true});setTimeout(resolve,1500)}))).then(()=>{w.focus();w.print();}); closePlanningPrintDialog();
 }
 function compactEmptyDetailSections(){
-  ['detailTeoria','detailAval','detailAtiv','detailObs','detailExecObs'].forEach(id=>{
+  ['detailTopic','detailTeoria','detailAval','detailAtiv','detailObs','detailExecObs'].forEach(id=>{
     const el=document.getElementById(id), section=id==='detailExecObs'?el?.parentElement:el?.closest('.detail-section');
     if(section) section.style.display=el?.classList.contains('empty-field')?'none':'';
   });
@@ -11457,6 +11564,7 @@ function duplicateModule() {
 
   document.getElementById('fTitle').value = mod.title || '';
   document.getElementById('fDisc').value = mod.disc || '';
+  renderModuleTopicSelect(mod.topicId || '', mod.topic || '');
   document.getElementById('fTeoria').value = mod.teoria || '';
   document.getElementById('fAval').value = mod.aval || '';
   document.getElementById('fAtiv').value = mod.ativ || '';
@@ -11510,6 +11618,7 @@ function applyModuleCopy(sourceKey) {
   document.getElementById('fTemplate').value = '';
   document.getElementById('fTitle').value = mod.title || '';
   document.getElementById('fDisc').value = mod.disc || '';
+  renderModuleTopicSelect(mod.topicId || '', mod.topic || '');
   document.getElementById('fTeoria').value = mod.teoria || '';
   document.getElementById('fAval').value = mod.aval || '';
   document.getElementById('fAtiv').value = mod.ativ || '';
@@ -11577,6 +11686,7 @@ function openModal(dateKey, modNum) {
   document.getElementById('fMaterialSearch').value = '';
   document.getElementById('fMaterialType').value = '';
   moduleDraftMaterials = [];
+  renderModuleTopicSelect();
 
   if (!dateKey && !modNum) {
     const freeSlot = findFirstFreePlanningSlot('presencial');
@@ -11652,12 +11762,15 @@ function saveModule() {
   }
 
   const tags = [...document.querySelectorAll('.tag-toggle.active-tag')].map(b => b.dataset.tag);
+  const selectedTopic = getSelectedPlannerTopic();
 
   state.modules[key] = {
     ...(state.modules[key]||{}),
     ...(isProfessorMode() ? { _professorAdded: true } : {}),
     title,
     disc: document.getElementById('fDisc').value,
+    topicId: selectedTopic.topicId,
+    topic: selectedTopic.topic,
     tags,
     teoria: document.getElementById('fTeoria').value,
     aval: document.getElementById('fAval').value,
@@ -11840,6 +11953,7 @@ function renderEad() {
         card.innerHTML = `
           <div class="mod-num">Módulo ${m}${mod.aula ? ` · ${escapeHtml(mod.aula)}` : ''}</div>
           <div class="mod-title">${escapeHtml(discShort)}</div>
+          ${mod.topic ? `<div class="ead-card-desc">${escapeHtml(mod.topic)}</div>` : ''}
           ${descShort ? `<div class="ead-card-desc">${escapeHtml(descShort).slice(0,90)}${descShort.length > 90 ? '...' : ''}</div>` : ''}
           <div class="mod-footer">
             <div class="tags">${tagsHtml}</div>
@@ -11953,6 +12067,7 @@ function openEadDetail(key) {
   document.getElementById('eadDetailTags').innerHTML = `<div class="tags">${tagHtml}</div>`;
   setField('eadDetailDisc', mod.disc);
   setField('eadDetailAula', mod.aula);
+  setField('eadDetailTopic', mod.topic || '');
   setField('eadDetailDesc', mod.desc);
   setField('eadDetailObs', mod.obs);
   applyEadModuleDetailPermissions(key);
@@ -11979,6 +12094,7 @@ function editEadModule() {
   document.getElementById('efDay').value = d.getDay() - 1;
   document.getElementById('efMod').value = mNum;
   document.getElementById('efDisc').value = mod.disc || '';
+  renderEadTopicSelect(mod.topicId || '', mod.topic || '');
   document.getElementById('efAula').value = mod.aula || 'Aula 1';
   setEadTipos(getEadTipos(mod));
   document.getElementById('efDesc').value = mod.desc || '';
@@ -12010,6 +12126,7 @@ function duplicateEadModule() {
   }
 
   document.getElementById('efDisc').value = mod.disc || '';
+  renderEadTopicSelect(mod.topicId || '', mod.topic || '');
   document.getElementById('efAula').value = mod.aula || 'Aula 1';
   setEadTipos(getEadTipos(mod));
   document.getElementById('efDesc').value = mod.desc || '';
@@ -12052,6 +12169,7 @@ function applyEadModuleCopy(sourceKey) {
   const mod = state.eadModules?.[sourceKey];
   if (!mod) return;
   document.getElementById('efDisc').value = mod.disc || '';
+  renderEadTopicSelect(mod.topicId || '', mod.topic || '');
   document.getElementById('efAula').value = mod.aula || 'Aula 1';
   setEadTipos(getEadTipos(mod));
   document.getElementById('efDesc').value = mod.desc || '';
@@ -12065,6 +12183,7 @@ function openEadModal(dateKey, modNum) {
   populateEadModuleCopySelect();
   document.getElementById('efCopyModule').value = '';
   document.getElementById('efDisc').value = '';
+  renderEadTopicSelect();
   document.getElementById('efAula').value = 'Aula 1';
   document.getElementById('efDesc').value = '';
   document.getElementById('efObs').value = '';
@@ -12091,6 +12210,7 @@ function closeEadModal() {
 
 function saveEadModule() {
   const disc = document.getElementById('efDisc').value;
+  const selectedTopic = getSelectedEadTopic();
   const tipos = getSelectedEadTipos();
   const tipo = tipos[0] || 'leitura';
   const dayIdx = parseInt(document.getElementById('efDay').value);
@@ -12109,6 +12229,8 @@ function saveEadModule() {
     : existingEadModule?._professorAdded === true;
   state.eadModules[key] = {
     disc, tipo, tipos,
+    topicId: selectedTopic.topicId,
+    topic: selectedTopic.topic,
     aula: document.getElementById('efAula').value,
     desc: document.getElementById('efDesc').value,
     obs: document.getElementById('efObs').value,
