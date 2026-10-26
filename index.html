@@ -1029,9 +1029,14 @@
   body.professor-mode .professor-readonly-note { display:inline-flex; align-items:center; gap:5px; font-size:10px; color:var(--text3); margin-top:4px; }
   body.professor-mode #neadBtnConfig,
   body.professor-mode #npBtnConfig { display:none !important; }
-  .active-class-picker { display:flex; align-items:center; gap:8px; padding:6px 9px; border:1px solid rgba(255,255,255,.28); border-radius:10px; background:rgba(255,255,255,.12); color:#fff; }
+  .active-class-picker { display:flex; align-items:center; gap:8px; padding:6px 9px; border:1px solid rgba(255,255,255,.28); border-radius:10px; background:rgba(255,255,255,.12); color:#fff; position:relative; }
   .active-class-picker-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; opacity:.78; white-space:nowrap; }
   .active-class-picker select { min-width:190px; max-width:310px; border:0; border-radius:7px; padding:7px 30px 7px 9px; background:#fff; color:#1f2937; font-family:inherit; font-size:12px; font-weight:600; line-height:1.2; cursor:pointer; }
+  .active-class-confirm { display:none; position:absolute; right:0; top:calc(100% + 8px); width:260px; padding:10px; border:1px solid var(--border); border-radius:10px; background:var(--surface); color:var(--text); box-shadow:0 12px 30px rgba(0,0,0,.18); z-index:220; }
+  .active-class-confirm.open { display:block; }
+  .active-class-confirm-text { font-size:12px; line-height:1.4; margin-bottom:9px; }
+  .active-class-confirm-actions { display:flex; justify-content:flex-end; gap:6px; }
+  .active-class-confirm-actions .btn { padding:5px 9px; font-size:11px; }
   .class-config-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
   .class-config-full { grid-column:1/-1; }
   .class-schedule-box { border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
@@ -3644,7 +3649,14 @@
     <div class="brand-right">
       <div class="active-class-picker" title="Tudo o que for cadastrado será vinculado à turma ativa">
         <span class="active-class-picker-label">Turma ativa</span>
-        <select id="activeClassSelect" onchange="changeActiveClass(this.value)"></select>
+        <select id="activeClassSelect" onchange="requestActiveClassChange(this.value)"></select>
+        <div class="active-class-confirm" id="activeClassConfirm">
+          <div class="active-class-confirm-text" id="activeClassConfirmText"></div>
+          <div class="active-class-confirm-actions">
+            <button type="button" class="btn btn-outline" onclick="cancelActiveClassChange()">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="confirmActiveClassChange()">Confirmar turma</button>
+          </div>
+        </div>
       </div>
       <button class="brand-shortcut-btn" onclick="openMaterialsLibrary()" title="Abrir Biblioteca de Materiais em nova aba"><span>Biblioteca</span></button>
     </div>
@@ -5949,6 +5961,36 @@ function rebuildActiveClassSelect() {
   select.innerHTML = turmas.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.nome)}${t.status === 'arquivada' ? ' (arquivada)' : ''}</option>`).join('');
   select.value = activeId;
 }
+let pendingActiveClassId = '';
+
+function requestActiveClassChange(id) {
+  const currentId = getActiveClassId();
+  if (!id || id === currentId) return;
+  pendingActiveClassId = id;
+  const selected = getOccurrenceClasses().find(t => t.id === id);
+  const current = getOccurrenceClasses().find(t => t.id === currentId);
+  const text = document.getElementById('activeClassConfirmText');
+  const panel = document.getElementById('activeClassConfirm');
+  const select = document.getElementById('activeClassSelect');
+  if (text) text.textContent = `Trocar de "${current?.nome || 'turma atual'}" para "${selected?.nome || 'nova turma'}"? A tela será atualizada com os dados da turma escolhida.`;
+  if (panel) panel.classList.add('open');
+  if (select) select.value = currentId;
+}
+
+function cancelActiveClassChange() {
+  pendingActiveClassId = '';
+  document.getElementById('activeClassConfirm')?.classList.remove('open');
+  rebuildActiveClassSelect();
+}
+
+function confirmActiveClassChange() {
+  const id = pendingActiveClassId;
+  if (!id) return cancelActiveClassChange();
+  pendingActiveClassId = '';
+  document.getElementById('activeClassConfirm')?.classList.remove('open');
+  changeActiveClass(id);
+}
+
 function changeActiveClass(id) {
   const turmas = getOccurrenceClasses();
   if (!turmas.some(t => t.id === id)) return;
@@ -9395,23 +9437,30 @@ function hasMeaningfulState(target) {
 function saveData() {
   if (!PROFESSOR_EXPORT_MODE && professorPreviewActive) {
     showToast('Na pré-visualização do professor, alterações não são salvas.', true);
-    return;
+    return false;
   }
-
-  captureCurrentClassData();
-  markStateUpdated();
-  const payload = JSON.stringify(state);
-  const storageKey = PROFESSOR_EXPORT_MODE ? professorLocalStorageKey() : STORAGE_KEY;
-  localStorage.setItem(storageKey, payload);
-  if (!PROFESSOR_EXPORT_MODE) localStorage.setItem(PENDING_CLOUD_SAVE_KEY, payload);
-  setOperationalTimestamp('oficial_app_last_local_save_at');
-  refreshConfigIfOpen();
-  clearTimeout(saveTimer);
-  setSyncStatus('syncing');
-  saveTimer = setTimeout(() => {
-    if (PROFESSOR_EXPORT_MODE) _pushProfessorMergedToSheets();
-    else _pushToSheets(payload);
-  }, 1800);
+  try {
+    captureCurrentClassData();
+    markStateUpdated();
+    const payload = JSON.stringify(state);
+    const storageKey = PROFESSOR_EXPORT_MODE ? professorLocalStorageKey() : STORAGE_KEY;
+    localStorage.setItem(storageKey, payload);
+    if (!PROFESSOR_EXPORT_MODE) localStorage.setItem(PENDING_CLOUD_SAVE_KEY, payload);
+    setOperationalTimestamp('oficial_app_last_local_save_at');
+    refreshConfigIfOpen();
+    clearTimeout(saveTimer);
+    setSyncStatus('syncing');
+    saveTimer = setTimeout(() => {
+      if (PROFESSOR_EXPORT_MODE) _pushProfessorMergedToSheets();
+      else _pushToSheets(payload);
+    }, 1800);
+    return true;
+  } catch (error) {
+    console.error('Falha ao salvar os dados do Planner:', error);
+    setSyncStatus('error');
+    showToast('Não foi possível salvar. Os dados continuam no formulário.', true);
+    return false;
+  }
 }
 
 async function _postPayloadToSheets(payload) {
@@ -11874,51 +11923,57 @@ function toggleTag(btn) {
 }
 
 function saveModule() {
-  const title = document.getElementById('fTitle').value.trim();
-  if (!title) { alert('Preencha o título do módulo.'); return; }
+  try {
+    const title = document.getElementById('fTitle').value.trim();
+    if (!title) { alert('Preencha o título do módulo.'); return; }
 
-  const dayIdx = parseInt(document.getElementById('fDay').value);
-  const modNum = document.getElementById('fMod').value;
-  const dates = getWeekDates(state.weekOffset);
-  const date = dates[dayIdx];
-  const dateKey = fmtDateKey(date);
-  const key = editingKey || `${dateKey}_${modNum}`;
+    const dayIdx = parseInt(document.getElementById('fDay').value);
+    const modNum = document.getElementById('fMod').value;
+    const dates = getWeekDates(state.weekOffset);
+    const date = dates[dayIdx];
+    if (!date || !modNum) { showToast('Escolha o dia e o número do módulo.', true); return; }
+    const dateKey = fmtDateKey(date);
+    const key = editingKey || `${dateKey}_${modNum}`;
 
-  if (isProfessorMode()) {
-    if (editingKey && !professorOwnsPlanningModule(editingKey)) {
-      showToast('O professor pode editar somente os módulos que ele mesmo adicionar.');
-      return;
+    if (isProfessorMode()) {
+      if (editingKey && !professorOwnsPlanningModule(editingKey)) {
+        showToast('O professor pode editar somente os módulos que ele mesmo adicionar.');
+        return;
+      }
+      if (!editingKey && state.modules[key] && !professorOwnsPlanningModule(key)) {
+        showToast('Esse módulo já existe e fica bloqueado na versão do professor.');
+        return;
+      }
     }
-    if (!editingKey && state.modules[key] && !professorOwnsPlanningModule(key)) {
-      showToast('Esse módulo já existe e fica bloqueado na versão do professor.');
-      return;
-    }
+
+    const tags = [...document.querySelectorAll('.tag-toggle.active-tag')].map(b => b.dataset.tag);
+    const selectedTopic = getSelectedPlannerTopic();
+
+    state.modules[key] = {
+      ...(state.modules[key]||{}),
+      ...(isProfessorMode() ? { _professorAdded: true } : {}),
+      title,
+      disc: document.getElementById('fDisc').value,
+      topicId: selectedTopic.topicId,
+      topic: selectedTopic.topic,
+      tags,
+      teoria: document.getElementById('fTeoria').value,
+      aval: document.getElementById('fAval').value,
+      ativ: document.getElementById('fAtiv').value,
+      obs: document.getElementById('fObs').value,
+      executionStatus: document.getElementById('fExecStatus').value || 'planejada',
+      executionObs: document.getElementById('fExecObs').value,
+      materials: classClone(moduleDraftMaterials, []),
+    };
+
+    if (saveData() === false) return;
+    closeModal();
+    render();
+    showToast('Módulo salvo!');
+  } catch (error) {
+    console.error('Falha ao salvar o módulo:', error);
+    showToast('Não foi possível salvar o módulo. Confira o console para detalhes.', true);
   }
-
-  const tags = [...document.querySelectorAll('.tag-toggle.active-tag')].map(b => b.dataset.tag);
-  const selectedTopic = getSelectedPlannerTopic();
-
-  state.modules[key] = {
-    ...(state.modules[key]||{}),
-    ...(isProfessorMode() ? { _professorAdded: true } : {}),
-    title,
-    disc: document.getElementById('fDisc').value,
-    topicId: selectedTopic.topicId,
-    topic: selectedTopic.topic,
-    tags,
-    teoria: document.getElementById('fTeoria').value,
-    aval: document.getElementById('fAval').value,
-    ativ: document.getElementById('fAtiv').value,
-    obs: document.getElementById('fObs').value,
-    executionStatus: document.getElementById('fExecStatus').value || 'planejada',
-    executionObs: document.getElementById('fExecObs').value,
-    materials: classClone(moduleDraftMaterials, []),
-  };
-
-  saveData();
-  closeModal();
-  render();
-  showToast('Módulo salvo!');
 }
 
 // --- NAV -------------------------------------------------
