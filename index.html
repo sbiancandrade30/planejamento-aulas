@@ -222,6 +222,10 @@
   .detail-field { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; font-size: 13px; line-height: 1.6; color: var(--text); min-height: 36px; }
   .detail-field.empty-field { color: var(--text3); font-style: italic; }
   .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .detail-status-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .detail-status-btn { border: 1px solid var(--border); background: var(--surface); color: var(--text2); border-radius: 999px; padding: 7px 10px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all .12s; }
+  .detail-status-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .detail-status-btn.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 2px rgba(45,91,227,.1); }
   .checks-row { display: flex; flex-direction: column; gap: 10px; }
   .check-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); }
   .check-item input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; margin-top: 1px; flex-shrink: 0; }
@@ -4168,7 +4172,8 @@
       <div class="detail-grid" style="margin-bottom:12px">
         <div>
           <div class="detail-section-label" style="margin-bottom:6px">Status</div>
-          <select class="form-input" id="detailExecStatus" onchange="updateExecutionStatus(this.value)"><option value="planejada">Planejada</option><option value="realizada">Realizada</option><option value="parcial">Realizada parcialmente</option><option value="nao_realizada">Não realizada</option><option value="remanejada">Remanejada</option></select>
+          <div class="detail-status-actions" id="detailExecStatusButtons"></div>
+          <select class="form-input" id="detailExecStatus" onchange="updateExecutionStatus(this.value)" style="display:none"><option value="planejada">Planejada</option><option value="realizada">Realizada</option><option value="parcial">Realizada parcialmente</option><option value="nao_realizada">Não realizada</option><option value="remanejada">Remanejada</option></select>
         </div>
         <div>
           <div class="detail-section-label" style="margin-bottom:6px">Registro</div>
@@ -4261,6 +4266,7 @@
         <select class="form-input" id="fCopyModule" onchange="applyModuleCopy(this.value)">
           <option value="">Começar em branco</option>
         </select>
+        <button type="button" class="btn btn-outline" style="margin-top:8px" onclick="copyPreviousModuleIntoForm()">Copiar módulo anterior</button>
         <div class="config-mini-card-note" style="margin-top:6px">Copia conteúdo, tipos, observações e materiais. O dia e o número do novo módulo permanecem como você escolheu.</div>
       </div>
       <div class="form-group">
@@ -4440,6 +4446,7 @@
         <select class="form-input" id="efCopyModule" onchange="applyEadModuleCopy(this.value)">
           <option value="">Começar em branco</option>
         </select>
+        <button type="button" class="btn btn-outline" style="margin-top:8px" onclick="copyPreviousEadModuleIntoForm()">Copiar tarefa anterior</button>
         <div class="config-mini-card-note" style="margin-top:6px">Copia disciplina, aula, tipos, orientação e observações. O dia e o módulo EaD permanecem como você escolheu.</div>
       </div>
       <div class="form-row">
@@ -5781,11 +5788,11 @@ function getDefaultOccurrenceClasses() {
 }
 function createDefaultClassSchedule() {
   return [
-    { dia:1, nome:'Segunda', ativo:true, modulos:6, inicio:'13:00', fim:'17:45' },
-    { dia:2, nome:'Terça', ativo:true, modulos:6, inicio:'13:00', fim:'17:45' },
-    { dia:3, nome:'Quarta', ativo:true, modulos:6, inicio:'13:00', fim:'17:45' },
-    { dia:4, nome:'Quinta', ativo:true, modulos:6, inicio:'13:00', fim:'17:45' },
-    { dia:5, nome:'Sexta', ativo:true, modulos:6, inicio:'13:00', fim:'17:45' },
+    { dia:1, nome:'Segunda', ativo:true, modulos:6, inicio:'13:00', fim:'17:45', intervaloInicio:'15:15', intervaloFim:'15:30' },
+    { dia:2, nome:'Terça', ativo:true, modulos:6, inicio:'13:00', fim:'17:45', intervaloInicio:'15:15', intervaloFim:'15:30' },
+    { dia:3, nome:'Quarta', ativo:true, modulos:6, inicio:'13:00', fim:'17:45', intervaloInicio:'15:15', intervaloFim:'15:30' },
+    { dia:4, nome:'Quinta', ativo:true, modulos:6, inicio:'13:00', fim:'17:45', intervaloInicio:'15:15', intervaloFim:'15:30' },
+    { dia:5, nome:'Sexta', ativo:true, modulos:6, inicio:'13:00', fim:'17:45', intervaloInicio:'15:15', intervaloFim:'15:30' },
     { dia:6, nome:'Sábado', ativo:false, modulos:0, inicio:'', fim:'' }
   ];
 }
@@ -5831,9 +5838,18 @@ function migrateClassConfigurationV26() {
   if (!turmas.length) turmas.push(...getDefaultOccurrenceClasses());
   localStorage.setItem('oficial_app_occurrence_classes', JSON.stringify(turmas));
   state.classConfigs = classClone(turmas, turmas);
-  if (!turmas.some(t => t.id === localStorage.getItem('oficial_app_active_class_id'))) {
-    localStorage.setItem('oficial_app_active_class_id', turmas[0].id);
+  const storedId = localStorage.getItem('oficial_app_active_class_id') || state?._preferredActiveClassId || '';
+  const storedClass = turmas.find(t => t.id === storedId);
+  // Uma turma arquivada não pode voltar a ser selecionada automaticamente.
+  // Mantemos a escolha da usuária quando ela ainda aponta para uma turma ativa;
+  // caso contrário, usamos a primeira turma ativa disponível.
+  const nextActive = storedClass && storedClass.status !== 'arquivada'
+    ? storedClass
+    : (turmas.find(t => t.status !== 'arquivada') || turmas[0]);
+  if (nextActive && nextActive.id !== storedId) {
+    localStorage.setItem('oficial_app_active_class_id', nextActive.id);
   }
+  if (nextActive) state._preferredActiveClassId = nextActive.id;
   // Todo o conteúdo legado permanece associado — turma original. A migração
   // por área será feita nas próximas etapas sem renomear nem apagar registros.
   if (Array.isArray(state?.alunos)) {
@@ -5842,8 +5858,15 @@ function migrateClassConfigurationV26() {
 }
 function getActiveClassId() {
   const turmas = getOccurrenceClasses();
-  const stored = localStorage.getItem('oficial_app_active_class_id') || '';
-  return turmas.some(t => t.id === stored) ? stored : (turmas.find(t => t.status !== 'arquivada')?.id || turmas[0]?.id || '');
+  const stored = localStorage.getItem('oficial_app_active_class_id') || state?._preferredActiveClassId || '';
+  const storedClass = turmas.find(t => t.id === stored);
+  if (storedClass && storedClass.status !== 'arquivada') return storedClass.id;
+  const fallback = turmas.find(t => t.status !== 'arquivada') || turmas[0];
+  if (fallback) {
+    if (fallback.id !== stored) localStorage.setItem('oficial_app_active_class_id', fallback.id);
+    state._preferredActiveClassId = fallback.id;
+  }
+  return fallback?.id || '';
 }
 function getActiveClass() {
   const id = getActiveClassId();
@@ -5931,6 +5954,7 @@ function changeActiveClass(id) {
   if (!turmas.some(t => t.id === id)) return;
   captureCurrentClassData();
   localStorage.setItem('oficial_app_active_class_id', id);
+  state._preferredActiveClassId = id;
   activateClassData(id);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   const alunoFiltro = document.getElementById('alunoTurmaFiltro');
@@ -6991,10 +7015,11 @@ function getDiscOperationalSummary(disc) {
   const presNotes = state.notasPres?.[disc] || null;
   const eadNotes = state.notasEad?.[disc] || null;
 
-  const exec = { planejada:0, realizada:0, ajustes:0, nao_realizada:0 };
+  const exec = { planejada:0, realizada:0, ajustes:0, remanejada:0, nao_realizada:0 };
   presencialMods.forEach(mod => {
     const st = mod?.executionStatus || 'planejada';
-    if (exec[st] === undefined) exec.planejada++;
+    if (st === 'parcial' || st === 'ajustes') exec.ajustes++;
+    else if (exec[st] === undefined) exec.planejada++;
     else exec[st]++;
   });
 
@@ -7405,7 +7430,7 @@ function renderDiscManager() {
           </div>
           <div class="disc-compact-progress">${compactProgress}</div>
           <div class="disc-item-actions">
-            <button class="disc-action-btn" onclick="openDiscClassroom('${escapeJsString(d)}')" title="Abrir Google Classroom"><img src="file:///C:/Users/Bianca/Downloads/icons8-google-classroom-48.png" alt="" style="width:14px;height:14px;display:block"></button>
+            <button class="disc-action-btn" onclick="openDiscClassroom('${escapeJsString(d)}')" title="Abrir Google Classroom"><span aria-hidden="true" style="font-size:13px;line-height:1">🏫</span></button>
             <button class="disc-action-btn" onclick="openDiscLibrary('${escapeJsString(d)}')" title="Abrir na Biblioteca">📚</button>
             <button class="disc-action-btn disc-expand-btn" onclick="toggleDiscDetails('${t.key}','${escapeJsString(d)}')">${isExpanded?'▴ Recolher':'▾ Expandir'}</button>
             ${isProfessorMode() ? '' : `<button class="disc-action-btn" onclick="openDiscModal('${t.key}',${i})">✎</button><button class="disc-action-btn danger" onclick="removeDisc('${t.key}',${i})">×</button>`}
@@ -8621,6 +8646,7 @@ function renderClassScheduleEditor(schedule) {
       <input class="form-input class-day-modules" type="number" min="0" max="12" value="${Number(h.modulos) || 0}" title="Quantidade de módulos">
       <input class="form-input class-start-time" type="time" value="${escapeHtml(h.inicio || '')}" title="Horário inicial">
       <input class="form-input class-end-time" type="time" value="${escapeHtml(h.fim || '')}" title="Horário final">
+      ${h.ativo && h.intervaloInicio && h.intervaloFim ? `<span style="font-size:11px;color:var(--text3);white-space:nowrap">Intervalo ${escapeHtml(h.intervaloInicio)}-${escapeHtml(h.intervaloFim)}</span>` : ''}
     </div>`).join('');
 }
 function readClassScheduleEditor() {
@@ -8630,7 +8656,9 @@ function readClassScheduleEditor() {
     ativo:Boolean(row.querySelector('.class-day-active')?.checked),
     modulos:Math.max(0, Number(row.querySelector('.class-day-modules')?.value) || 0),
     inicio:row.querySelector('.class-start-time')?.value || '',
-    fim:row.querySelector('.class-end-time')?.value || ''
+    fim:row.querySelector('.class-end-time')?.value || '',
+    intervaloInicio:Number(row.dataset.day) >= 1 && Number(row.dataset.day) <= 5 ? '15:15' : '',
+    intervaloFim:Number(row.dataset.day) >= 1 && Number(row.dataset.day) <= 5 ? '15:30' : ''
   }));
 }
 function closeOccurrenceClassModal() {
@@ -9296,7 +9324,10 @@ function cloudSyncConfigured() {
 }
 
 let saveTimer = null;
+let cloudRetryTimer = null;
+let cloudRetryAttempt = 0;
 let lastSavedHash = '';
+const PENDING_CLOUD_SAVE_KEY = 'oficial_app_pending_cloud_save_v1';
 
 function hashState() {
   const s = JSON.stringify(state);
@@ -9341,6 +9372,8 @@ function getStateUpdatedAt(target) {
 function hasMeaningfulState(target) {
   if (!target || typeof target !== 'object') return false;
   return Boolean(
+    (target.classConfigs || []).length ||
+    Object.keys(target.classData || {}).length ||
     Object.keys(target.modules || {}).length ||
     Object.keys(target.eadModules || {}).length ||
     Object.keys(target.freq || {}).length ||
@@ -9366,6 +9399,7 @@ function saveData() {
   const payload = JSON.stringify(state);
   const storageKey = PROFESSOR_EXPORT_MODE ? professorLocalStorageKey() : STORAGE_KEY;
   localStorage.setItem(storageKey, payload);
+  if (!PROFESSOR_EXPORT_MODE) localStorage.setItem(PENDING_CLOUD_SAVE_KEY, payload);
   setOperationalTimestamp('oficial_app_last_local_save_at');
   refreshConfigIfOpen();
   clearTimeout(saveTimer);
@@ -9386,7 +9420,41 @@ async function _postPayloadToSheets(payload) {
   });
 }
 
-async function _pushToSheets(payload) {
+function scheduleCloudRetry(payload, attempt = 0) {
+  if (!payload || !cloudSyncConfigured() || isProfessorMode()) return;
+  localStorage.setItem(PENDING_CLOUD_SAVE_KEY, payload);
+  clearTimeout(cloudRetryTimer);
+  const nextAttempt = Number(attempt) + 1;
+  if (nextAttempt > 5) return;
+  const delay = Math.min(60000, 3000 * (2 ** Math.min(nextAttempt - 1, 4)));
+  cloudRetryAttempt = nextAttempt;
+  cloudRetryTimer = setTimeout(() => _pushToSheets(payload, nextAttempt), delay);
+}
+
+function resumePendingCloudSave() {
+  if (PROFESSOR_EXPORT_MODE || !cloudSyncConfigured()) return;
+  const payload = localStorage.getItem(PENDING_CLOUD_SAVE_KEY) || '';
+  if (!payload) return;
+  try {
+    const pending = JSON.parse(payload);
+    const pendingUpdated = getStateUpdatedAt(pending);
+    const localUpdated = getStateUpdatedAt(state);
+    if (localUpdated > pendingUpdated) {
+      localStorage.setItem(PENDING_CLOUD_SAVE_KEY, JSON.stringify(state));
+    }
+  } catch (e) {
+    localStorage.removeItem(PENDING_CLOUD_SAVE_KEY);
+    return;
+  }
+  const latest = localStorage.getItem(PENDING_CLOUD_SAVE_KEY);
+  if (latest) {
+    clearTimeout(cloudRetryTimer);
+    cloudRetryTimer = null;
+    _pushToSheets(latest, 1);
+  }
+}
+
+async function _pushToSheets(payload, attempt = 0) {
   if (isProfessorMode()) return;
   if (!cloudSyncConfigured()) {
     lastSavedHash = hashState();
@@ -9396,12 +9464,16 @@ async function _pushToSheets(payload) {
   }
   try {
     await _postPayloadToSheets(payload);
+    localStorage.removeItem(PENDING_CLOUD_SAVE_KEY);
+    cloudRetryAttempt = 0;
+    clearTimeout(cloudRetryTimer);
     setOperationalTimestamp('oficial_app_last_cloud_push_at');
     lastSavedHash = hashState();
     setSyncStatus('ok');
     refreshConfigIfOpen();
   } catch(e) {
     setSyncStatus('error');
+    scheduleCloudRetry(payload, attempt);
   }
 }
 
@@ -11004,11 +11076,11 @@ function countPlanningWeek(kind = 'presencial') {
   const dates = getWeekDates(state.weekOffset);
   const result = kind === 'ead'
     ? { total:0, leitura:0, video:0, resumo:0, avaliativa:0, matched:0 }
-    : { total:0, planejada:0, realizada:0, ajustes:0, nao_realizada:0, matched:0 };
+    : { total:0, planejada:0, realizada:0, ajustes:0, remanejada:0, nao_realizada:0, matched:0 };
 
   dates.forEach(date => {
     const dateKey = fmtDateKey(date);
-    const limit = kind === 'ead' ? 2 : 6;
+    const limit = kind === 'ead' ? 2 : getVisibleClassModuleCountForDate(date);
     for (let m = 1; m <= limit; m++) {
       const key = kind === 'ead' ? `ead_${dateKey}_${m}` : `${dateKey}_${m}`;
       const mod = kind === 'ead' ? state.eadModules[key] : state.modules[key];
@@ -11020,7 +11092,8 @@ function countPlanningWeek(kind = 'presencial') {
         });
       } else {
         const exec = mod.executionStatus || 'planejada';
-        if (result[exec] !== undefined) result[exec]++;
+        if (exec === 'parcial' || exec === 'ajustes') result.ajustes++;
+        else if (result[exec] !== undefined) result[exec]++;
       }
       if (planningModuleMatches(kind, mod)) result.matched++;
     }
@@ -11035,7 +11108,9 @@ function planningModuleMatches(kind, mod) {
   if (kind === 'ead') {
     if (f.tipo && !getEadTipos(mod).includes(f.tipo)) return false;
   } else {
-    if (f.exec && (mod.executionStatus || 'planejada') !== f.exec) return false;
+    const actual = (mod.executionStatus || 'planejada') === 'ajustes' ? 'parcial' : (mod.executionStatus || 'planejada');
+    const wanted = f.exec === 'ajustes' ? 'parcial' : f.exec;
+    if (wanted && actual !== wanted) return false;
   }
   return true;
 }
@@ -11075,7 +11150,7 @@ function renderPlanningConsult(kind = 'presencial') {
   const weekDiscs = [];
   dates.forEach(date => {
     const dateKey = fmtDateKey(date);
-    const limit = kind === 'ead' ? 2 : 6;
+    const limit = kind === 'ead' ? 2 : getVisibleClassModuleCountForDate(date);
     for (let m=1; m<=limit; m++) {
       const key = kind === 'ead' ? `ead_${dateKey}_${m}` : `${dateKey}_${m}`;
       const mod = kind === 'ead' ? state.eadModules[key] : state.modules[key];
@@ -11095,7 +11170,7 @@ function renderPlanningConsult(kind = 'presencial') {
     : `<div class="planning-summary-grid">
         <div class="planning-summary-card"><div class="planning-summary-num">${counts.total}</div><div class="planning-summary-label">Módulos na semana</div></div>
         <div class="planning-summary-card"><div class="planning-summary-num">${counts.realizada}</div><div class="planning-summary-label">Realizados conforme</div></div>
-        <div class="planning-summary-card"><div class="planning-summary-num">${counts.ajustes}</div><div class="planning-summary-label">Realizados com ajustes</div></div>
+        <div class="planning-summary-card"><div class="planning-summary-num">${counts.ajustes}</div><div class="planning-summary-label">Realizados parcialmente</div></div>
         <div class="planning-summary-card"><div class="planning-summary-num">${counts.nao_realizada}</div><div class="planning-summary-label">Não realizados</div></div>
       </div>`;
 
@@ -11133,7 +11208,7 @@ function renderPlanningConsult(kind = 'presencial') {
               <option value="" ${!planningConsultFilters.presencial.exec?'selected':''}>Todos os status</option>
               <option value="planejada" ${planningConsultFilters.presencial.exec==='planejada'?'selected':''}>Planejada</option>
               <option value="realizada" ${planningConsultFilters.presencial.exec==='realizada'?'selected':''}>Realizada conforme</option>
-              <option value="ajustes" ${planningConsultFilters.presencial.exec==='ajustes'?'selected':''}>Realizada com ajustes</option>
+              <option value="parcial" ${['parcial','ajustes'].includes(planningConsultFilters.presencial.exec)?'selected':''}>Realizada parcialmente</option>
               <option value="nao_realizada" ${planningConsultFilters.presencial.exec==='nao_realizada'?'selected':''}>Não realizada</option>
             </select>
           </div>`}
@@ -11288,6 +11363,7 @@ function openDetail(key) {
   setField('detailAtiv', mod.ativ);
   setField('detailObs', mod.obs);
   document.getElementById('detailExecStatus').value = mod.executionStatus || 'planejada';
+  renderDetailExecutionButtons(mod.executionStatus || 'planejada');
   setField('detailExecObs', mod.executionObs || '');
   compactEmptyDetailSections();
   const materialsWrap = document.getElementById('detailMaterials');
@@ -11497,9 +11573,31 @@ function compactEmptyDetailSections(){
     if(section) section.style.display=el?.classList.contains('empty-field')?'none':'';
   });
 }
+function renderDetailExecutionButtons(status='planejada') {
+  const wrap = document.getElementById('detailExecStatusButtons');
+  if (!wrap) return;
+  const statuses = [
+    ['planejada', 'Planejada'],
+    ['realizada', 'Realizada'],
+    ['parcial', 'Parcial'],
+    ['nao_realizada', 'Não realizada'],
+    ['remanejada', 'Remanejada']
+  ];
+  wrap.innerHTML = statuses.map(([value, label]) =>
+    `<button type="button" class="detail-status-btn ${value === status ? 'active' : ''}" onclick="setDetailExecutionStatus('${value}')">${label}</button>`
+  ).join('');
+}
+
+function setDetailExecutionStatus(value) {
+  updateExecutionStatus(value);
+}
+
 function updateExecutionStatus(value){
   if(!currentDetailKey||!state.modules[currentDetailKey]) return;
   state.modules[currentDetailKey].executionStatus=value||'planejada';
+  const select = document.getElementById('detailExecStatus');
+  if (select) select.value = value || 'planejada';
+  renderDetailExecutionButtons(value || 'planejada');
   saveData(); render();
   showToast('Status do módulo atualizado.');
 }
@@ -11524,7 +11622,16 @@ function movePresencialModule(sourceKey,targetDateKey,targetModule){
     for(let n=1;n<=8;n++) delete state.modules[`${dateKey}_${n}`];
   });
   const writeDay=(dateKey,mods)=>{
-    if(mods.length>getClassModuleCountForDate(dateKey)) setClassModuleCountForDate(dateKey,mods.length);
+    // O arraste não deve abrir prompt: o dia é ampliado automaticamente somente
+    // quando a inserção ultrapassa a quantidade configurada para ele.
+    const configuredCount = getClassModuleCountForDate(dateKey);
+    if (mods.length > configuredCount) {
+      const turma = getActiveClass();
+      if (turma) {
+        if (!turma.modulosPorData || typeof turma.modulosPorData !== 'object') turma.modulosPorData = {};
+        turma.modulosPorData[dateKey] = Math.min(8, mods.length);
+      }
+    }
     mods.slice(0,8).forEach((mod,index)=>{state.modules[`${dateKey}_${index+1}`]=mod;});
   };
   if(sourceDateKey===targetDateKey) writeDay(sourceDateKey,targetDay);
@@ -11569,8 +11676,8 @@ function duplicateModule() {
   document.getElementById('fAval').value = mod.aval || '';
   document.getElementById('fAtiv').value = mod.ativ || '';
   document.getElementById('fObs').value = mod.obs || '';
-  document.getElementById('fExecStatus').value = mod.executionStatus || 'planejada';
-  document.getElementById('fExecObs').value = mod.executionObs || '';
+  document.getElementById('fExecStatus').value = 'planejada';
+  document.getElementById('fExecObs').value = '';
   document.getElementById('fMaterialSearch').value = '';
   document.getElementById('fMaterialType').value = '';
   moduleDraftMaterials = Array.isArray(mod.materials) ? classClone(mod.materials, []) : [];
@@ -11623,8 +11730,9 @@ function applyModuleCopy(sourceKey) {
   document.getElementById('fAval').value = mod.aval || '';
   document.getElementById('fAtiv').value = mod.ativ || '';
   document.getElementById('fObs').value = mod.obs || '';
-  document.getElementById('fExecStatus').value = mod.executionStatus || 'planejada';
-  document.getElementById('fExecObs').value = mod.executionObs || '';
+  // O conteúdo é reutilizado, mas a execução começa independente e planejada.
+  document.getElementById('fExecStatus').value = 'planejada';
+  document.getElementById('fExecObs').value = '';
   document.getElementById('fMaterialSearch').value = '';
   document.getElementById('fMaterialType').value = '';
   moduleDraftMaterials = Array.isArray(mod.materials) ? classClone(mod.materials, []) : [];
@@ -11635,6 +11743,28 @@ function applyModuleCopy(sourceKey) {
     btn.style.opacity = active ? '1' : '0.62';
   });
   renderModuleMaterialPicker();
+}
+
+function copyPreviousModuleIntoForm() {
+  const dayIdx = Number(document.getElementById('fDay')?.value);
+  const modNum = Number(document.getElementById('fMod')?.value);
+  if (!Number.isFinite(dayIdx) || !Number.isFinite(modNum) || modNum <= 1) {
+    showToast('Escolha um módulo a partir do número 2 para copiar o módulo anterior.', true);
+    return;
+  }
+  const dates = getWeekDates(state.weekOffset);
+  const date = dates[dayIdx];
+  if (!date) return;
+  const sourceKey = `${fmtDateKey(date)}_${modNum - 1}`;
+  const source = state.modules?.[sourceKey];
+  if (!source) {
+    showToast(`O módulo ${modNum - 1} deste dia ainda não está preenchido.`, true);
+    return;
+  }
+  const select = document.getElementById('fCopyModule');
+  if (select) select.value = sourceKey;
+  applyModuleCopy(sourceKey);
+  showToast(`Informações copiadas do módulo ${modNum - 1}.`);
 }
 
 function deleteModule() {
@@ -11876,7 +12006,11 @@ function applyModuleTemplate(template){
   if(p.ativ) document.getElementById('fAtiv').value=p.ativ;
   if(p.aval) document.getElementById('fAval').value=p.aval;
   if(p.obs) document.getElementById('fObs').value=p.obs;
-  document.querySelectorAll('#tagButtonsContainer .tag-toggle').forEach(b=>b.classList.toggle('active-tag',b.dataset.tag===p.tag));
+  document.querySelectorAll('#tagButtonsContainer .tag-toggle').forEach(b=>{
+    const active = b.dataset.tag === p.tag;
+    b.classList.toggle('active-tag', active);
+    b.style.opacity = active ? '1' : '0.62';
+  });
 }
 function setEadTipos(tipos) {
   const selected = new Set(tipos && tipos.length ? tipos : ['leitura']);
@@ -12174,6 +12308,28 @@ function applyEadModuleCopy(sourceKey) {
   setEadTipos(getEadTipos(mod));
   document.getElementById('efDesc').value = mod.desc || '';
   document.getElementById('efObs').value = mod.obs || '';
+}
+
+function copyPreviousEadModuleIntoForm() {
+  const dayIdx = Number(document.getElementById('efDay')?.value);
+  const modNum = Number(document.getElementById('efMod')?.value);
+  if (!Number.isFinite(dayIdx) || !Number.isFinite(modNum) || modNum <= 1) {
+    showToast('Escolha uma tarefa a partir do módulo 2 para copiar a anterior.', true);
+    return;
+  }
+  const dates = getWeekDates(state.weekOffset);
+  const date = dates[dayIdx];
+  if (!date) return;
+  const sourceKey = `ead_${fmtDateKey(date)}_${modNum - 1}`;
+  const source = state.eadModules?.[sourceKey];
+  if (!source) {
+    showToast(`A tarefa EaD ${modNum - 1} deste dia ainda não está preenchida.`, true);
+    return;
+  }
+  const select = document.getElementById('efCopyModule');
+  if (select) select.value = sourceKey;
+  applyEadModuleCopy(sourceKey);
+  showToast(`Informações copiadas da tarefa EaD ${modNum - 1}.`);
 }
 
 function openEadModal(dateKey, modNum) {
@@ -15962,7 +16118,11 @@ startCountdown();
 updateSidebarBadge();
 scheduleTaskNotifications();
 // Ao abrir, confere a planilha com cuidado. Dados locais mais recentes não são substituídos automaticamente.
-setTimeout(() => syncFromSheets({ startup:true, silent:true }), 700);
+setTimeout(async () => {
+  await syncFromSheets({ startup:true, silent:true });
+  resumePendingCloudSave();
+}, 700);
+window.addEventListener('online', resumePendingCloudSave);
 
 // Ao abrir o sistema, restaurar a última página e posição visitadas.
 (function() {
