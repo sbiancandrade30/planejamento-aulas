@@ -5966,6 +5966,10 @@ function changeActiveClass(id) {
   renderAlunos();
   renderOcorrencias();
   renderAllClassDependentViews();
+  // A aba de Disciplinas pode continuar visível mesmo quando o estado da
+  // navegação foi restaurado de uma versão anterior. Atualize-a explicitamente.
+  renderDiscManager();
+  rebuildActiveClassSelect();
   if (state?.view === 'configuracoes') renderConfiguracoes();
   showToast(`Turma ativa: ${occurrenceClassName(id)}`);
 }
