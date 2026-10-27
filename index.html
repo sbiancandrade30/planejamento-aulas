@@ -5867,12 +5867,15 @@ function migrateClassConfigurationV26() {
   if (Array.isArray(state?.alunos)) {
     state.alunos.forEach(a => { if (!a.turmaId) a.turmaId = turmas[0].id; });
   }
+  if (nextActive && state._activeClassDataId !== nextActive.id) {
+    activateClassData(nextActive.id);
+  }
 }
 function getActiveClassId() {
   const turmas = getOccurrenceClasses();
   const stored = localStorage.getItem('oficial_app_active_class_id') || state?._preferredActiveClassId || '';
   const storedClass = turmas.find(t => t.id === stored);
-  if (storedClass && storedClass.status !== 'arquivada') return storedClass.id;
+  if (storedClass) return storedClass.id;
   const fallback = turmas.find(t => t.status !== 'arquivada') || turmas[0];
   if (fallback) {
     if (fallback.id !== stored) localStorage.setItem('oficial_app_active_class_id', fallback.id);
@@ -5994,11 +5997,15 @@ function confirmActiveClassChange() {
 function changeActiveClass(id) {
   const turmas = getOccurrenceClasses();
   if (!turmas.some(t => t.id === id)) return;
+  if (saveData() === false) {
+    rebuildActiveClassSelect();
+    return;
+  }
   captureCurrentClassData();
   localStorage.setItem('oficial_app_active_class_id', id);
   state._preferredActiveClassId = id;
   activateClassData(id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (saveData() === false) return;
   const alunoFiltro = document.getElementById('alunoTurmaFiltro');
   if (alunoFiltro) alunoFiltro.value = id;
   const occFiltro = document.getElementById('occFilterTurma');
@@ -6828,11 +6835,11 @@ function ensureCourseDisciplinesForClass(classId) {
   let changed = false;
   Object.entries(DISC_DEFAULTS).forEach(([tipo, nomes]) => {
     if (!Array.isArray(data.discs[tipo])) data.discs[tipo] = [];
-    const existing = new Set(data.discs[tipo].map(nome => normalizar(nome)));
+    const existing = new Set(data.discs[tipo].map(nome => normalizeOccurrenceText(nome)));
     nomes.forEach(nome => {
-      if (!existing.has(normalizar(nome))) {
+      if (!existing.has(normalizeOccurrenceText(nome))) {
         data.discs[tipo].push(nome);
-        existing.add(normalizar(nome));
+        existing.add(normalizeOccurrenceText(nome));
         changed = true;
       }
     });
@@ -7598,8 +7605,8 @@ function saveDisc() {
     removeDiscExtra(nomeAntigo);
   }
 
+  if (saveData() === false) return;
   closeDiscModal();
-  saveData();
   renderDiscManager();
   showToast(idx < 0 ? 'Disciplina adicionada!' : 'Disciplina atualizada!');
 }
@@ -7849,7 +7856,8 @@ function saveAluno() {
     // Adicionar aniversário no calendário se tiver nascimento
     if (aluno.nascimento) syncAniversarioCalendario(aluno);
   }
-  saveData(); closeAlunoModal(); renderAlunos();
+  if (saveData() === false) return;
+  closeAlunoModal(); renderAlunos();
   showToast(alunoEditingId ? 'Aluno atualizado!' : 'Aluno cadastrado!');
 }
 
@@ -8529,7 +8537,8 @@ function saveRegistro() {
   const tipo = document.getElementById('regTipo').value;
   a.registros.push({ data:document.getElementById('regData').value, tipo, descricao:desc });
   if (tipo==='advertencia' || tipo==='suspensao') a.atencao = true;
-  saveData(); closeRegistroModal(); renderAlunos(); openAlunoDetail(id);
+  if (saveData() === false) return;
+  closeRegistroModal(); renderAlunos(); openAlunoDetail(id);
 }
 
 function deleteRegistro(alunoId, idx) {
@@ -9387,8 +9396,8 @@ function setSyncStatus(status) {
   const label = document.getElementById('syncLabel');
   const colors = { ok:'#2a7d4f', syncing:'#9a6200', error:'#b93232', off:'var(--text3)', disabled:'#6b6860' };
   const labels = { ok:'Sincronizado', syncing:'Salvando...', error:'Erro — salvo localmente', off:'Carregando...', disabled:'Nuvem não configurada' };
-  dot.style.background = colors[status] || colors.off;
-  label.textContent    = labels[status] || labels.off;
+  if (dot) dot.style.background = colors[status] || colors.off;
+  if (label) label.textContent = labels[status] || labels.off;
 }
 
 function ensureSyncMeta(target = state) {
@@ -9499,7 +9508,6 @@ function scheduleCloudRetry(payload, attempt = 0) {
     localStorage.setItem(PENDING_CLOUD_SAVE_KEY, payload);
   } catch (error) {
     console.warn('Não foi possível manter a fila de sincronização:', error);
-    return;
   }
   clearTimeout(cloudRetryTimer);
   const nextAttempt = Number(attempt) + 1;
@@ -11714,7 +11722,8 @@ function movePresencialModule(sourceKey,targetDateKey,targetModule){
   };
   if(sourceDateKey===targetDateKey) writeDay(sourceDateKey,targetDay);
   else { writeDay(sourceDateKey,sourceDay); writeDay(targetDateKey,targetDay); }
-  saveData(); render(); showToast('Módulo movido e salvo.');
+  if (saveData() === false) { render(); return; }
+  render(); showToast('Módulo movido e salvo.');
 }
 function handlePresencialDrop(event,dateKey,targetModule){
   event.preventDefault(); event.stopPropagation();
@@ -12476,7 +12485,8 @@ function saveEadModule() {
     obs: document.getElementById('efObs').value,
     ...(isProfessorOwnedEad ? { _professorAdded: true } : {}),
   };
-  saveData(); closeEadModal(); renderEad(); showToast('Tarefa EaD salva!');
+  if (saveData() === false) return;
+  closeEadModal(); renderEad(); showToast('Tarefa EaD salva!');
 }
 
 // --- TOAST -----------------------------------------------
@@ -14425,7 +14435,7 @@ function saveTask() {
       task.atualizadoEm = new Date().toISOString();
     }
 
-    saveData();
+    if (saveData() === false) return;
     closeTaskModal();
     renderTasks();
     if (typeof showToast === 'function') showToast('Tarefa atualizada!');
@@ -14449,7 +14459,7 @@ function saveTask() {
     conclusoes: repeatConfig ? {} : undefined
   });
 
-  saveData();
+  if (saveData() === false) return;
   closeTaskModal();
   renderTasks();
 
@@ -15071,7 +15081,8 @@ function saveCalEvent() {
 
   if (evData.tipo === 'fim') startCountdown();
   if (evData.tipo === 'feriado' || evData.tipo === 'recesso') recalcularRetornosAfastamentosPorDiasUteis();
-  saveData(); closeCalModal(); renderCal();
+  if (saveData() === false) return;
+  closeCalModal(); renderCal();
   renderInicio();
   showToast(calEditId ? 'Evento atualizado!' : 'Evento salvo!');
 }
