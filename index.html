@@ -9444,12 +9444,32 @@ function saveData() {
     markStateUpdated();
     const payload = JSON.stringify(state);
     const storageKey = PROFESSOR_EXPORT_MODE ? professorLocalStorageKey() : STORAGE_KEY;
-    localStorage.setItem(storageKey, payload);
-    if (!PROFESSOR_EXPORT_MODE) localStorage.setItem(PENDING_CLOUD_SAVE_KEY, payload);
+    try {
+      localStorage.setItem(storageKey, payload);
+    } catch (firstError) {
+      // A fila antiga pode ocupar quase toda a quota. Ela é descartável porque
+      // o estado principal do navegador é a fonte local de recuperação.
+      if (PROFESSOR_EXPORT_MODE) throw firstError;
+      localStorage.removeItem(PENDING_CLOUD_SAVE_KEY);
+      localStorage.setItem(storageKey, payload);
+    }
+
+    let pendingCloudSave = true;
+    if (!PROFESSOR_EXPORT_MODE) {
+      try {
+        localStorage.setItem(PENDING_CLOUD_SAVE_KEY, payload);
+      } catch (pendingError) {
+        pendingCloudSave = false;
+        // O cadastro local continua válido mesmo sem espaço para uma segunda
+        // cópia temporária usada apenas pela sincronização.
+        try { localStorage.removeItem(PENDING_CLOUD_SAVE_KEY); } catch (_) {}
+        console.warn('Não foi possível guardar a fila de sincronização:', pendingError);
+      }
+    }
     setOperationalTimestamp('oficial_app_last_local_save_at');
-    refreshConfigIfOpen();
+    try { refreshConfigIfOpen(); } catch (_) {}
     clearTimeout(saveTimer);
-    setSyncStatus('syncing');
+    setSyncStatus(pendingCloudSave ? 'syncing' : 'error');
     saveTimer = setTimeout(() => {
       if (PROFESSOR_EXPORT_MODE) _pushProfessorMergedToSheets();
       else _pushToSheets(payload);
@@ -9457,8 +9477,8 @@ function saveData() {
     return true;
   } catch (error) {
     console.error('Falha ao salvar os dados do Planner:', error);
-    setSyncStatus('error');
-    showToast('Não foi possível salvar. Os dados continuam no formulário.', true);
+    try { setSyncStatus('error'); } catch (_) {}
+    showToast(`Não foi possível salvar localmente: ${error?.message || 'erro de armazenamento'}`, true);
     return false;
   }
 }
@@ -9475,7 +9495,12 @@ async function _postPayloadToSheets(payload) {
 
 function scheduleCloudRetry(payload, attempt = 0) {
   if (!payload || !cloudSyncConfigured() || isProfessorMode()) return;
-  localStorage.setItem(PENDING_CLOUD_SAVE_KEY, payload);
+  try {
+    localStorage.setItem(PENDING_CLOUD_SAVE_KEY, payload);
+  } catch (error) {
+    console.warn('Não foi possível manter a fila de sincronização:', error);
+    return;
+  }
   clearTimeout(cloudRetryTimer);
   const nextAttempt = Number(attempt) + 1;
   if (nextAttempt > 5) return;
