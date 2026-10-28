@@ -159,6 +159,12 @@
   .mod-num { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); margin-bottom: 3px; }
   .mod-title { font-size: 12px; font-weight: 500; color: var(--text); line-height: 1.4; margin-bottom: 7px; }
   .mod-topic { font-size: 10px; color: var(--text3); line-height: 1.3; margin: -2px 0 7px; }
+  #weekGrid .mod-card[data-key]{border-left:3px solid var(--module-accent,var(--border))!important;border-radius:8px!important}
+  .mod-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;min-height:18px}
+  .mod-heading .mod-num{margin-bottom:0!important}
+  .mod-notes{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex:0 0 20px;color:var(--text2)}
+  .lesson-type{display:inline-flex;align-items:center;gap:5px;max-width:100%;padding:3px 6px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text2);font-size:10px;font-weight:500;line-height:1.3;overflow-wrap:anywhere}
+  .lesson-type-dot{width:7px;height:7px;border-radius:50%;background:var(--lesson-color);flex:0 0 7px;print-color-adjust:exact;-webkit-print-color-adjust:exact}
   .mod-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px; }
   .tags { display: flex; gap: 3px; flex-wrap: wrap; }
   .tag { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 20px; height: var(--tag-h); display: inline-flex; align-items: center; }
@@ -11401,28 +11407,30 @@ function render() {
         card.addEventListener('drop', e=>{card.classList.remove('drop-target'); e.stopPropagation(); handlePresencialDrop(e,dateKey,m);});
 
         const tiposAula = getTiposAula();
+        const priority = ['prova','trabalho','atividade','apresentacao','teoria'];
+        const primaryTag = priority.find(id => (mod.tags || []).includes(id)) || mod.tags?.[0];
+        const accent = tiposAula.find(type => type.id === primaryTag)?.cor;
+        if (accent && /^#[0-9a-f]{6}$/i.test(accent)) card.style.setProperty('--module-accent', accent);
         const tagsHtml = (mod.tags||[]).map(t => {
           const tipo = tiposAula.find(x => x.id === t);
-          const cor = tipo ? tipo.cor : '#888';
+          const cor = tipo && /^#[0-9a-f]{6}$/i.test(tipo.cor) ? tipo.cor : '#667085';
           const nome = tipo ? tipo.nome : (t.charAt(0).toUpperCase()+t.slice(1));
-          return `<span class="tag" style="background:${hexToRgba(cor,0.13)};color:${cor};border-color:${hexToRgba(cor,0.25)}">${nome}</span>`;
+          return `<span class="lesson-type" style="--lesson-color:${cor}"><span class="lesson-type-dot" aria-hidden="true"></span>${escapeHtml(nome)}</span>`;
         }).join('');
 
         let iconsHtml = '';
         if (mod.needPrint && !mod.printed) iconsHtml += `<div class="mod-icon icon-print-pending" title="Imprimir pendente"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 1h6v3H3zM2 4h8a1 1 0 0 1 1 1v4H1V5a1 1 0 0 1 1-1zM3 9v2h6V9"/></svg></div>`;
         if (mod.printed) iconsHtml += `<div class="mod-icon icon-print-done" title="Já imprimiu"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 5l3 3 5-5"/></svg></div>`;
         if (mod.activityBuilt) iconsHtml += `<div class="mod-icon icon-activity-done" title="Atividade montada"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="1" width="10" height="10" rx="2"/><path d="M3 6l2 2 4-4"/></svg></div>`;
-        else iconsHtml += `<div class="mod-icon icon-activity-pending" title="Atividade pendente"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="1" width="10" height="10" rx="2"/><path d="M6 4v4M4 6h4"/></svg></div>`;
         if (Array.isArray(mod.materials) && mod.materials.length) iconsHtml += `<div class="mod-icon icon-material" title="${mod.materials.length} material${mod.materials.length===1?'':'is'} da Biblioteca">📚</div>`;
 
-        const execStatus = mod.executionStatus || 'planejada';
-        const execBadgeHtml = `<div class="mod-exec-pill ${moduleExecutionClass(execStatus)}">${moduleExecutionLabel(execStatus)}</div>`;
+        const hasNotes = [mod.obs, mod.executionObs].some(value => String(value || '').trim());
+        const notesIcon = hasNotes ? '<span class="mod-notes" role="img" aria-label="Contém observações" title="Contém observações"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 8h8M8 12h5"/></svg></span>' : '';
 
         card.innerHTML = `
-          <div class="mod-num">Módulo ${m}</div>
-          <div class="mod-title">${mod.title||'Sem título'}</div>
+          <div class="mod-heading"><div class="mod-num">Módulo ${m}</div>${notesIcon}</div>
+          <div class="mod-title">${escapeHtml(mod.title||'Sem título')}</div>
           ${mod.topic ? `<div class="mod-topic">${escapeHtml(mod.topic)}</div>` : ''}
-          ${execBadgeHtml}
           <div class="mod-footer">
             <div class="tags">${tagsHtml}</div>
             <div class="mod-icons">${iconsHtml}</div>
