@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="planner-build" content="2026-10-28-daily-workflow">
+<meta name="planner-build" content="2026-10-28-chat-import">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Painel Docente — SENAI</title>
 <meta name="description" content="Painel de gestão docente SENAI — planejamento, frequência, notas e ocorrências">
@@ -222,6 +222,17 @@
   #modalOverlay .modal-foot{flex-wrap:wrap}
   #alunoModalOverlay .modal{width:min(580px,calc(100vw - 32px))!important}
   #alunoModalOverlay .modal-foot{flex-wrap:wrap}
+  #chatImportOverlay .modal{width:min(900px,calc(100vw - 32px))}
+  #chatImportOverlay .modal-foot{flex-wrap:wrap}
+  #chatImportOverlay textarea{font-family:'DM Mono',monospace;font-size:11px;line-height:1.5;resize:vertical}
+  .chat-import-preview{overflow:auto;max-height:300px;margin-top:14px}
+  .chat-import-preview table{width:100%;border-collapse:collapse;font-size:12px}
+  .chat-import-preview th,.chat-import-preview td{padding:9px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top;overflow-wrap:anywhere}
+  .chat-import-preview th{position:sticky;top:0;background:var(--surface)}
+  .chat-import-error{color:var(--red)}
+  .chat-import-skip{color:var(--text3)}
+  .chat-import-ready{color:var(--green)}
+  .professor-mode #chatImportBtn{display:none!important}
   #tagButtonsContainer .tag-toggle.active-tag{opacity:1!important;box-shadow:0 0 0 2px rgba(22,65,148,.18);transform:translateY(-1px)}
   .module-material-toolbar { display:grid; grid-template-columns:minmax(240px,1fr) minmax(170px,210px) auto; gap:8px; align-items:center; }
   .module-material-list { display:flex; flex-direction:column; gap:6px; max-height:190px; overflow:auto; }
@@ -3807,6 +3818,7 @@
         <button class="btn btn-outline btn-professor-generate" id="btnGerarProfessor" onclick="gerarVersaoProfessor()" title="Gerar um HTML de visualização para compartilhar">Gerar versão para professor</button>
         <button class="btn btn-outline" id="btnVoltarProfessorPreview" onclick="voltarDaVisualizacaoProfessor()">← Voltar ao painel completo</button>
         <button class="btn btn-outline" id="btnCarregarNuvem" onclick="syncFromSheets({force:true})" title="Carregar dados do Google Sheets">↓ Carregar</button>
+        <button type="button" class="btn btn-outline" id="chatImportBtn" onclick="openChatImport()">Importar do ChatGPT</button>
         <button class="btn btn-primary" id="btnSalvarNuvem" onclick="saveToCloudNow()">↑ Salvar</button>
 
         <div class="toolbar-menu-wrap" id="toolbarMenuWrap">
@@ -7061,7 +7073,7 @@ function getPlannerLibraryData() {
 
 function getLibraryTopicsForPlannerDiscipline(disciplineName) {
   const data = getPlannerLibraryData();
-  if (!data || !disciplineName) return [];
+  if (!disciplineName) return [];
   const name = normalizeMaterialText(disciplineName);
   const aliases = {
     'processos de transformacao de termoplasticos e acabamento': ['processos de transformacao de termoplasticos'],
@@ -7070,10 +7082,12 @@ function getLibraryTopicsForPlannerDiscipline(disciplineName) {
     'raciocinio logico': ['raciocinio logico e analise de dados']
   };
   const names = [name, ...(aliases[name] || [])];
-  const discipline = data.disciplinas.find(item => names.includes(normalizeMaterialText(item.nome)));
-  if (!discipline) return [];
-  return data.temas
-    .filter(topic => topic.disciplinaId === discipline.id)
+  const discipline = data?.disciplinas.find(item => names.includes(normalizeMaterialText(item.nome)));
+  const portable = state.classData?.[state._activeClassDataId || getActiveClassId()]?.plannerTopics || [];
+  const topics = [...(discipline ? data.temas.filter(topic => topic.disciplinaId === discipline.id) : []),
+    ...portable.filter(topic => names.includes(normalizeMaterialText(topic.disciplina)))];
+  const unique = topics.filter((topic,index) => topics.findIndex(other => normalizeOccurrenceText(other.nome) === normalizeOccurrenceText(topic.nome)) === index);
+  return unique
     .sort((a,b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
 }
 
@@ -12466,6 +12480,360 @@ function goToInicio() {
   if (btn) setView("inicio", btn);
 }
 
+const CHAT_IMPORT_AREAS = {
+  planejamento:'Planejamento presencial', ead:'Planejamento EaD', alunos:'Alunos',
+  disciplinas:'Disciplinas e tópicos do Planner', avaliacoes:'Configuração de avaliações presenciais',
+  atividades_ead:'Configuração de atividades EaD', frequencia:'Frequência',
+  notas:'Notas presenciais', notas_ead:'Notas EaD', rotina:'Rotina semanal', tarefas:'Tarefas', calendario:'Calendário'
+};
+let chatImportPreview = null;
+
+function chatImportExample(area) {
+  const dates = getWeekDates(state.weekOffset);
+  const disc = getDiscs(['ead','notas_ead','atividades_ead'].includes(area) ? 'ead' : 'presencial')[0] || 'NOME EXATO DA DISCIPLINA';
+  const date = fmtDateKey(dates[0]);
+  const assessment = state.notasPres?.[disc]?.avals?.[0]?.id || 'ID_DA_AVALIACAO';
+  const activity = state.notasEad?.[disc]?.atividades?.[0]?.id || 'ID_DA_ATIVIDADE';
+  const samples = {
+    planejamento:{data:date,modulo:1,disciplina:disc,titulo:'Título da aula',topico:'',tipos:['teoria'],descricao:'',atividade:'',avaliacao:'',observacoes:'',materiais:[]},
+    ead:{data:date,modulo:1,disciplina:disc,aula:'Aula 1',tipos:['leitura'],descricao:'Atividade a realizar',observacoes:''},
+    alunos:{nome:'NOME COMPLETO DO ALUNO',apelido:'',nascimento:'',telefone:'',observacoes:''},
+    disciplinas:{nome:'NOME DA DISCIPLINA',tipo:'presencial',topicos:['Tópico confirmado']},
+    avaliacoes:{disciplina:disc,id:'prova_1',nome:'Prova 1',valor:20},
+    atividades_ead:{disciplina:disc,id:'atividade_1',aula:'Aula 1',tipo:'questionario',valor:20},
+    frequencia:{data:date,disciplina:disc,aluno:'NOME EXATO DO ALUNO',situacoes:[],observacoes:''},
+    notas:{disciplina:disc,aluno:'NOME EXATO DO ALUNO',avaliacao_id:assessment,nota:null},
+    notas_ead:{disciplina:disc,aluno:'NOME EXATO DO ALUNO',atividade_id:activity,nota:null,status:'prazo'},
+    rotina:{inicio:date,fim:'',segunda_quarta_sexta:disc,terca_quinta:getDiscs('presencial')[1] || ''},
+    tarefas:{titulo:'Nome da tarefa',data:date,hora:'',prioridade:'media',observacoes:''},
+    calendario:{titulo:'Nome do evento',data:date,tipo:'outro',disciplina:'',observacoes:''}
+  };
+  return {versao:1,turma_id:getActiveClassId(),area,registros:[samples[area]]};
+}
+
+function chatImportPrompt(area) {
+  const context = {
+    turma_id:getActiveClassId(),turma:getActiveClass()?.nome,
+    semana:getWeekDates(state.weekOffset).map(fmtDateKey),
+    disciplinas:{presencial:getDiscs('presencial'),ead:[...new Set([...getDiscs('ead'),...getDiscs('presEad')])]},
+    tipos_presenciais:getTiposAula().map(item => ({id:item.id,nome:item.nome})),
+    tipos_ead:['leitura','video','resumo','avaliativa']
+  };
+  if (area === 'notas') context.avaliacoes = Object.fromEntries(Object.entries(state.notasPres || {}).map(([disc,data]) => [disc,data.avals || []]));
+  if (area === 'notas_ead') context.atividades = Object.fromEntries(Object.entries(state.notasEad || {}).map(([disc,data]) => [disc,data.atividades || []]));
+  if (area === 'calendario') context.tipos_evento = getTiposEvento().map(item => ({id:item.id,nome:item.nome}));
+  if (document.getElementById('chatImportIncludeNames')?.checked) context.alunos = getAlunos().filter(a => a.turmaId === getActiveClassId()).map(a => a.nome);
+  return [
+    `Prepare um JSON para importar ${CHAT_IMPORT_AREAS[area]} no SENAI Planner. Vou fornecer os dados depois deste pedido.`,
+    '', 'REGRAS',
+    '- Responda somente com um objeto JSON válido, sem explicações.',
+    '- Use versao 1, a area e a turma_id exatas do modelo. Um objeto por registro.',
+    '- Datas no formato AAAA-MM-DD. Números sem aspas. Módulos de 45 minutos, numerados de 1 a 8.',
+    '- Não invente alunos, datas de nascimento, telefones, notas, presenças, links ou divisões de tópicos. Campos opcionais desconhecidos ficam vazios.',
+    '- O exemplo demonstra o formato. Substitua os nomes ilustrativos. Uma nota null ou lista de situações vazia significa informação ausente, nunca zero ou presença.',
+    '- Para planejamento, pode propor conteúdo somente se eu pedir. Não invente que uma aula já foi realizada. Cada módulo é independente.',
+    '- Para frequência, inclua apenas alunos e situações informados: P=presente, CJ=falta justificada, SJ=falta sem justificativa. Uma situação explícita por módulo do dia.',
+    '- Para notas, use somente valores que eu informar e IDs de avaliações já cadastradas. Não crie notas para campos ausentes.',
+    '- Não substitua registros existentes. Se faltar informação essencial, peça antes de gerar o JSON.',
+    '', 'CONTEXTO DO PLANNER', JSON.stringify(context,null,2),
+    '', 'MODELO DE FORMATO', JSON.stringify(chatImportExample(area),null,2),
+    '', 'DADOS E PEDIDO DA PROFESSORA:', '[Descrever ou colar aqui as informações reais e o que deve ser preparado.]'
+  ].join('\n');
+}
+
+function openChatImport() {
+  if (isProfessorMode()) { showToast('A importação está disponível no painel completo.',true); return; }
+  let overlay = document.getElementById('chatImportOverlay');
+  if (!overlay) {
+    overlay=document.createElement('div');overlay.id='chatImportOverlay';overlay.className='modal-overlay';
+    overlay.innerHTML=`<div class="modal"><div class="modal-head"><h2 id="chatImportTitle"></h2><button type="button" class="close-btn" aria-label="Fechar" onclick="closeChatImport()">×</button></div><div class="modal-body"><div class="form-group"><label class="form-label" for="chatImportArea">Área</label><select id="chatImportArea" class="form-input" onchange="refreshChatImportModel()">${Object.entries(CHAT_IMPORT_AREAS).map(([key,label])=>`<option value="${key}">${label}</option>`).join('')}</select></div><div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px"><button type="button" class="btn btn-outline" onclick="copyChatImportModel()">Copiar pedido para o ChatGPT</button><label style="font-size:12px;display:flex;gap:6px;align-items:center"><input type="checkbox" id="chatImportIncludeNames" onchange="refreshChatImportPrompt()">Incluir nomes dos alunos no pedido</label></div><details class="module-extra-fields" style="margin-bottom:14px"><summary>Ver modelo do pedido</summary><textarea id="chatImportPrompt" class="form-input" rows="12" readonly aria-label="Modelo para enviar ao ChatGPT"></textarea></details><div class="form-group"><label class="form-label" for="chatImportText">Resposta do ChatGPT (JSON)</label><textarea id="chatImportText" class="form-input" rows="8" oninput="invalidateChatImport()" placeholder="Cole aqui o JSON preparado..."></textarea></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-outline" onclick="document.getElementById('chatImportFile').click()">Abrir JSON</button><input type="file" id="chatImportFile" accept=".json,application/json" hidden onchange="readChatImportFile(this)"><button type="button" class="btn btn-primary" onclick="previewChatImport()">Conferir prévia</button></div><div id="chatImportSummary" role="status" style="font-size:12px;margin-top:14px"></div><div class="chat-import-preview" id="chatImportPreview"></div></div><div class="modal-foot"><button type="button" class="btn btn-outline" onclick="closeChatImport()">Cancelar</button><button type="button" class="btn btn-primary" id="chatImportConfirm" disabled onclick="applyChatImport()">Importar selecionados</button></div></div>`;
+    overlay.addEventListener('click',event=>{if(event.target===overlay)closeChatImport();});
+    document.body.appendChild(overlay);
+  }
+  const areaByView={presencial:'planejamento',ead:'ead',alunos:'alunos',disciplinas:'disciplinas',frequencia:'frequencia',notaspres:'notas',notasead:'notas_ead',tarefas:'tarefas',calendario:'calendario'};
+  document.getElementById('chatImportArea').value=areaByView[state.view] || 'planejamento';
+  document.getElementById('chatImportIncludeNames').checked=false;
+  document.getElementById('chatImportText').spellcheck=false;
+  document.getElementById('chatImportPrompt').spellcheck=false;
+  refreshChatImportModel();overlay.classList.add('open');
+  document.getElementById('chatImportTitle').textContent='Importar do ChatGPT · '+(getActiveClass()?.nome || 'Turma atual');
+  if (!document.getElementById('chatImportUndo')) {
+    const button=document.createElement('button');button.id='chatImportUndo';button.type='button';button.className='btn btn-outline';button.textContent='Desfazer última importação';button.onclick=undoChatImport;
+    overlay.querySelector('.modal-foot').prepend(button);
+  }
+  document.getElementById('chatImportUndo').disabled=localStorage.getItem('oficial_app_chat_import_last_revision_v1')!==cloudRevision(state);
+  overlay.querySelector('.modal').scrollTop=0;
+}
+function closeChatImport(){document.getElementById('chatImportOverlay')?.classList.remove('open');chatImportPreview=null;}
+function refreshChatImportPrompt(){document.getElementById('chatImportPrompt').value=chatImportPrompt(document.getElementById('chatImportArea').value);}
+function refreshChatImportModel(){document.getElementById('chatImportText').value='';invalidateChatImport();refreshChatImportPrompt();}
+function invalidateChatImport(){chatImportPreview=null;document.getElementById('chatImportSummary').textContent='';document.getElementById('chatImportPreview').innerHTML='';document.getElementById('chatImportConfirm').disabled=true;}
+async function copyChatImportModel(){
+  const field=document.getElementById('chatImportPrompt');refreshChatImportPrompt();
+  try {await navigator.clipboard.writeText(field.value);showToast('Pedido copiado.');}
+  catch(_){field.closest('details').open=true;field.select();if(document.execCommand('copy'))showToast('Pedido copiado.');else showToast('Selecione e copie o pedido exibido.',true);}
+}
+async function readChatImportFile(input){
+  const file=input.files?.[0];if(!file)return;
+  try{if(file.size>1000000)throw new Error('Use um JSON de até 1 MB.');document.getElementById('chatImportText').value=await file.text();invalidateChatImport();}
+  catch(error){showToast(error.message,true);}finally{input.value='';}
+}
+
+function chatImportText(value, required = false, max = 10000) {
+  if (value == null && !required) return '';
+  if (typeof value !== 'string' || value.length > max || (required && !value.trim())) throw new Error('Há um texto obrigatório ausente ou inválido.');
+  return value.trim();
+}
+function chatImportKey(value) {
+  const key=chatImportText(value,true,300);
+  if(['NOME COMPLETO DO ALUNO','NOME EXATO DO ALUNO','NOME DA DISCIPLINA','NOME EXATO DA DISCIPLINA','ID_DA_AVALIACAO','ID_DA_ATIVIDADE'].includes(key.toUpperCase()))throw new Error('Substitua os nomes ilustrativos do modelo pelos dados reais.');
+  if (['__proto__','prototype','constructor'].includes(key.toLowerCase()) || /[<>"'`\\\u0000-\u001f]/.test(key)) throw new Error('Nome ou identificador contém caracteres não suportados na importação.');
+  return key;
+}
+function chatImportDate(value, optional = false) {
+  if (optional && (value == null || value === '')) return '';
+  const key=chatImportText(value,true,10), date=new Date(key+'T12:00:00');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(key)||Number.isNaN(date.getTime())||fmtDateKey(date)!==key)throw new Error('Data inválida. Use AAAA-MM-DD.');
+  return key;
+}
+function chatImportNumber(value, min, max, integer = false) {
+  if (!(typeof value === 'number' || (typeof value === 'string' && /^\d+(?:[.,]\d+)?$/.test(value)))) throw new Error('Informe um número explícito; campo vazio não é zero.');
+  const number=Number(String(value).replace(',','.'));
+  if(!Number.isFinite(number)||number<min||number>max||(integer&&!Number.isInteger(number)))throw new Error(`Número fora do intervalo permitido (${min} a ${max}).`);
+  return number;
+}
+function chatImportSkip(message){const error=new Error(message);error.chatSkip=true;throw error;}
+function chatImportId(){return 'chat_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,12);}
+
+function prepareChatImportRecord(draft, area, record) {
+  if(!record||typeof record!=='object'||Array.isArray(record))throw new Error('Cada registro deve ser um objeto.');
+  const classId=getActiveClassId(), data=draft.classData[classId];
+  const lists=data.discs || {presencial:[],ead:[],presEad:[]};
+  const allDiscs=[...new Set(Object.values(lists).flat())];
+  const discipline=(value,kind='all')=>{
+    const name=chatImportKey(value), choices=kind==='all'?allDiscs:kind==='ead'?[...(lists.ead || []),...(lists.presEad || [])]:(lists[kind] || []);
+    const match=choices.find(item=>normalizeOccurrenceText(item)===normalizeOccurrenceText(name));
+    if(!match)throw new Error('Disciplina não cadastrada nesta turma: '+name);
+    return match;
+  };
+  const student=(value)=>{
+    const name=chatImportKey(value);
+    const found=(draft.alunos || []).filter(item=>item.turmaId===classId&&normalizeOccurrenceText(item.nome)===normalizeOccurrenceText(name));
+    if(found.length!==1)throw new Error('Aluno não encontrado ou ambíguo nesta turma: '+name);
+    return found[0];
+  };
+  const mapStudentKey=(map,aluno)=>Object.keys(map || {}).find(key=>normalizeOccurrenceText(key)===normalizeOccurrenceText(aluno.nome)) || aluno.nome.toUpperCase();
+  const occupied=value=>value!==undefined&&value!==null&&value!=='';
+  let label='',apply;
+  if(area==='planejamento'||area==='ead') {
+    const date=chatImportDate(record.data), number=chatImportNumber(record.modulo,1,8,true);
+    if(![1,2,3,4,5].includes(new Date(date+'T12:00:00').getDay()))throw new Error('O planejamento semanal usa segunda a sexta.');
+    const disc=discipline(record.disciplina,area==='ead'?'all':'presencial');
+    const collection=area==='ead'?'eadModules':'modules', key=(area==='ead'?'ead_':'')+date+'_'+number;
+    if(draft[collection]?.[key])chatImportSkip('Módulo já cadastrado; mantido sem alteração.');
+    const allowed=area==='ead'?['leitura','video','resumo','avaliativa']:getTiposAula().map(item=>item.id);
+    if(!Array.isArray(record.tipos)||record.tipos.some(type=>!allowed.includes(type)))throw new Error('Tipos de aula inválidos; use os IDs do modelo.');
+    const types=[...new Set(record.tipos)], obs=chatImportText(record.observacoes), description=chatImportText(record.descricao);
+    let module;
+    if(area==='ead')module={disc,aula:chatImportKey(record.aula),tipos:types,tipo:types[0]||'leitura',desc:description,obs};
+    else {
+      const materials=record.materiais || [];
+      if(!Array.isArray(materials)||materials.length>30)throw new Error('Materiais devem ser uma lista de até 30 links.');
+      const preparedMaterials=materials.map(item=>{
+        const link=chatImportText(item?.link,true,4000);let url;
+        try{url=new URL(link);}catch(_){throw new Error('Link de material inválido.');}
+        if(!['https:','http:'].includes(url.protocol))throw new Error('Use apenas links http ou https para materiais.');
+        return {id:chatImportId(),title:chatImportText(item.titulo)||'Material',link,disc};
+      });
+      const topic=chatImportText(record.topico);
+      const known=getLibraryTopicsForPlannerDiscipline(disc).find(item=>normalizeOccurrenceText(item.nome)===normalizeOccurrenceText(topic));
+      if(topic&&!known)throw new Error('Tópico não cadastrado para esta disciplina. Importe os tópicos primeiro ou deixe o campo vazio.');
+      module={title:chatImportKey(record.titulo),disc,topicId:known?.id||'',topic:known?.nome||'',tags:types,teoria:description,ativ:chatImportText(record.atividade),aval:chatImportText(record.avaliacao),obs,materials:preparedMaterials,executionStatus:'planejada',executionObs:''};
+    }
+    label=`${date} · Módulo ${number} · ${disc}`;
+    apply=()=>{
+      if(!draft[collection])draft[collection]={};draft[collection][key]=module;
+      if(area==='planejamento') {
+        const config=draft.classConfigs?.find(item=>item.id===classId);
+        if(config&&number>getClassModuleCountForDate(date)){config.modulosPorData={...(config.modulosPorData||{}),[date]:Math.max(number,Number(config.modulosPorData?.[date])||0)};}
+      }
+    };
+  } else if(area==='alunos') {
+    const nome=chatImportKey(record.nome);
+    if(draft.alunos.some(item=>item.turmaId===classId&&normalizeOccurrenceText(item.nome)===normalizeOccurrenceText(nome)))chatImportSkip('Aluno já cadastrado; cadastro existente preservado.');
+    const status=record.status || 'ativo';
+    if(!['ativo','desligado','transferido','concluido'].includes(status))throw new Error('Situação do aluno inválida.');
+    const escolar=record.escolaridade || '';
+    if(!['','3em','concluido','outro'].includes(escolar))throw new Error('Escolaridade inválida.');
+    const aluno={id:chatImportId(),nome,turmaId:classId,apelido:chatImportText(record.apelido),nascimento:chatImportDate(record.nascimento,true),telefone:chatImportText(record.telefone),obs:chatImportText(record.observacoes),status,escolar,foto:null,registros:[],atencao:false};
+    label=nome;apply=()=>draft.alunos.push(aluno);
+  } else if(area==='disciplinas') {
+    const name=chatImportKey(record.nome), kind=record.tipo;
+    if(!['presencial','ead','presEad'].includes(kind))throw new Error('Tipo de disciplina inválido.');
+    const topics=record.topicos || [];
+    if(!Array.isArray(topics)||topics.length>100)throw new Error('Tópicos devem ser uma lista de até 100 nomes confirmados.');
+    const topicNames=topics.map(topic=>chatImportKey(topic)).filter((topic,index,list)=>list.findIndex(other=>normalizeOccurrenceText(other)===normalizeOccurrenceText(topic))===index);
+    const existing=(lists[kind] || []).find(item=>normalizeOccurrenceText(item)===normalizeOccurrenceText(name));
+    const canonical=existing || allDiscs.find(item=>normalizeOccurrenceText(item)===normalizeOccurrenceText(name)) || name;
+    const known=[...getLibraryTopicsForPlannerDiscipline(canonical),...(data.plannerTopics || []).filter(item=>normalizeOccurrenceText(item.disciplina)===normalizeOccurrenceText(canonical))];
+    const additions=topicNames.filter(topic=>!known.some(item=>normalizeOccurrenceText(item.nome)===normalizeOccurrenceText(topic)));
+    if(existing&&!additions.length)chatImportSkip('Disciplina e tópicos já cadastrados.');
+    label=`${canonical} · ${additions.length} tópico(s)`;
+    apply=()=>{
+      if(!data.discs)data.discs={presencial:[],ead:[],presEad:[]};
+      if(!data.discs[kind])data.discs[kind]=[];if(!existing)data.discs[kind].push(canonical);
+      if(!data.plannerTopics)data.plannerTopics=[];
+      additions.forEach((nome,index)=>data.plannerTopics.push({id:chatImportId(),nome,disciplina:canonical,ordem:known.length+index+1}));
+    };
+  } else if(area==='avaliacoes'||area==='atividades_ead') {
+    const ead=area==='atividades_ead', disc=discipline(record.disciplina,ead?'ead':'presencial');
+    const id=chatImportKey(record.id), collection=ead?'notasEad':'notasPres', field=ead?'atividades':'avals';
+    const existing=draft[collection]?.[disc]?.[field] || [];
+    if(existing.some(item=>item.id===id))chatImportSkip('Avaliação/atividade já cadastrada; mantida sem alteração.');
+    const value=chatImportNumber(record.valor,0.01,1000);
+    let item;
+    if(ead) {
+      if(!['resumo','questionario'].includes(record.tipo))throw new Error('Tipo EaD deve ser resumo ou questionario.');
+      item={id,aula:chatImportKey(record.aula),tipo:record.tipo,valor:String(value)};
+    }else item={id,nome:chatImportKey(record.nome),valor:String(value)};
+    label=`${disc} · ${ead?item.aula:item.nome} · ${value} pontos`;
+    apply=()=>{if(!draft[collection][disc])draft[collection][disc]=ead?{atividades:[],alunos:{}}:{avals:[],totalAtiv:0,alunos:{}};draft[collection][disc][field].push(item);};
+  } else if(area==='frequencia') {
+    const date=chatImportDate(record.data), disc=discipline(record.disciplina,'presencial'), aluno=student(record.aluno);
+    const count=getClassModuleCountForDate(date);
+    if(!Array.isArray(record.situacoes)||!count||record.situacoes.length!==count||record.situacoes.some(value=>!['P','CJ','SJ'].includes(value)))throw new Error(`Informe exatamente ${count} situações explícitas (P, CJ ou SJ), uma por módulo.`);
+    const existing=draft.freq?.[disc]?.[date]?.alunos || {}, key=mapStudentKey(existing,aluno);
+    if((existing[key]?.mods || []).some(occupied))chatImportSkip('Chamada deste aluno já registrada; não foi substituída.');
+    if((draft.afastamentos || []).some(item=>item.origem==='ocorrencia'&&item.tipo==='suspensao'&&item.dataInicio===date&&normalizeOccurrenceText(item.alunoNome)===normalizeOccurrenceText(aluno.nome)))chatImportSkip('Frequência protegida por ocorrência de suspensão.');
+    const obs=chatImportText(record.observacoes), mods=[...record.situacoes];
+    label=`${date} · ${disc} · ${aluno.nome} · ${mods.join('/')}`;
+    apply=()=>{
+      if(!draft.freq[disc])draft.freq[disc]={};
+      if(!draft.freq[disc][date])draft.freq[disc][date]={alunos:{}};
+      const entry=draft.freq[disc][date];if(!entry.alunos)entry.alunos={};entry._explicitImport=true;
+      entry.alunos[key]={...(entry.alunos[key] || {}),mods,obs:entry.alunos[key]?.obs || obs};
+    };
+  } else if(area==='notas'||area==='notas_ead') {
+    const ead=area==='notas_ead', disc=discipline(record.disciplina,ead?'ead':'presencial'), aluno=student(record.aluno);
+    const collection=ead?'notasEad':'notasPres', data=draft[collection]?.[disc];
+    const id=chatImportKey(ead?record.atividade_id:record.avaliacao_id);
+    const assessment=(ead?data?.atividades:data?.avals)?.find(item=>item.id===id);
+    if(!assessment)throw new Error('Avaliação/atividade não encontrada. Use um ID cadastrado no modelo.');
+    const max=ead?neadAtivValorMax(assessment):Number(assessment.valor);
+    if(!Number.isFinite(max)||max<=0)throw new Error('Configure a pontuação da avaliação antes de importar notas.');
+    const key=mapStudentKey(data.alunos,aluno), current=data.alunos?.[key]?.[id];
+    if(occupied(ead?current?.nota:current))chatImportSkip('Nota já preenchida, inclusive zero; mantida sem alteração.');
+    const grade=String(chatImportNumber(record.nota,0,max));
+    const status=ead?record.status:'';
+    if(ead&&!['prazo','atrasado','nao'].includes(status))throw new Error('Informe status EaD: prazo, atrasado ou nao.');
+    if(ead&&current?.status&&current.status!==status)chatImportSkip('Situação de entrega já registrada e diferente; mantida sem alteração.');
+    label=`${aluno.nome} · ${disc} · ${id} · ${grade}/${max}`;
+    apply=()=>{if(!data.alunos)data.alunos={};if(!data.alunos[key])data.alunos[key]={};data.alunos[key][id]=ead?{...(current || {}),nota:grade,status}:grade;};
+  } else if(area==='rotina') {
+    const start=chatImportDate(record.inicio,true), end=chatImportDate(record.fim,true);
+    if(start&&end&&end<start)throw new Error('Fim do período anterior ao início.');
+    const mwf=record.segunda_quarta_sexta?discipline(record.segunda_quarta_sexta,'presencial'):'', tth=record.terca_quinta?discipline(record.terca_quinta,'presencial'):'';
+    if(!mwf&&!tth)throw new Error('Informe pelo menos uma disciplina da rotina.');
+    if((data.weeklyRoutine || []).some(item=>(start||'0000-01-01')<=(item.end||'9999-12-31')&&(item.start||'0000-01-01')<=(end||'9999-12-31')))chatImportSkip('Período sobreposto a uma rotina existente; mantida sem alteração.');
+    label=`${start||'Sem início'} a ${end||'sem fim'} · ${mwf||'—'} / ${tth||'—'}`;
+    apply=()=>{if(!data.weeklyRoutine)data.weeklyRoutine=[];data.weeklyRoutine.push({start,end,mwf,tth});};
+  } else if(area==='tarefas'||area==='calendario') {
+    const task=area==='tarefas', title=chatImportKey(record.titulo), date=chatImportDate(record.data,task), obs=chatImportText(record.observacoes);
+    const collection=task?'tarefas':'eventos';
+    if(draft[collection].some(item=>normalizeOccurrenceText(task?item.titulo:item.titulo)===normalizeOccurrenceText(title)&&item.data===date))chatImportSkip('Registro com o mesmo título e data já existe.');
+    let item;
+    if(task){
+      const hora=chatImportText(record.hora), prioridade=record.prioridade || 'media';
+      if(hora&&!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(hora))throw new Error('Horário inválido. Use HH:MM.');
+      if(!['alta','media','baixa'].includes(prioridade))throw new Error('Prioridade inválida.');
+      item={id:chatImportId(),titulo:title,data:date,hora,prioridade,obs,categoria:'',contexto:'',concluida:false,criadoEm:new Date().toISOString(),recorrente:false};
+    }else{
+      if(!getTiposEvento().some(type=>type.id===record.tipo))throw new Error('Tipo de evento não cadastrado.');
+      item={id:chatImportId(),titulo:title,data:date,tipo:record.tipo,disc:record.disciplina?discipline(record.disciplina):'',obs,valor:''};
+    }
+    label=`${date||'Sem data'} · ${title}`;apply=()=>draft[collection].push(item);
+  } else throw new Error('Área de importação desconhecida.');
+  return {label,apply};
+}
+
+function buildChatImportDraft(payload, indexes = null) {
+  if(!payload||typeof payload!=='object'||Array.isArray(payload)||payload.versao!==1||payload.turma_id!==getActiveClassId()||!Object.prototype.hasOwnProperty.call(CHAT_IMPORT_AREAS,payload.area))throw new Error('Versão, área ou turma incompatível. Gere a resposta com o modelo desta turma.');
+  if(!Array.isArray(payload.registros)||!payload.registros.length||payload.registros.length>500)throw new Error('Use entre 1 e 500 registros por importação.');
+  const draft=classClone(state,null);if(!draft?.classData?.[getActiveClassId()])throw new Error('A turma atual não está pronta para importar.');
+  const rows=[];
+  payload.registros.forEach((record,index)=>{
+    if(indexes&&!indexes.has(index))return;
+    try{const prepared=prepareChatImportRecord(draft,payload.area,record);prepared.apply();rows.push({index,status:'ready',label:prepared.label,message:'Adicionar'});}
+    catch(error){rows.push({index,status:error.chatSkip?'skip':'error',label:`Registro ${index+1}`,message:error.message});}
+  });
+  return {draft,rows};
+}
+
+function previewChatImport() {
+  invalidateChatImport();
+  try{
+    let raw=document.getElementById('chatImportText').value.trim();
+    if(raw.length>1000000)throw new Error('Use um JSON de até 1 MB.');
+    if(raw.startsWith('```'))raw=raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
+    let payload;try{payload=JSON.parse(raw);}catch(_){throw new Error('JSON inválido. Cole somente o objeto retornado pelo ChatGPT.');}
+    if(payload.area!==document.getElementById('chatImportArea').value)throw new Error('A área do JSON é diferente da área selecionada.');
+    const result=buildChatImportDraft(payload);
+    chatImportPreview={payload,snapshot:JSON.stringify(state),rows:result.rows};
+    const count=status=>result.rows.filter(row=>row.status===status).length;
+    document.getElementById('chatImportSummary').textContent=`${count('ready')} para adicionar · ${count('skip')} já existentes/protegidos · ${count('error')} com erro`;
+    document.getElementById('chatImportPreview').innerHTML=`<table><thead><tr><th scope="col">Incluir</th><th scope="col">Destino</th><th scope="col">Resultado</th></tr></thead><tbody>${result.rows.map(row=>`<tr><td><input type="checkbox" aria-label="Incluir registro ${row.index+1}" data-chat-row="${row.index}" ${row.status==='ready'?'checked':'disabled'} onchange="updateChatImportConfirm()"></td><td>${escapeHtml(row.label)}</td><td class="chat-import-${row.status}">${escapeHtml(row.message)}</td></tr>`).join('')}</tbody></table>`;
+    updateChatImportConfirm();
+    document.getElementById('chatImportPreview').scrollIntoView({block:'nearest'});
+  }catch(error){document.getElementById('chatImportSummary').textContent=error.message;showToast(error.message,true);}
+}
+function updateChatImportConfirm(){document.getElementById('chatImportConfirm').disabled=!document.querySelector('#chatImportPreview input:checked:not(:disabled)');}
+
+function applyChatImport() {
+  if(isProfessorMode()||!chatImportPreview)return;
+  try{
+    if(JSON.stringify(state)!==chatImportPreview.snapshot)throw new Error('Os dados mudaram desde a prévia. Confira a prévia novamente antes de importar.');
+    const selected=new Set([...document.querySelectorAll('#chatImportPreview input:checked:not(:disabled)')].map(input=>Number(input.dataset.chatRow)));
+    if(!selected.size)return;
+    const result=buildChatImportDraft(chatImportPreview.payload,selected);
+    if(result.rows.some(row=>row.status!=='ready'))throw new Error('A seleção mudou. Gere uma nova prévia.');
+    const previous=state;
+    const selectedDiscs=Object.fromEntries(['freqDisc','npDisc','neadDisc'].map(id=>[id,document.getElementById(id).value]));
+    const previousBackup=localStorage.getItem('oficial_app_before_chat_import_v1');
+    localStorage.setItem('oficial_app_before_chat_import_v1',JSON.stringify(previous));
+    state=result.draft;
+    if(saveData()===false){
+      state=previous;
+      try{if(previousBackup===null)localStorage.removeItem('oficial_app_before_chat_import_v1');else localStorage.setItem('oficial_app_before_chat_import_v1',previousBackup);}catch(_){}
+      return;
+    }
+    try {localStorage.setItem('oficial_app_chat_import_last_revision_v1',cloudRevision(state));}catch(_){}
+    closeChatImport();
+    rebuildAllDiscSelects();rebuildActiveClassSelect();
+    Object.entries(selectedDiscs).forEach(([id,value])=>{const select=document.getElementById(id);if([...select.options].some(option=>option.value===value))select.value=value;});
+    renderAllClassDependentViews();
+    if(state.view==='alunos')renderAlunos();
+    if(state.view==='tarefas')renderTasks();
+    if(state.view==='ocorrencias')renderOcorrencias();
+    showToast(`${selected.size} registro(s) importado(s). Cópia anterior guardada neste navegador.`);
+  }catch(error){showToast(error.message||'Não foi possível importar. Nenhum dado foi substituído.',true);}
+}
+
+function undoChatImport() {
+  if(isProfessorMode())return;
+  try {
+    if(localStorage.getItem('oficial_app_chat_import_last_revision_v1')!==cloudRevision(state))throw new Error('Houve alterações depois da importação. Elas foram preservadas; não é seguro desfazer automaticamente.');
+    const backup=JSON.parse(localStorage.getItem('oficial_app_before_chat_import_v1') || 'null');
+    if(!backup?.classData || backup._activeClassDataId!==state._activeClassDataId)throw new Error('A cópia anterior não corresponde à turma atual.');
+    if(!confirm('Desfazer a última importação e restaurar a cópia anterior?'))return;
+    const previous=state;state=backup;
+    if(saveData()===false){state=previous;return;}
+    localStorage.removeItem('oficial_app_chat_import_last_revision_v1');
+    closeChatImport();rebuildAllDiscSelects();rebuildActiveClassSelect();renderAllClassDependentViews();
+    if(state.view==='alunos')renderAlunos();if(state.view==='tarefas')renderTasks();
+    showToast('Última importação desfeita.');
+  }catch(error){showToast(error.message,true);}
+}
+
 function advanceGradeEntry(event) {
   if (event.key !== 'Enter' || event.ctrlKey || event.altKey || event.metaKey || !event.target.matches('input.nead-nota-input')) return;
   const view = event.target.closest('#npNotasView,#neadNotasView,#npLancarView,#neadLancarView');
@@ -13322,7 +13690,7 @@ function renderFreq() {
   </tr></thead><tbody>`;
 
   ALUNOS.forEach((nome, i) => {
-    const defaultMods = Array.from({length:moduleCount}, () => 'P');
+    const defaultMods = Array.from({length:moduleCount}, () => entry._explicitImport ? '' : 'P');
     const a = entry.alunos[nome] || (entry.alunos[nome] = { mods:defaultMods, obs:'', link:'', afastamentoTipo:'', afastamentoDias:'', afastamentoRetorno:'' });
     if (!Array.isArray(a.mods)) a.mods = defaultMods;
     if (a.afastamentoTipo == null) a.afastamentoTipo = '';
@@ -13339,7 +13707,7 @@ function renderFreq() {
     let modCols = '';
     const modsVisual = suspensaoOcorrencia ? Array.from({length:moduleCount}, () => 'CJ') : a.mods;
     for (let m = 0; m < moduleCount; m++) {
-      const cur = modsVisual[m] || 'P';
+      const cur = modsVisual[m] || (entry._explicitImport ? '' : 'P');
       const lockedByOccurrence = !!suspensaoOcorrencia;
       const canEditMod = lockedByOccurrence ? false : professorCanEditFreq(disc, data, nome, 'mods', m);
       const title = lockedByOccurrence
