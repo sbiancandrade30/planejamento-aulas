@@ -1,7 +1,8 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta name="planner-build" content="2026-10-28-sync-verified">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Painel Docente — SENAI</title>
 <meta name="description" content="Painel de gestão docente SENAI — planejamento, frequência, notas e ocorrências">
@@ -3801,7 +3802,7 @@
         <button class="btn btn-outline btn-professor-generate" id="btnGerarProfessor" onclick="gerarVersaoProfessor()" title="Gerar um HTML de visualização para compartilhar">Gerar versão para professor</button>
         <button class="btn btn-outline" id="btnVoltarProfessorPreview" onclick="voltarDaVisualizacaoProfessor()">← Voltar ao painel completo</button>
         <button class="btn btn-outline" id="btnCarregarNuvem" onclick="syncFromSheets({force:true})" title="Carregar dados do Google Sheets">↓ Carregar</button>
-        <button class="btn btn-primary" id="btnSalvarNuvem" onclick="saveData()">↑ Salvar</button>
+        <button class="btn btn-primary" id="btnSalvarNuvem" onclick="saveToCloudNow()">↑ Salvar</button>
 
         <div class="toolbar-menu-wrap" id="toolbarMenuWrap">
           <button class="btn btn-outline toolbar-menu-btn" onclick="toggleToolbarMenu(event)" title="Mais opções">⋯</button>
@@ -6472,7 +6473,7 @@ function renderConfiguracoes() {
         </div>
         <div class="config-hero-actions">
           <button class="btn btn-outline" onclick="syncFromSheets({force:true})">↓ Carregar da nuvem</button>
-          <button class="btn btn-primary" onclick="saveData()">↑ Salvar na nuvem</button>
+          <button class="btn btn-primary" onclick="saveToCloudNow()">↑ Salvar na nuvem</button>
         </div>
       </div>
       <div class="config-hero-grid">
@@ -6535,11 +6536,12 @@ function renderConfiguracoes() {
               </div>
               <div class="config-status-pill ${hasCloudPushTimestamp ? 'ok' : 'warn'}">${hasCloudPushTimestamp ? '● Já houve envio para a base central' : '● Nenhum envio registrado nesta máquina'}</div>
               <div class="config-sync-note">O painel continua salvando no navegador e enviando à planilha. Estes horários ajudam a conferir se a cópia local e a base central estão sendo atualizadas.</div>
+              <div id="cloudSyncDetail" class="config-sync-note" role="status">${escapeHtml(document.getElementById('syncLabel')?.title || '')}</div>
             </div>
           </div>
           <div class="config-action-grid">
             <button class="config-action-btn config-action-wide" onclick="syncFromSheets({force:true})">↓ Carregar da nuvem</button>
-            <button class="config-action-btn config-action-wide" onclick="saveData()">↑ Salvar agora</button>
+            <button class="config-action-btn config-action-wide" onclick="saveToCloudNow()">↑ Salvar agora</button>
             <button class="config-action-btn config-action-wide" onclick="visualizarComoProfessor()">👁 Visualizar como professor</button>
             <button class="config-action-btn config-action-wide" onclick="gerarVersaoProfessor()">📦 Gerar versão do professor</button>
           </div>
@@ -9447,6 +9449,9 @@ let cloudRetryTimer = null;
 let cloudRetryAttempt = 0;
 let lastSavedHash = '';
 const PENDING_CLOUD_SAVE_KEY = 'oficial_app_pending_cloud_save_v1';
+const CLOUD_BASE_REVISION_KEY = 'oficial_app_cloud_base_revision_v1';
+let hadLocalStateAtStartup = false;
+let cloudPushQueue = Promise.resolve();
 
 function hashState() {
   const s = JSON.stringify(state);
@@ -9455,13 +9460,20 @@ function hashState() {
   return String(h);
 }
 
-function setSyncStatus(status) {
+function setSyncStatus(status, detail = '') {
   const dot   = document.getElementById('syncDot');
   const label = document.getElementById('syncLabel');
-  const colors = { ok:'#2a7d4f', syncing:'#9a6200', error:'#b93232', off:'var(--text3)', disabled:'#6b6860' };
-  const labels = { ok:'Sincronizado', syncing:'Salvando...', error:'Erro — salvo localmente', off:'Carregando...', disabled:'Nuvem não configurada' };
+  const colors = { ok:'#2a7d4f', syncing:'#9a6200', pending:'#9a6200', conflict:'#b93232', localerror:'#b93232', error:'#b93232', off:'var(--text3)', disabled:'#6b6860' };
+  const labels = { ok:'Sincronizado', syncing:'Confirmando na nuvem...', pending:'Salvo neste computador', conflict:'Conferir cópias local e nuvem', localerror:'Falha ao salvar neste computador', error:'Nuvem indisponível — cópia local', off:'Carregando...', disabled:'Nuvem não configurada' };
   if (dot) dot.style.background = colors[status] || colors.off;
-  if (label) label.textContent = labels[status] || labels.off;
+  if (label) {
+    label.textContent = labels[status] || labels.off;
+    label.title = detail || labels[status] || labels.off;
+    label.setAttribute('role', 'status');
+    label.setAttribute('aria-live', 'polite');
+  }
+  const configDetail = document.getElementById('cloudSyncDetail');
+  if (configDetail) configDetail.textContent = detail || labels[status] || labels.off;
 }
 
 function ensureSyncMeta(target = state) {
@@ -9472,14 +9484,14 @@ function ensureSyncMeta(target = state) {
 function markStateUpdated() {
   const meta = ensureSyncMeta(state);
   meta.updatedAt = new Date().toISOString();
-  if (!meta.originId) {
-    let originId = localStorage.getItem('oficial_app_sync_origin_id');
-    if (!originId) {
-      originId = 'device_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-      localStorage.setItem('oficial_app_sync_origin_id', originId);
-    }
-    meta.originId = originId;
+  let originId = localStorage.getItem('oficial_app_sync_origin_id');
+  if (!originId) {
+    originId = 'device_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    localStorage.setItem('oficial_app_sync_origin_id', originId);
   }
+  meta.originId = originId;
+  meta.revisionId = originId + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+  meta.baseRevision = localStorage.getItem(CLOUD_BASE_REVISION_KEY) || '';
 }
 
 function getStateUpdatedAt(target) {
@@ -9550,25 +9562,74 @@ function saveData() {
     return true;
   } catch (error) {
     console.error('Falha ao salvar os dados do Planner:', error);
-    try { setSyncStatus('error'); } catch (_) {}
+    try { setSyncStatus('localerror', error?.message || 'Armazenamento local indisponível.'); } catch (_) {}
     showToast(`Não foi possível salvar localmente: ${error?.message || 'erro de armazenamento'}`, true);
     return false;
   }
 }
 
+async function fetchWithCloudTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try { return await fetch(url, {...options, signal:controller.signal}); }
+  finally { clearTimeout(timeout); }
+}
+
 async function _postPayloadToSheets(payload) {
   if (!cloudSyncConfigured()) return;
-  await fetch(APPS_SCRIPT_URL, {
+  const response = await fetchWithCloudTimeout(APPS_SCRIPT_URL, {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain' },
     body: payload
   });
+  if (response.type !== 'opaque' && !response.ok) throw new Error(`Envio recusado pelo Google (HTTP ${response.status}).`);
+}
+
+async function fetchCloudState() {
+  const response = await fetchWithCloudTimeout(APPS_SCRIPT_URL + '?t=' + Date.now(), {
+    cache:'no-store'
+  });
+  if (!response.ok) throw new Error(`O Google respondeu HTTP ${response.status}.`);
+  const text = await response.text();
+  let data;
+  try { data = JSON.parse(text || '{}'); }
+  catch (_) { throw new Error('O Google não retornou os dados do Planner. Verifique o acesso à conta e à rede.'); }
+  if (!data || typeof data !== 'object' || Array.isArray(data) || (Object.keys(data).length && !['modules','classData','classConfigs','alunos','freq','notasEad','notasPres'].some(key => Object.prototype.hasOwnProperty.call(data,key)))) {
+    throw new Error('A resposta do Google não contém uma base válida do Planner.');
+  }
+  return data;
+}
+
+function cloudRevision(data) {
+  const meta = data?._syncMeta || {};
+  if (meta.revisionId) return meta.revisionId;
+  if (meta.updatedAt) return `${meta.originId || 'legacy'}:${meta.updatedAt}`;
+  return '';
+}
+
+function rememberCloudRevision(data) {
+  try { localStorage.setItem(CLOUD_BASE_REVISION_KEY, cloudRevision(data)); } catch (_) {}
+}
+
+function syncFailureDetail(error) {
+  if (error?.name === 'TimeoutError' || error?.name === 'AbortError') return 'O Google demorou a responder. A cópia local foi mantida; confira a conexão do computador.';
+  if (error?.name === 'TypeError') return 'Não foi possível acessar o Google. Confira se a rede permite script.google.com e script.googleusercontent.com. A cópia local foi mantida.';
+  return error?.message || 'Não foi possível acessar a nuvem. Confira se a rede permite script.google.com e script.googleusercontent.com.';
+}
+
+async function saveToCloudNow() {
+  if (saveData() === false) return false;
+  clearTimeout(saveTimer);
+  if (PROFESSOR_EXPORT_MODE) return _pushProfessorMergedToSheets();
+  return _pushToSheets(localStorage.getItem(STORAGE_KEY), 0, true);
 }
 
 function scheduleCloudRetry(payload, attempt = 0) {
   if (!payload || !cloudSyncConfigured() || isProfessorMode()) return;
   try {
+    const latest = localStorage.getItem(PENDING_CLOUD_SAVE_KEY);
+    if (latest && getStateUpdatedAt(JSON.parse(latest)) > getStateUpdatedAt(JSON.parse(payload))) payload = latest;
     localStorage.setItem(PENDING_CLOUD_SAVE_KEY, payload);
   } catch (error) {
     console.warn('Não foi possível manter a fila de sincronização:', error);
@@ -9588,9 +9649,10 @@ function resumePendingCloudSave() {
   try {
     const pending = JSON.parse(payload);
     const pendingUpdated = getStateUpdatedAt(pending);
-    const localUpdated = getStateUpdatedAt(state);
+    const saved = localStorage.getItem(STORAGE_KEY);
+    const localUpdated = saved ? getStateUpdatedAt(JSON.parse(saved)) : 0;
     if (localUpdated > pendingUpdated) {
-      localStorage.setItem(PENDING_CLOUD_SAVE_KEY, JSON.stringify(state));
+      localStorage.setItem(PENDING_CLOUD_SAVE_KEY, saved);
     }
   } catch (e) {
     localStorage.removeItem(PENDING_CLOUD_SAVE_KEY);
@@ -9604,7 +9666,13 @@ function resumePendingCloudSave() {
   }
 }
 
-async function _pushToSheets(payload, attempt = 0) {
+function _pushToSheets(payload, attempt = 0, manual = false) {
+  const result = cloudPushQueue.then(() => performCloudPush(payload, attempt, manual));
+  cloudPushQueue = result.catch(() => false);
+  return result;
+}
+
+async function performCloudPush(payload, attempt = 0, manual = false) {
   if (isProfessorMode()) return;
   if (!cloudSyncConfigured()) {
     lastSavedHash = hashState();
@@ -9613,17 +9681,52 @@ async function _pushToSheets(payload, attempt = 0) {
     return;
   }
   try {
+    if (!payload) return false;
+    const pending = localStorage.getItem(PENDING_CLOUD_SAVE_KEY);
+    if (pending && getStateUpdatedAt(JSON.parse(pending)) > getStateUpdatedAt(JSON.parse(payload))) payload = pending;
+    const outgoing = JSON.parse(payload);
+    const remote = await fetchCloudState();
+    const remoteRevision = cloudRevision(remote);
+    const outgoingRevision = cloudRevision(outgoing);
+    const knownRevision = localStorage.getItem(CLOUD_BASE_REVISION_KEY) || outgoing._syncMeta?.baseRevision || '';
+    const alreadySaved = outgoingRevision && outgoingRevision === remoteRevision;
+    const conflict = hasMeaningfulState(remote) && !alreadySaved && (
+      !knownRevision || remoteRevision !== knownRevision || getStateUpdatedAt(remote) > getStateUpdatedAt(outgoing)
+    );
+    if (conflict) {
+      const detail = 'Há cópias diferentes. Use Carregar para buscar a nuvem ou Salvar para revisar o envio deste computador. Nenhum dado foi substituído automaticamente.';
+      setSyncStatus('conflict', detail);
+      if (!manual || !confirm('A nuvem contém uma cópia diferente ou atualizada em outro computador.\n\nEnviar os dados deste computador substituirá a base central. Uma cópia de segurança da nuvem será guardada neste navegador.\n\nConfirma substituir a base central pelos dados deste computador?')) return false;
+      localStorage.setItem('oficial_app_before_cloud_overwrite_v1', JSON.stringify(remote));
+    }
+    setSyncStatus('syncing');
+    if (!alreadySaved) {
     await _postPayloadToSheets(payload);
-    localStorage.removeItem(PENDING_CLOUD_SAVE_KEY);
+      // O POST opaco não confirma a gravação. Só uma leitura da revisão enviada
+      // pode liberar a fila e anunciar a sincronização.
+      let confirmed = false;
+      for (let check = 0; check < 3; check++) {
+        const readback = await fetchCloudState();
+        if (outgoingRevision && cloudRevision(readback) === outgoingRevision) { confirmed = true; break; }
+        if (check < 2) await new Promise(resolve => setTimeout(resolve, 800));
+      }
+      if (!confirmed) throw new Error('O envio não foi confirmado pelo Google. Os dados continuam neste computador, com sincronização pendente.');
+    }
+    rememberCloudRevision(outgoing);
+    if (localStorage.getItem(PENDING_CLOUD_SAVE_KEY) === payload) localStorage.removeItem(PENDING_CLOUD_SAVE_KEY);
     cloudRetryAttempt = 0;
     clearTimeout(cloudRetryTimer);
     setOperationalTimestamp('oficial_app_last_cloud_push_at');
-    lastSavedHash = hashState();
-    setSyncStatus('ok');
+    if (cloudRevision(state) === outgoingRevision) lastSavedHash = hashState();
+    setSyncStatus(localStorage.getItem(PENDING_CLOUD_SAVE_KEY) ? 'syncing' : 'ok');
     refreshConfigIfOpen();
+    if (manual) showToast('Gravação confirmada na nuvem.');
+    return true;
   } catch(e) {
-    setSyncStatus('error');
+    setSyncStatus('error', syncFailureDetail(e));
+    if (manual) showToast(syncFailureDetail(e), true);
     scheduleCloudRetry(payload, attempt);
+    return false;
   }
 }
 
@@ -9845,29 +9948,28 @@ async function syncFromSheets(options = {}) {
   const startup = Boolean(options.startup);
   const silent = Boolean(options.silent || startup);
   setSyncStatus('off');
+  let previousStateBeforeLoad = null;
   try {
-    const resp = await fetch(APPS_SCRIPT_URL + '?t=' + Date.now());
-    const text = await resp.text();
-    if (!text || text === '{}') {
-      setSyncStatus('ok');
-      if (!silent) showToast('Planilha vazia — mantendo os dados locais.');
-      return;
-    }
-
-    const cloudState = JSON.parse(text);
+    const cloudState = await fetchCloudState();
     const localHasData = hasMeaningfulState(state);
     const cloudHasData = hasMeaningfulState(cloudState);
     const localUpdated = getStateUpdatedAt(state);
     const cloudUpdated = getStateUpdatedAt(cloudState);
-    const hasCurrentLocalCopy = Boolean(localStorage.getItem(STORAGE_KEY));
+    const hasCurrentLocalCopy = Boolean(localStorage.getItem(STORAGE_KEY)) && (!startup || hadLocalStateAtStartup || localUpdated > 0);
+    const hasPendingSave = Boolean(localStorage.getItem(PENDING_CLOUD_SAVE_KEY));
 
     if (!cloudHasData) {
-      setSyncStatus('ok');
+      setSyncStatus('pending', 'A nuvem está vazia. Os dados deste navegador ainda precisam ser enviados.');
       if (!silent) showToast('A planilha ainda não tem dados cadastrados. Mantive os dados locais.');
       return;
     }
 
     let shouldLoadCloud = false;
+
+    if (hasPendingSave && cloudRevision(state) !== cloudRevision(cloudState) && !force) {
+      setSyncStatus('pending', 'Há alterações deste computador aguardando confirmação na nuvem.');
+      return;
+    }
 
     if (!localHasData || !hasCurrentLocalCopy) {
       shouldLoadCloud = true;
@@ -9878,9 +9980,8 @@ async function syncFromSheets(options = {}) {
         if (force) {
           shouldLoadCloud = confirm('Os dados locais deste navegador parecem mais recentes que os dados da planilha.\n\nDeseja substituir os dados locais pelos dados da planilha mesmo assim?');
         } else {
-          setSyncStatus('ok');
+          setSyncStatus('pending', 'A cópia deste computador é mais recente. Use Salvar para revisar e confirmar o envio à nuvem.');
           if (!silent) showToast('Mantive os dados locais, pois eles parecem mais recentes que os da planilha.');
-          _pushToSheets(JSON.stringify(state));
           return;
         }
       } else {
@@ -9889,30 +9990,44 @@ async function syncFromSheets(options = {}) {
     } else if (force) {
       shouldLoadCloud = confirm('Existem dados locais neste navegador e também dados na planilha.\n\nDeseja carregar os dados da planilha e substituir a cópia local atual?');
     } else {
-      setSyncStatus('ok');
+      const sameRevision = cloudRevision(state) && cloudRevision(state) === cloudRevision(cloudState);
+      if (sameRevision) rememberCloudRevision(cloudState);
+      setSyncStatus(sameRevision ? 'ok' : 'conflict', sameRevision ? '' : 'Há uma cópia local sem data compatível. Use Carregar ou Salvar para escolher qual cópia manter.');
       return;
     }
 
     if (!shouldLoadCloud) {
-      setSyncStatus('ok');
+      const sameRevision = cloudRevision(state) && cloudRevision(state) === cloudRevision(cloudState);
+      if (sameRevision) rememberCloudRevision(cloudState);
+      setSyncStatus(sameRevision ? 'ok' : 'pending');
       return;
     }
 
+    if (force && hasPendingSave && cloudUpdated >= localUpdated && !confirm('Existem alterações deste computador ainda não confirmadas na nuvem.\n\nCarregar substituirá essas alterações pela cópia da nuvem. Confirma?')) {
+      setSyncStatus('pending');
+      return;
+    }
+    if (hasCurrentLocalCopy) localStorage.setItem('oficial_app_before_cloud_load_v1', JSON.stringify(state));
+    previousStateBeforeLoad = state;
     const viewBeforeCloudLoad = state.view || 'inicio';
     state = { ...state, ...cloudState };
     // Dados da planilha nunca devem decidir qual aba o usuário está vendo.
     state.view = viewBeforeCloudLoad;
     normalizeLoadedState();
-    const cleanupChangedAfterCloudLoad = limparFrequenciasFantasmasSuspensaoSemDisciplina();
+    migrateClassConfigurationV26();
     captureCurrentClassData();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    if (cleanupChangedAfterCloudLoad) {
-      _pushToSheets(JSON.stringify(state));
-    }
+    previousStateBeforeLoad = null;
+    clearTimeout(saveTimer);
+    clearTimeout(cloudRetryTimer);
+    localStorage.removeItem(PENDING_CLOUD_SAVE_KEY);
+    rememberCloudRevision(cloudState);
     setOperationalTimestamp('oficial_app_last_local_save_at');
     setOperationalTimestamp('oficial_app_last_cloud_load_at');
     lastSavedHash = hashState();
     setSyncStatus('ok');
+    rebuildActiveClassSelect();
+    rebuildAllDiscSelects();
     if (!silent) showToast('Dados carregados da planilha!');
     render();
     renderInicio();
@@ -9927,8 +10042,9 @@ async function syncFromSheets(options = {}) {
     if (state.view === 'disciplinas') renderDiscManager();
     if (state.view === 'configuracoes') renderConfiguracoes();
   } catch(e) {
-    setSyncStatus('error');
-    if (!silent) showToast('Não consegui carregar da planilha. Mantive os dados locais.', true);
+    if (previousStateBeforeLoad) state = previousStateBeforeLoad;
+    setSyncStatus('error', syncFailureDetail(e));
+    if (!silent) showToast('Não consegui carregar da nuvem. Mantive os dados locais. ' + syncFailureDetail(e), true);
   }
 }
 
@@ -9948,6 +10064,7 @@ function loadState() {
     }
     const compatibleLocal = readBestCompatibleLocalState();
     const saved = localStorage.getItem(STORAGE_KEY);
+    hadLocalStateAtStartup = Boolean(saved || compatibleLocal.state);
     const parsed = saved ? JSON.parse(saved) : compatibleLocal.state;
     if (parsed) {
       state = { ...state, ...parsed };
