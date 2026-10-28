@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="planner-build" content="2026-10-28-sync-verified">
+<meta name="planner-build" content="2026-10-28-daily-workflow">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Painel Docente — SENAI</title>
 <meta name="description" content="Painel de gestão docente SENAI — planejamento, frequência, notas e ocorrências">
@@ -170,6 +170,7 @@
   .mod-notes{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex:0 0 20px;color:var(--text2)}
   .lesson-type{display:inline-flex;align-items:center;gap:5px;max-width:100%;padding:3px 6px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text2);font-size:10px;font-weight:500;line-height:1.3;overflow-wrap:anywhere}
   .lesson-type-dot{width:7px;height:7px;border-radius:50%;background:var(--lesson-color);flex:0 0 7px;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+  .tag-toggle .lesson-type-dot{margin-right:5px}
   .mod-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px; }
   .tags { display: flex; gap: 3px; flex-wrap: wrap; }
   .tag { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 20px; height: var(--tag-h); display: inline-flex; align-items: center; }
@@ -209,6 +210,7 @@
   #modalOverlay .modal-body>.form-group:has(#fTemplate){order:5}
   #modalOverlay .modal-body>.form-group:has(#tagButtonsContainer){order:6}
   #modalOverlay .modal-body>.form-group:has(#fTeoria){order:7;margin-bottom:8px}
+  #modalOverlay .modal-body>.form-group:has(#fObs){order:7}
   #modalOverlay .modal-body>.module-library-details{order:8;margin-bottom:8px}
   #modalOverlay .modal-body>.module-extra-fields:not(.module-library-details){order:9}
   #modalOverlay .modal-body>#fCopyModuleGroup{order:10}
@@ -218,6 +220,8 @@
   .module-batch-option:has(input:disabled){color:var(--text3);cursor:default}
   .module-batch-option input{accent-color:var(--accent)}
   #modalOverlay .modal-foot{flex-wrap:wrap}
+  #alunoModalOverlay .modal{width:min(580px,calc(100vw - 32px))!important}
+  #alunoModalOverlay .modal-foot{flex-wrap:wrap}
   #tagButtonsContainer .tag-toggle.active-tag{opacity:1!important;box-shadow:0 0 0 2px rgba(22,65,148,.18);transform:translateY(-1px)}
   .module-material-toolbar { display:grid; grid-template-columns:minmax(240px,1fr) minmax(170px,210px) auto; gap:8px; align-items:center; }
   .module-material-list { display:flex; flex-direction:column; gap:6px; max-height:190px; overflow:auto; }
@@ -3797,6 +3801,7 @@
           <span id="syncLabel">Não conectado</span>
         </div>
         <button type="button" class="btn btn-outline" id="modalBtnPresencial" onclick="openPresencialModuleModalFromToolbar(event)">+ Novo módulo</button>
+        <button type="button" class="btn btn-outline" id="weeklyRoutineBtn" onclick="openWeeklyRoutine()" style="display:none">Rotina semanal</button>
         <button type="button" class="btn btn-outline" onclick="openPlanningPrintDialog()">Imprimir planejamento</button>
         <button class="btn btn-outline btn-professor-preview" id="btnPreviewProfessor" onclick="visualizarComoProfessor()" title="Ver como ficará a versão compartilhada com o professor">Visualizar como professor</button>
         <button class="btn btn-outline btn-professor-generate" id="btnGerarProfessor" onclick="gerarVersaoProfessor()" title="Gerar um HTML de visualização para compartilhar">Gerar versão para professor</button>
@@ -3849,7 +3854,7 @@
         </div>
       </div>
       <div class="freq-toolbar">
-        <input type="date" class="freq-select" id="freqData" onchange="renderFreq()">
+        <input type="date" class="freq-select" id="freqData" onchange="onFreqDateChange()">
         <select class="freq-select" id="freqDisc" onchange="renderFreq()">
           <option value="">Selecione a disciplina</option>
         </select>
@@ -4055,6 +4060,7 @@
           <div class="page-sub">Organize unidades curriculares presenciais, EaD e mistas usadas no planejamento da turma.</div>
         </div>
         <div class="disc-view-toolbar">
+          <button class="btn btn-outline" onclick="openWeeklyRoutine()">Rotina semanal</button>
           <button class="btn btn-outline" onclick="setAllDisciplinesExpanded(true)">Expandir todas</button>
           <button class="btn btn-outline" onclick="setAllDisciplinesExpanded(false)">Recolher todas</button>
         </div>
@@ -4264,7 +4270,7 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Dia da semana</label>
-          <select class="form-input" id="fDay" onchange="renderModuleBatchOptions()">
+          <select class="form-input" id="fDay" onchange="onPlannerDayChange()">
             <option value="0">Segunda</option>
             <option value="1">Terça</option>
             <option value="2">Quarta</option>
@@ -4287,19 +4293,6 @@
         <input type="text" class="form-input" id="fTitle" placeholder="ex: Contato de selo e diagrama de comando" oninput="delete this.dataset.autoTitle">
       </div>
       <div class="form-group">
-        <label class="form-label">Modelo rápido</label>
-        <select class="form-input" id="fTemplate" onchange="applyModuleTemplate(this.value)">
-          <option value="">Escolher modelo...</option><option value="apresentacao">Apresentação institucional</option><option value="teoria">Teoria</option><option value="individual">Atividade individual</option><option value="grupo">Atividade em grupo</option><option value="quiz">Quiz</option><option value="trabalho">Trabalho</option><option value="retomada">Retomada</option><option value="continuidade">Continuação de conteúdo</option>
-        </select>
-      </div>
-      <div class="form-group" id="fCopyModuleGroup">
-        <label class="form-label">Copiar informações de outro módulo</label>
-        <select class="form-input" id="fCopyModule" onchange="applyModuleCopy(this.value)">
-          <option value="">Começar em branco</option>
-        </select>
-        <div class="config-mini-card-note" style="margin-top:6px">Copia conteúdo, tipos, observações e materiais. O dia e o número do novo módulo permanecem como você escolheu.</div>
-      </div>
-      <div class="form-group">
         <label class="form-label">Disciplina</label>
         <select class="form-input" id="fDisc" onchange="onPlannerDisciplineChange()">
         </select>
@@ -4309,7 +4302,6 @@
         <select class="form-input" id="fTopic" onchange="applyPlannerTopicTitle()">
           <option value="">Sem tópico selecionado</option>
         </select>
-        <div class="config-mini-card-note" style="margin-top:6px">A lista mostra somente os tópicos cadastrados para a disciplina escolhida na Biblioteca.</div>
       </div>
       <div class="form-group">
         <label class="form-label">Tipo</label>
@@ -4341,11 +4333,21 @@
         </div>
       </details>
       <div class="form-group">
-        <label class="form-label">Descrição breve da aula</label>
-        <textarea class="form-input" id="fTeoria" placeholder="Resuma em poucas palavras o que será feito nesta aula..."></textarea>
+        <label class="form-label">Observações <span style="font-weight:400;color:var(--text3)">(opcional)</span></label>
+        <textarea class="form-input" id="fObs" rows="2" placeholder="Lembretes ou imprevistos..."></textarea>
       </div>
-      <details class="module-extra-fields">
-        <summary>Detalhes opcionais</summary>
+      <details class="module-extra-fields" id="fAdvanced">
+        <summary>Mais detalhes</summary>
+        <div class="form-group">
+          <label class="form-label">Modelo rápido</label>
+          <select class="form-input" id="fTemplate" onchange="applyModuleTemplate(this.value)">
+            <option value="">Escolher modelo...</option><option value="apresentacao">Apresentação institucional</option><option value="teoria">Teoria</option><option value="individual">Atividade individual</option><option value="grupo">Atividade em grupo</option><option value="quiz">Quiz</option><option value="trabalho">Trabalho</option><option value="retomada">Retomada</option><option value="continuidade">Continuação de conteúdo</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descrição breve da aula</label>
+          <textarea class="form-input" id="fTeoria" placeholder="O que será feito nesta aula..."></textarea>
+        </div>
         <div class="form-group">
           <label class="form-label">Avaliação / entregável</label>
           <textarea class="form-input" id="fAval" placeholder="Critério de avaliação, o que deve ser entregue..."></textarea>
@@ -4353,10 +4355,6 @@
         <div class="form-group">
           <label class="form-label">Atividade prática</label>
           <textarea class="form-input" id="fAtiv" placeholder="Descrição da atividade, materiais necessários..."></textarea>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Observações</label>
-          <textarea class="form-input" id="fObs" placeholder="Lembretes, materiais a preparar, atenções especiais..."></textarea>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -4373,6 +4371,12 @@
             <label class="form-label">Ocorrências, ajustes e remanejamento</label>
             <textarea class="form-input" id="fExecObs" placeholder="Registre apresentação prolongada, saída antecipada, falta de energia, mudança de horário, conteúdo transferido ou módulo parcialmente realizado..."></textarea>
           </div>
+        </div>
+        <div class="form-group" id="fCopyModuleGroup">
+          <label class="form-label">Copiar informações de outro módulo</label>
+          <select class="form-input" id="fCopyModule" onchange="applyModuleCopy(this.value)">
+            <option value="">Começar em branco</option>
+          </select>
         </div>
       </details>
       <div class="form-group" id="fBatchGroup">
@@ -4858,6 +4862,7 @@
         <div class="form-group">
           <label class="form-label">Situação escolar</label>
           <select class="form-input" id="alEscolar">
+            <option value="">Não informada</option>
             <option value="3em">3º ano do Ensino Médio</option>
             <option value="concluido">Ensino Médio concluído</option>
             <option value="outro">Outra</option>
@@ -4893,6 +4898,7 @@
     </div>
     <div class="modal-foot">
       <button class="btn btn-outline" onclick="closeAlunoModal()">Cancelar</button>
+      <button class="btn btn-outline" onclick="saveAluno(true)">Salvar e próximo</button>
       <button class="btn btn-primary" onclick="saveAluno()">Salvar aluno</button>
     </div>
   </div>
@@ -5359,7 +5365,7 @@ function rebuildTagButtons() {
       return (
     `<button type="button" class="tag tag-toggle" data-tag="${t.id}"
       style="background:${hexToRgba(cor,0.13)};color:${cor};border:1px solid ${hexToRgba(cor,0.32)};border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;opacity:.62;transition:all .12s"
-      onclick="toggleTag(this)">${t.nome}</button>`
+      onclick="toggleTag(this)"><span class="lesson-type-dot" style="--lesson-color:${cor}" aria-hidden="true"></span>${escapeHtml(t.nome)}</button>`
       );
     }
   ).join('');
@@ -5920,6 +5926,92 @@ function getClassScheduleForDate(dateOrKey) {
   const day = date.getDay();
   return (getActiveClass()?.horarios || []).find(h => Number(h.dia) === day) || null;
 }
+function getSuggestedDailyDiscipline(dateOrKey) {
+  const key = dateOrKey instanceof Date ? fmtDateKey(dateOrKey) : String(dateOrKey || '');
+  const day = new Date(key + 'T12:00:00').getDay();
+  const available = getDiscs('presencial');
+  const planned = [...new Set(Object.entries(state.modules || {})
+    .filter(([moduleKey, mod]) => moduleKey.startsWith(key + '_') && available.includes(mod.disc))
+    .map(([,mod]) => mod.disc))];
+  if (planned.length) return planned.length === 1 ? planned[0] : '';
+  const group = [1,3,5].includes(day) ? 'mwf' : [2,4].includes(day) ? 'tth' : '';
+  if (!group) return '';
+  const periods = state.classData?.[state._activeClassDataId || getActiveClassId()]?.weeklyRoutine || [];
+  const period = periods.find(item => (!item.start || key >= item.start) && (!item.end || key <= item.end));
+  return period && available.includes(period[group]) ? period[group] : '';
+}
+
+function openWeeklyRoutine() {
+  if (isProfessorMode()) { showToast('A rotina semanal é definida no painel completo.', true); return; }
+  let overlay = document.getElementById('weeklyRoutineOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'weeklyRoutineOverlay'; overlay.className = 'modal-overlay';
+    overlay.innerHTML = `<div class="modal"><div class="modal-head"><h2 id="weeklyRoutineTitle"></h2><button type="button" class="close-btn" aria-label="Fechar" onclick="closeWeeklyRoutine()">×</button></div><div class="modal-body"><div id="weeklyRoutinePeriods"></div><button type="button" class="btn btn-outline" onclick="addWeeklyRoutinePeriod()">+ Período</button></div><div class="modal-foot"><button type="button" class="btn btn-outline" onclick="closeWeeklyRoutine()">Cancelar</button><button type="button" class="btn btn-primary" onclick="saveWeeklyRoutine()">Salvar rotina</button></div></div>`;
+    overlay.addEventListener('click', event => { if (event.target === overlay) closeWeeklyRoutine(); });
+    document.body.appendChild(overlay);
+  }
+  document.getElementById('weeklyRoutineTitle').textContent = 'Rotina semanal · ' + (getActiveClass()?.nome || 'Turma atual');
+  document.getElementById('weeklyRoutinePeriods').innerHTML = '';
+  const periods = state.classData?.[state._activeClassDataId || getActiveClassId()]?.weeklyRoutine || [];
+  (periods.length ? periods : [{}]).forEach(addWeeklyRoutinePeriod);
+  overlay.classList.add('open');
+}
+
+function closeWeeklyRoutine() { document.getElementById('weeklyRoutineOverlay')?.classList.remove('open'); }
+
+function addWeeklyRoutinePeriod(period = {}) {
+  const row = document.createElement('fieldset');
+  row.className = 'weekly-routine-period';
+  row.style.cssText = 'border:0;border-bottom:1px solid var(--border);padding:0 0 16px;margin:0 0 16px;min-width:0';
+  const options = '<option value="">Sem sugestão automática</option>' + getDiscs('presencial').map(disc => `<option value="${escapeHtml(disc)}">${escapeHtml(disc)}</option>`).join('');
+  row.innerHTML = `<div class="form-row"><label class="form-group" style="flex:1"><span class="form-label">De (opcional)</span><input type="date" class="form-input" data-routine="start"></label><label class="form-group" style="flex:1"><span class="form-label">Até (opcional)</span><input type="date" class="form-input" data-routine="end"></label></div><label class="form-group" style="display:block"><span class="form-label">Segunda, quarta e sexta</span><select class="form-input" data-routine="mwf">${options}</select></label><label class="form-group" style="display:block"><span class="form-label">Terça e quinta</span><select class="form-input" data-routine="tth">${options}</select></label><button type="button" class="btn btn-outline" onclick="this.closest('fieldset').remove()">Remover período</button>`;
+  ['start','end','mwf','tth'].forEach(key => { row.querySelector(`[data-routine="${key}"]`).value = period[key] || ''; });
+  document.getElementById('weeklyRoutinePeriods').appendChild(row);
+}
+
+function saveWeeklyRoutine() {
+  if (isProfessorMode()) return;
+  const periods = [...document.querySelectorAll('.weekly-routine-period')].map(row =>
+    Object.fromEntries(['start','end','mwf','tth'].map(key => [key,row.querySelector(`[data-routine="${key}"]`).value]))
+  ).filter(item => item.mwf || item.tth);
+  if (periods.some(item => item.start && item.end && item.end < item.start)) {
+    showToast('O fim do período deve ser igual ou posterior ao início.', true); return;
+  }
+  const overlaps = periods.some((item,index) => periods.slice(index+1).some(other =>
+    (item.start || '0000-01-01') <= (other.end || '9999-12-31') && (other.start || '0000-01-01') <= (item.end || '9999-12-31')
+  ));
+  if (overlaps) { showToast('Os períodos se sobrepõem. Ajuste as datas antes de salvar.', true); return; }
+  ensureClassDataStore();
+  const data = state.classData[state._activeClassDataId || getActiveClassId()];
+  const previous = data.weeklyRoutine;
+  data.weeklyRoutine = periods;
+  if (saveData() === false) { data.weeklyRoutine = previous; return; }
+  closeWeeklyRoutine();
+  showToast('Rotina salva. Os módulos já cadastrados foram mantidos.');
+}
+
+function suggestPlannerDiscipline(force = false) {
+  if (editingKey) return;
+  const select = document.getElementById('fDisc');
+  if (!force && select.value && select.value !== select.dataset.suggested) return;
+  const date = getWeekDates(state.weekOffset)[Number(document.getElementById('fDay').value)];
+  const suggestion = date ? getSuggestedDailyDiscipline(date) : '';
+  if (!suggestion) return;
+  const changed = select.value !== suggestion;
+  select.value = suggestion;
+  select.dataset.suggested = suggestion;
+  if (changed) onPlannerDisciplineChange(true);
+}
+
+function onPlannerDayChange() { renderModuleBatchOptions(); suggestPlannerDiscipline(); }
+
+function onFreqDateChange() {
+  const suggestion = getSuggestedDailyDiscipline(document.getElementById('freqData').value);
+  if (suggestion) document.getElementById('freqDisc').value = suggestion;
+  renderFreq();
+}
+
 function getPresencialModuleTime(dateOrKey, moduleNumber) {
   const schedule = getClassScheduleForDate(dateOrKey);
   const toMinutes = (value, fallback) => {
@@ -7020,7 +7112,8 @@ function applyPlannerTopicTitle() {
   }
 }
 
-function onPlannerDisciplineChange() {
+function onPlannerDisciplineChange(automatic = false) {
+  if (!automatic) delete document.getElementById('fDisc').dataset.suggested;
   const input = document.getElementById('fTitle');
   if (input.value === input.dataset.autoTitle) input.value = '';
   delete input.dataset.autoTitle;
@@ -7770,12 +7863,12 @@ function countStudentMeasuresWithLegacy(aluno, kind='') {
 
 function renderAlunos() {
   rebuildAlunoTurmaFilter();
-  const search = (document.getElementById('alunoSearch').value || '').toLowerCase();
+  const search = alunoImportNorm(document.getElementById('alunoSearch').value);
   const filtro = document.getElementById('alunoFiltro').value;
   const turmaFiltro = document.getElementById('alunoTurmaFiltro')?.value || '';
   const mesAtual = new Date().getMonth();
   let lista = getAlunos().filter(a => {
-    if (search && !a.nome.toLowerCase().includes(search)) return false;
+    if (search && !alunoImportNorm(a.nome + ' ' + (a.apelido || '')).includes(search)) return false;
     if (turmaFiltro && a.turmaId !== turmaFiltro) return false;
     if (filtro === 'atencao' && !a.atencao) return false;
     if (filtro === 'adv' && countStudentMeasuresWithLegacy(a, 'advertencia') === 0) return false;
@@ -7852,8 +7945,26 @@ function removeAlunoFoto() {
   document.getElementById('alFotoRemove').style.display = 'none';
 }
 
+function compactAlunoForm() {
+  const body = document.querySelector('#alunoModalOverlay .modal-body');
+  if (body.dataset.compact) return;
+  const main = document.createElement('div');
+  main.appendChild(document.getElementById('alNome').closest('.form-group'));
+  const row = document.createElement('div'); row.className = 'form-row';
+  row.appendChild(document.getElementById('alTurma').closest('.form-group'));
+  row.appendChild(document.getElementById('alStatus').closest('.form-group'));
+  main.appendChild(row);
+  const extra = document.createElement('details'); extra.className = 'module-extra-fields';
+  extra.innerHTML = '<summary>Dados opcionais</summary>';
+  while (body.firstChild) extra.appendChild(body.firstChild);
+  extra.querySelectorAll('.form-row').forEach(item => { if (!item.querySelector('input,select,textarea')) item.remove(); });
+  body.append(main,extra); body.dataset.compact = '1';
+}
+
 function openAlunoModal(id) {
   if (isProfessorMode()) { showToast('Alunos ficam apenas para consulta na versão do professor.'); return; }
+  compactAlunoForm();
+  document.querySelector('#alunoModalOverlay details').open = false;
   alunoEditingId = id || null;
   alunoFotoTemp = null;
   populateAlunoTurmaSelect('');
@@ -7868,7 +7979,7 @@ function openAlunoModal(id) {
     document.getElementById('alNascimento').value = a.nascimento || '';
     document.getElementById('alTelefone').value = a.telefone || '';
     populateAlunoTurmaSelect(a.turmaId || '');
-    document.getElementById('alEscolar').value = a.escolar || '3em';
+    document.getElementById('alEscolar').value = a.escolar || '';
     document.getElementById('alStatus').value = a.status || 'ativo';
     document.getElementById('alObs').value = a.obs || '';
     if (a.foto) {
@@ -7880,33 +7991,72 @@ function openAlunoModal(id) {
   } else {
     document.getElementById('alunoModalTitle').textContent = 'Novo aluno';
     ['alNome','alApelido','alNascimento','alTelefone','alObs'].forEach(i=>document.getElementById(i).value='');
-    populateAlunoTurmaSelect('');
-    document.getElementById('alEscolar').value = '3em';
+    populateAlunoTurmaSelect(getActiveClassId());
+    document.getElementById('alEscolar').value = '';
     document.getElementById('alStatus').value = 'ativo';
     preview.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>`;
   }
   document.getElementById('alunoModalOverlay').classList.add('open');
+  document.querySelector('#alunoModalOverlay .modal').scrollTop = 0;
   setTimeout(() => document.getElementById('alNome').focus(), 60);
 }
 function closeAlunoModal() { document.getElementById('alunoModalOverlay').classList.remove('open'); alunoEditingId = null; alunoFotoTemp = null; }
 
-function saveAluno() {
+function renamedStudentRecords(oldName, newName) {
+  const result = {};
+  ['freq','notasEad','notasPres'].forEach(key => {
+    const copy = classClone(state[key], {});
+    const maps = key === 'freq'
+      ? Object.values(copy).flatMap(disc => Object.values(disc || {}).map(entry => entry.alunos).filter(Boolean))
+      : Object.values(copy).map(disc => disc.alunos).filter(Boolean);
+    maps.forEach(map => {
+      const oldKeys = Object.keys(map).filter(name => alunoImportNorm(name) === alunoImportNorm(oldName));
+      const target = newName.toUpperCase();
+      oldKeys.forEach(old => {
+        if (old === target) return;
+        if (Object.prototype.hasOwnProperty.call(map,target) && JSON.stringify(map[target]) !== JSON.stringify(map[old])) {
+          throw new Error('Já há notas ou frequência para esse nome. Nenhum cadastro foi alterado.');
+        }
+        map[target] = map[old]; delete map[old];
+      });
+    });
+    result[key] = copy;
+  });
+  return result;
+}
+
+function saveAluno(goNext = false) {
   if (isProfessorMode()) { showToast('Não é possível cadastrar ou editar alunos na versão do professor.'); return; }
   const nome = document.getElementById('alNome').value.trim();
   if (!nome) { alert('Preencha o nome do aluno.'); return; }
   if (!state.alunos) state.alunos = [];
   const existente = alunoEditingId ? state.alunos.find(x=>x.id===alunoEditingId) : null;
+  const turmaId = document.getElementById('alTurma').value || getActiveClassId();
+  if (turmaId !== getActiveClassId()) { showToast('Abra a turma de destino no seletor superior antes de cadastrar o aluno nela.', true); return; }
+  if (state.alunos.some(aluno => aluno.id !== alunoEditingId && aluno.turmaId === turmaId && alunoImportNorm(aluno.nome) === alunoImportNorm(nome))) {
+    showToast('Esse aluno já está cadastrado nesta turma. Edite o cadastro existente.', true); return;
+  }
+  const wasEditing = Boolean(alunoEditingId);
+  const previous = {alunos:state.alunos,eventos:classClone(state.eventos,[]),freq:state.freq,notasEad:state.notasEad,notasPres:state.notasPres};
+  const classId = state._activeClassDataId;
+  const previousClass = classClone(state.classData?.[classId], {});
+  let renamed = null;
+  if (existente && existente.nome !== nome) {
+    try { renamed = renamedStudentRecords(existente.nome,nome); }
+    catch (error) { showToast(error.message,true); return; }
+  }
   let foto = existente ? existente.foto : null;
   if (alunoFotoTemp === '__remove__') foto = null;
   else if (alunoFotoTemp) foto = alunoFotoTemp;
 
   const aluno = {
+    ...(existente || {}),
     id: alunoEditingId || (Date.now().toString(36) + Math.random().toString(36).slice(2,5)),
     nome,
     apelido: document.getElementById('alApelido').value.trim(),
     nascimento: document.getElementById('alNascimento').value,
     telefone: document.getElementById('alTelefone').value.trim(),
-    turmaId: document.getElementById('alTurma').value,
+    turmaId,
     escolar: document.getElementById('alEscolar').value,
     status: document.getElementById('alStatus').value || 'ativo',
     obs: document.getElementById('alObs').value.trim(),
@@ -7914,17 +8064,23 @@ function saveAluno() {
     atencao: existente ? existente.atencao : false,
     registros: existente ? existente.registros : []
   };
+  if (renamed) Object.assign(state,renamed);
+  state.alunos = [...state.alunos];
   if (alunoEditingId) {
     const idx = state.alunos.findIndex(x=>x.id===alunoEditingId);
     if (idx !== -1) state.alunos[idx] = aluno; else state.alunos.push(aluno);
   } else {
     state.alunos.push(aluno);
-    // Adicionar aniversário no calendário se tiver nascimento
-    if (aluno.nascimento) syncAniversarioCalendario(aluno);
   }
-  if (saveData() === false) return;
+  if (aluno.nascimento) syncAniversarioCalendario(aluno);
+  if (saveData() === false) {
+    Object.assign(state,previous);
+    if (classId) state.classData[classId] = previousClass;
+    return;
+  }
   closeAlunoModal(); renderAlunos();
-  showToast(alunoEditingId ? 'Aluno atualizado!' : 'Aluno cadastrado!');
+  if (goNext) openAlunoModal();
+  showToast(wasEditing ? 'Aluno atualizado!' : 'Aluno cadastrado!');
 }
 
 function alunoImportNorm(valor='') {
@@ -7988,7 +8144,7 @@ function alunoCsvValue(row, aliases) {
 function alunoTurmaIdImport(nome='') {
   const n = alunoImportNorm(nome);
   const found = getOccurrenceClasses().find(t => alunoImportNorm(t.nome) === n || alunoImportNorm(t.id) === n);
-  return found ? found.id : (getActiveClassId() || '');
+  return found ? found.id : (n ? '' : (getActiveClassId() || ''));
 }
 function alunoEscolarImport(valor='') {
   const n = alunoImportNorm(valor);
@@ -8017,14 +8173,22 @@ function importarAlunosCsv(input) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = () => {
+    const previous = {alunos:classClone(state.alunos,[]),eventos:classClone(state.eventos,[])};
+    const classId = state._activeClassDataId;
+    const previousClass = classClone(state.classData?.[classId],{});
+    const restore = () => {
+      Object.assign(state,previous);
+      if (classId) state.classData[classId] = previousClass;
+    };
     try {
       const rows = parseAlunoCsv(reader.result);
-      let criados = 0, atualizados = 0;
+      let criados = 0, atualizados = 0, ignorados = 0;
       if (!state.alunos) state.alunos = [];
       rows.forEach(row => {
         const nome = alunoCsvValue(row, ['Nome completo','Nome','Aluno']);
         if (!nome) return;
         const turmaId = alunoTurmaIdImport(alunoCsvValue(row, ['Turma','Curso/Turma','Curso']));
+        if (turmaId !== getActiveClassId()) { ignorados++; return; }
         const existente = state.alunos.find(a => alunoImportNorm(a.nome) === alunoImportNorm(nome) && (a.turmaId || '') === turmaId);
         const aluno = existente || {
           id: Date.now().toString(36) + Math.random().toString(36).slice(2,5),
@@ -8032,11 +8196,13 @@ function importarAlunosCsv(input) {
           registros: [],
           foto: null
         };
-        aluno.nome = nome;
+        if (!existente) aluno.nome = nome;
         aluno.apelido = alunoCsvValue(row, ['Como prefere ser chamado','Apelido','Nome social']) || aluno.apelido || '';
         aluno.turmaId = turmaId;
-        aluno.escolar = alunoEscolarImport(alunoCsvValue(row, ['Situação escolar','Escolaridade']));
-        aluno.status = alunoStatusImport(alunoCsvValue(row, ['Status do aluno','Status']));
+        const escolar = alunoCsvValue(row, ['Situação escolar','Escolaridade']);
+        const status = alunoCsvValue(row, ['Status do aluno','Status']);
+        aluno.escolar = escolar ? alunoEscolarImport(escolar) : (aluno.escolar || '');
+        aluno.status = status ? alunoStatusImport(status) : (aluno.status || 'ativo');
         aluno.nascimento = alunoDataImport(alunoCsvValue(row, ['Data de nascimento','Nascimento','Aniversário'])) || aluno.nascimento || '';
         aluno.telefone = alunoCsvValue(row, ['Telefone','Celular']) || aluno.telefone || '';
         aluno.obs = alunoCsvValue(row, ['Observações','Observacao','Obs']) || aluno.obs || '';
@@ -8044,10 +8210,11 @@ function importarAlunosCsv(input) {
         else { state.alunos.push(aluno); criados++; }
         if (aluno.nascimento) syncAniversarioCalendario(aluno);
       });
-      saveData();
+      if (saveData() === false) { restore(); return; }
       renderAlunos();
-      showToast(`${criados} aluno(s) importado(s), ${atualizados} atualizado(s).`);
+      showToast(`${criados} aluno(s) importado(s), ${atualizados} atualizado(s).${ignorados ? ` ${ignorados} de outra turma não importado(s).` : ''}`);
     } catch (err) {
+      restore();
       console.error(err);
       alert('Não foi possível importar a planilha. Confira se ela está em CSV e segue o modelo.');
     } finally {
@@ -8064,8 +8231,12 @@ function syncAniversarioCalendario(aluno) {
   const nasc = new Date(aluno.nascimento + 'T12:00:00');
   const anoAtual = new Date().getFullYear();
   const dataAniv = `${anoAtual}-${String(nasc.getMonth()+1).padStart(2,'0')}-${String(nasc.getDate()).padStart(2,'0')}`;
-  const jaExiste = state.eventos.some(e => e.tipo === 'aniversario_aluno' && e._alunoId === aluno.id && e.data.startsWith(String(anoAtual)));
-  if (!jaExiste) {
+  const existing = state.eventos.find(e => (e.tipo === 'aniversario_aluno' || e.tipo_interno === 'aniversario_aluno') && e._alunoId === aluno.id && String(e.data || '').startsWith(String(anoAtual)));
+  if (existing) {
+    existing.data = dataAniv;
+    existing.titulo = 'Aniversário - ' + aluno.nome.split(' ')[0];
+    existing.obs = 'Aniversário de ' + aluno.nome;
+  } else {
     state.eventos.push({
       id: 'aniv_' + aluno.id + '_' + anoAtual,
       data: dataAniv,
@@ -12079,6 +12250,7 @@ function findFirstFreePlanningSlot(kind = 'presencial') {
 
 function openModal(dateKey, modNum) {
   editingKey = null;
+  document.getElementById('fAdvanced').open = false;
   document.getElementById('modalTitle').textContent = 'Novo módulo';
   document.getElementById('fCopyModuleGroup').style.display = '';
   document.getElementById('fTemplate').value = '';
@@ -12095,6 +12267,7 @@ function openModal(dateKey, modNum) {
   document.getElementById('fMaterialSearch').value = '';
   document.getElementById('fMaterialType').value = '';
   moduleDraftMaterials = [];
+  document.getElementById('fTopic').value = '';
   renderModuleTopicSelect();
 
   if (!dateKey && !modNum) {
@@ -12109,6 +12282,8 @@ function openModal(dateKey, modNum) {
     document.getElementById('fDay').value = d.getDay() - 1;
   }
   if (modNum) document.getElementById('fMod').value = modNum;
+  delete document.getElementById('fDisc').dataset.suggested;
+  suggestPlannerDiscipline(true);
 
   // Rebuil botões dinamicamente e ativa o primeiro por padrão
   rebuildTagButtons();
@@ -12258,8 +12433,10 @@ function saveModule(goNext = false) {
     render();
     if (next) {
       openModal(next.dateKey, String(next.number));
-      document.getElementById('fDisc').value = discipline;
-      onPlannerDisciplineChange();
+      if (!getSuggestedDailyDiscipline(next.dateKey)) {
+        document.getElementById('fDisc').value = discipline;
+        onPlannerDisciplineChange();
+      }
       document.querySelector('#modalOverlay .modal').scrollTop = 0;
       document.getElementById('fTopic').focus();
     }
@@ -12289,6 +12466,28 @@ function goToInicio() {
   if (btn) setView("inicio", btn);
 }
 
+function advanceGradeEntry(event) {
+  if (event.key !== 'Enter' || event.ctrlKey || event.altKey || event.metaKey || !event.target.matches('input.nead-nota-input')) return;
+  const view = event.target.closest('#npNotasView,#neadNotasView,#npLancarView,#neadLancarView');
+  const row = event.target.closest('tr');
+  const cell = event.target.closest('td');
+  if (!view || !row || !cell) return;
+  const rowIndex = row.sectionRowIndex, column = cell.cellIndex, viewId = view.id;
+  event.preventDefault();
+  event.target.blur();
+  requestAnimationFrame(() => {
+    const rows = [...document.querySelectorAll(`#${viewId} tbody tr`)];
+    const positions = rows.flatMap((item,index) => [...item.cells].flatMap((td,col) => {
+      const input = td.querySelector('input.nead-nota-input:not(:disabled)');
+      return input ? [{input,row:index,col}] : [];
+    })).sort((a,b) => a.col - b.col || a.row - b.row);
+    const index = positions.findIndex(item => item.row === rowIndex && item.col === column);
+    const next = index >= 0 ? positions[index + (event.shiftKey ? -1 : 1)] : null;
+    if (next) { next.input.focus(); next.input.select(); }
+  });
+}
+document.addEventListener('keydown', advanceGradeEntry);
+
 function setView(v, btn) {
   if (isProfessorMode() && ['tarefas','ocorrencias','configuracoes'].includes(v)) {
     showToast('Essa área não aparece na versão do professor.');
@@ -12316,16 +12515,22 @@ function setView(v, btn) {
   planningAddBtn.style.display = v === 'presencial' ? '' : 'none';
   planningAddBtn.textContent = '+ Novo módulo';
   planningAddBtn.onclick = (event) => openPresencialModuleModalFromToolbar(event);
+  document.getElementById('weeklyRoutineBtn').style.display = !isProfessorMode() && v === 'presencial' ? '' : 'none';
   document.getElementById('weekToolbarNav').style.display = (v === 'presencial' || v === 'ead') ? '' : 'none';
   if (v === 'inicio') renderInicio();
   if (v === 'ead') renderEad();
   if (v === 'frequencia') {
-    const today = new Date().toISOString().slice(0,10);
-    document.getElementById('freqData').value = today;
+    if (!document.getElementById('freqData').value) document.getElementById('freqData').value = fmtDateKey(new Date());
+    if (!document.getElementById('freqDisc').value) {
+      document.getElementById('freqDisc').value = getSuggestedDailyDiscipline(document.getElementById('freqData').value);
+    }
     renderFreq();
   }
   if (v === 'notasead') onNeadDiscChange();
-  if (v === 'notaspres') onNpDiscChange();
+  if (v === 'notaspres') {
+    if (!document.getElementById('npDisc').value) document.getElementById('npDisc').value = getSuggestedDailyDiscipline(new Date());
+    onNpDiscChange();
+  }
   if (v === 'calendario') initCal();
   if (v === 'tarefas') { renderTasks(); updateSidebarBadge(); }
   if (v === 'alunos') renderAlunos();
@@ -13075,6 +13280,7 @@ function renderFreqCallActions(disc, data, entry) {
         Aplicar no dia inteiro
       </label>
       <button class="freq-call-btn" onclick="adjustFreqModuleCount('${discArg}','${dataArg}')">Ajustar módulos</button>
+      <button class="freq-call-btn" onclick="confirmFreqCall()">Salvar chamada</button>
       <button class="freq-call-btn warn" onclick="clearFreqJustificativas('${discArg}','${dataArg}')">Limpar justificativas</button>
     </div>
   </div>`;
@@ -13188,6 +13394,11 @@ function renderFreq() {
 
   html += '</tbody></table></div>';
   wrap.innerHTML = html;
+}
+
+function confirmFreqCall() {
+  if (!document.getElementById('freqDisc').value || !document.getElementById('freqData').value) return;
+  if (saveData() !== false) showToast('Chamada salva.');
 }
 
 function adjustFreqModuleCount(disc, data) {
