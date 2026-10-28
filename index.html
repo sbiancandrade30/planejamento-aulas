@@ -12497,7 +12497,7 @@ function chatImportExample(area) {
   const samples = {
     planejamento:{data:date,modulo:1,disciplina:disc,titulo:'Título da aula',topico:'',tipos:['teoria'],descricao:'',atividade:'',avaliacao:'',observacoes:'',materiais:[]},
     ead:{data:date,modulo:1,disciplina:disc,aula:'Aula 1',tipos:['leitura'],descricao:'Atividade a realizar',observacoes:''},
-    alunos:{nome:'NOME COMPLETO DO ALUNO',apelido:'',nascimento:'',telefone:'',observacoes:''},
+    alunos:{nome:'NOME COMPLETO DO ALUNO',apelido:'',nascimento:'',telefone:'',observacoes:'',status:'ativo',escolaridade:''},
     disciplinas:{nome:'NOME DA DISCIPLINA',tipo:'presencial',topicos:['Tópico confirmado']},
     avaliacoes:{disciplina:disc,id:'prova_1',nome:'Prova 1',valor:20},
     atividades_ead:{disciplina:disc,id:'atividade_1',aula:'Aula 1',tipo:'questionario',valor:20},
@@ -12515,11 +12515,16 @@ function chatImportPrompt(area) {
   const context = {
     turma_id:getActiveClassId(),turma:getActiveClass()?.nome,
     semana:getWeekDates(state.weekOffset).map(fmtDateKey),
+    modulos_da_semana:getWeekDates(state.weekOffset).map(date=>({data:fmtDateKey(date),modulos:getClassModuleCountForDate(date)})),
     disciplinas:{presencial:getDiscs('presencial'),ead:[...new Set([...getDiscs('ead'),...getDiscs('presEad')])]},
     tipos_presenciais:getTiposAula().map(item => ({id:item.id,nome:item.nome})),
     tipos_ead:['leitura','video','resumo','avaliativa']
   };
   if (area === 'notas') context.avaliacoes = Object.fromEntries(Object.entries(state.notasPres || {}).map(([disc,data]) => [disc,data.avals || []]));
+  if (area === 'alunos') {context.situacoes_aluno=['ativo','desligado','transferido','concluido'];context.escolaridade={'':'Não informada','3em':'3º ano do Ensino Médio',concluido:'Ensino Médio concluído',outro:'Outra'};}
+  if (area === 'disciplinas') context.tipos_disciplina=['presencial','ead','presEad'];
+  if (area === 'atividades_ead') context.tipos_atividade=['resumo','questionario'];
+  if (area === 'notas_ead') context.situacoes_entrega=['prazo','atrasado','nao'];
   if (area === 'notas_ead') context.atividades = Object.fromEntries(Object.entries(state.notasEad || {}).map(([disc,data]) => [disc,data.atividades || []]));
   if (area === 'calendario') context.tipos_evento = getTiposEvento().map(item => ({id:item.id,nome:item.nome}));
   if (document.getElementById('chatImportIncludeNames')?.checked) context.alunos = getAlunos().filter(a => a.turmaId === getActiveClassId()).map(a => a.nome);
