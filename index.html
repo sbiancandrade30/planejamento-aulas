@@ -191,14 +191,22 @@
   .module-materials-box { border:1px solid var(--border); background:var(--surface2); border-radius:var(--radius); padding:10px; display:flex; flex-direction:column; gap:8px; }
   #modalOverlay .modal-body{display:flex;flex-direction:column;gap:0}
   #modalOverlay .modal-body>.form-row:first-child{order:0}
-  #modalOverlay .modal-body>.form-group:has(#fTitle){order:1}
-  #modalOverlay .modal-body>.form-group:has(#fTemplate){order:2}
-  #modalOverlay .modal-body>.form-group:has(#fDisc){order:3}
-  #modalOverlay .modal-body>.form-group:has(#fTopic){order:4}
-  #modalOverlay .modal-body>.form-group:has(#tagButtonsContainer){order:5}
-  #modalOverlay .modal-body>.form-group:has(#fTeoria){order:6;margin-bottom:8px}
-  #modalOverlay .modal-body>.module-library-details{order:7;margin-bottom:8px}
-  #modalOverlay .modal-body>.module-extra-fields:not(.module-library-details){order:8}
+  #modalOverlay .modal-body>#fBatchGroup{order:1}
+  #modalOverlay .modal-body>.form-group:has(#fDisc){order:2}
+  #modalOverlay .modal-body>.form-group:has(#fTopic){order:3}
+  #modalOverlay .modal-body>.form-group:has(#fTitle){order:4}
+  #modalOverlay .modal-body>.form-group:has(#fTemplate){order:5}
+  #modalOverlay .modal-body>.form-group:has(#tagButtonsContainer){order:6}
+  #modalOverlay .modal-body>.form-group:has(#fTeoria){order:7;margin-bottom:8px}
+  #modalOverlay .modal-body>.module-library-details{order:8;margin-bottom:8px}
+  #modalOverlay .modal-body>.module-extra-fields:not(.module-library-details){order:9}
+  #modalOverlay .modal-body>#fCopyModuleGroup{order:10}
+  .module-batch-options{display:flex;flex-wrap:wrap;gap:8px}
+  .module-batch-option{display:inline-flex;align-items:center;gap:6px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer}
+  .module-batch-option:has(input:checked){background:var(--accent-bg);border-color:var(--accent)}
+  .module-batch-option:has(input:disabled){color:var(--text3);cursor:default}
+  .module-batch-option input{accent-color:var(--accent)}
+  #modalOverlay .modal-foot{flex-wrap:wrap}
   #tagButtonsContainer .tag-toggle.active-tag{opacity:1!important;box-shadow:0 0 0 2px rgba(22,65,148,.18);transform:translateY(-1px)}
   .module-material-toolbar { display:grid; grid-template-columns:minmax(240px,1fr) minmax(170px,210px) auto; gap:8px; align-items:center; }
   .module-material-list { display:flex; flex-direction:column; gap:6px; max-height:190px; overflow:auto; }
@@ -4245,7 +4253,7 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Dia da semana</label>
-          <select class="form-input" id="fDay">
+          <select class="form-input" id="fDay" onchange="renderModuleBatchOptions()">
             <option value="0">Segunda</option>
             <option value="1">Terça</option>
             <option value="2">Quarta</option>
@@ -4255,7 +4263,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">Módulo</label>
-          <select class="form-input" id="fMod">
+          <select class="form-input" id="fMod" onchange="renderModuleBatchOptions()">
             <option>1</option><option>2</option><option>3</option>
             <option>4</option><option>5</option><option>6</option>
             <option>7</option><option>8</option><option>9</option>
@@ -4265,7 +4273,7 @@
       </div>
       <div class="form-group">
         <label class="form-label">Título / tema da aula</label>
-        <input type="text" class="form-input" id="fTitle" placeholder="ex: Contato de selo e diagrama de comando">
+        <input type="text" class="form-input" id="fTitle" placeholder="ex: Contato de selo e diagrama de comando" oninput="delete this.dataset.autoTitle">
       </div>
       <div class="form-group">
         <label class="form-label">Modelo rápido</label>
@@ -4278,17 +4286,16 @@
         <select class="form-input" id="fCopyModule" onchange="applyModuleCopy(this.value)">
           <option value="">Começar em branco</option>
         </select>
-        <button type="button" class="btn btn-outline" style="margin-top:8px" onclick="copyPreviousModuleIntoForm()">Copiar módulo anterior</button>
         <div class="config-mini-card-note" style="margin-top:6px">Copia conteúdo, tipos, observações e materiais. O dia e o número do novo módulo permanecem como você escolheu.</div>
       </div>
       <div class="form-group">
         <label class="form-label">Disciplina</label>
-        <select class="form-input" id="fDisc" onchange="renderModuleTopicSelect();renderModuleMaterialPicker()">
+        <select class="form-input" id="fDisc" onchange="onPlannerDisciplineChange()">
         </select>
       </div>
       <div class="form-group">
         <label class="form-label">Tópico da Biblioteca <span style="font-weight:400;color:var(--text3)">(opcional)</span></label>
-        <select class="form-input" id="fTopic">
+        <select class="form-input" id="fTopic" onchange="applyPlannerTopicTitle()">
           <option value="">Sem tópico selecionado</option>
         </select>
         <div class="config-mini-card-note" style="margin-top:6px">A lista mostra somente os tópicos cadastrados para a disciplina escolhida na Biblioteca.</div>
@@ -4319,6 +4326,7 @@
           </div>
           <div class="module-material-list" id="moduleAttachedMaterials"></div>
           <div class="module-material-list" id="moduleLibraryMatches"></div>
+        </div>
         </div>
       </details>
       <div class="form-group">
@@ -4356,9 +4364,17 @@
           </div>
         </div>
       </details>
+      <div class="form-group" id="fBatchGroup">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+          <label class="form-label" style="margin-bottom:0">Módulos deste dia</label>
+          <button type="button" class="btn btn-outline" style="font-size:11px;padding:5px 9px" onclick="copyPreviousModuleIntoForm()">Copiar módulo anterior</button>
+        </div>
+        <div class="module-batch-options" id="fBatchModules"></div>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-outline" id="fSaveNext" onclick="saveModule(true)">Salvar e próximo</button>
       <button class="btn btn-primary" onclick="saveModule()">Salvar módulo</button>
     </div>
   </div>
@@ -6961,6 +6977,24 @@ function getSelectedPlannerTopic() {
     topicId: select?.value && select.value !== '__legacy_topic__' ? select.value : '',
     topic: select?.value ? String(option?.textContent || '').trim() : ''
   };
+}
+
+function applyPlannerTopicTitle() {
+  const input = document.getElementById('fTitle');
+  const topic = getSelectedPlannerTopic();
+  if (topic.topic && (!input.value.trim() || input.value === input.dataset.autoTitle)) {
+    input.value = topic.topic;
+    input.dataset.autoTitle = topic.topic;
+  }
+}
+
+function onPlannerDisciplineChange() {
+  const input = document.getElementById('fTitle');
+  if (input.value === input.dataset.autoTitle) input.value = '';
+  delete input.dataset.autoTitle;
+  document.getElementById('fTopic').value = '';
+  renderModuleTopicSelect();
+  renderModuleMaterialPicker();
 }
 
 function renderEadTopicSelect(selectedId='', selectedName='') {
@@ -11542,6 +11576,9 @@ function editModule() {
   document.getElementById('fCopyModule').value = '';
   document.getElementById('modalOverlay').classList.add('open');
   editingKey = currentDetailKey;
+  document.querySelector('#modalOverlay .modal').scrollTop = 0;
+  delete document.getElementById('fTitle').dataset.autoTitle;
+  renderModuleBatchOptions();
   renderModuleMaterialPicker();
 }
 function openPlanningPrintDialog(){
@@ -11782,6 +11819,9 @@ function duplicateModule() {
   document.getElementById('fCopyModule').value = currentDetailKey;
   closeDetail();
   document.getElementById('modalOverlay').classList.add('open');
+  delete document.getElementById('fTitle').dataset.autoTitle;
+  document.querySelector('#modalOverlay .modal').scrollTop = 0;
+  renderModuleBatchOptions();
   renderModuleMaterialPicker();
   setTimeout(() => document.getElementById('fTitle')?.focus(), 60);
 }
@@ -11811,6 +11851,7 @@ function applyModuleCopy(sourceKey) {
   if (!mod) return;
   document.getElementById('fTemplate').value = '';
   document.getElementById('fTitle').value = mod.title || '';
+  delete document.getElementById('fTitle').dataset.autoTitle;
   document.getElementById('fDisc').value = mod.disc || '';
   renderModuleTopicSelect(mod.topicId || '', mod.topic || '');
   document.getElementById('fTeoria').value = mod.teoria || '';
@@ -11894,6 +11935,7 @@ function openModal(dateKey, modNum) {
   populateModuleCopySelect();
   document.getElementById('fCopyModule').value = '';
   document.getElementById('fTitle').value = '';
+  delete document.getElementById('fTitle').dataset.autoTitle;
   document.getElementById('fTeoria').value = '';
   document.getElementById('fAtiv').value = '';
   document.getElementById('fAval').value = '';
@@ -11927,7 +11969,9 @@ function openModal(dateKey, modNum) {
   });
 
   document.getElementById('modalOverlay').classList.add('open');
+  renderModuleBatchOptions();
   renderModuleMaterialPicker();
+  document.querySelector('#modalOverlay .modal').scrollTop = 0;
 }
 
 function openPresencialModuleModalFromToolbar(event) {
@@ -11956,7 +12000,40 @@ function toggleTag(btn) {
   btn.style.opacity = btn.classList.contains('active-tag') ? '1' : '0.62';
 }
 
-function saveModule() {
+function renderModuleBatchOptions() {
+  const group = document.getElementById('fBatchGroup');
+  const wrap = document.getElementById('fBatchModules');
+  if (!group || !wrap) return;
+  group.hidden = Boolean(editingKey);
+  wrap.innerHTML = '';
+  if (editingKey) return;
+  const date = getWeekDates(state.weekOffset)[Number(document.getElementById('fDay').value)];
+  if (!date) return;
+  const dateKey = fmtDateKey(date);
+  const current = Number(document.getElementById('fMod').value);
+  const count = Math.max(current, getVisibleClassModuleCountForDate(date));
+  wrap.innerHTML = Array.from({length:count}, (_, i) => {
+    const number = i + 1;
+    const occupied = Boolean(state.modules[`${dateKey}_${number}`]);
+    const isCurrent = number === current;
+    const title = occupied ? 'Já cadastrado' : (isCurrent ? 'Módulo selecionado' : 'Incluir módulo');
+    return `<label class="module-batch-option" title="${title}"><input type="checkbox" value="${number}" ${isCurrent ? 'checked' : ''} ${occupied || isCurrent ? 'disabled' : ''}>${number}${occupied ? ' · ocupado' : ''}</label>`;
+  }).join('');
+}
+
+function findNextFreePresencialSlot(dayIdx, lastModule) {
+  const dates = getWeekDates(state.weekOffset);
+  for (let day = dayIdx; day < dates.length; day++) {
+    const dateKey = fmtDateKey(dates[day]);
+    const count = getVisibleClassModuleCountForDate(dates[day]);
+    for (let number = day === dayIdx ? lastModule + 1 : 1; number <= count; number++) {
+      if (!state.modules[`${dateKey}_${number}`]) return { dateKey, number };
+    }
+  }
+  return null;
+}
+
+function saveModule(goNext = false) {
   try {
     const title = document.getElementById('fTitle').value.trim();
     if (!title) { alert('Preencha o título do módulo.'); return; }
@@ -11967,7 +12044,11 @@ function saveModule() {
     const date = dates[dayIdx];
     if (!date || !modNum) { showToast('Escolha o dia e o número do módulo.', true); return; }
     const dateKey = fmtDateKey(date);
-    const key = editingKey || `${dateKey}_${modNum}`;
+    const key = `${dateKey}_${modNum}`;
+    if (state.modules[key] && key !== editingKey) {
+      showToast('Este módulo já está cadastrado. Escolha um horário livre ou edite o card existente.', true);
+      return;
+    }
 
     if (isProfessorMode()) {
       if (editingKey && !professorOwnsPlanningModule(editingKey)) {
@@ -11980,11 +12061,11 @@ function saveModule() {
       }
     }
 
-    const tags = [...document.querySelectorAll('.tag-toggle.active-tag')].map(b => b.dataset.tag);
+    const tags = [...document.querySelectorAll('#tagButtonsContainer .tag-toggle.active-tag')].map(b => b.dataset.tag);
     const selectedTopic = getSelectedPlannerTopic();
 
-    state.modules[key] = {
-      ...(state.modules[key]||{}),
+    const moduleData = {
+      ...(state.modules[editingKey || key]||{}),
       ...(isProfessorMode() ? { _professorAdded: true } : {}),
       title,
       disc: document.getElementById('fDisc').value,
@@ -12000,10 +12081,39 @@ function saveModule() {
       materials: classClone(moduleDraftMaterials, []),
     };
 
-    if (saveData() === false) return;
+    const numbers = new Set([Number(modNum)]);
+    if (!editingKey) {
+      document.querySelectorAll('#fBatchModules input:checked:not(:disabled)').forEach(input => numbers.add(Number(input.value)));
+    }
+    const keys = [...numbers].map(number => `${dateKey}_${number}`);
+    if (keys.some(target => state.modules[target] && target !== editingKey)) {
+      showToast('Um dos módulos selecionados já está ocupado. Nenhum registro foi substituído.', true);
+      renderModuleBatchOptions();
+      return;
+    }
+    const previousModules = state.modules;
+    const activeId = state._activeClassDataId;
+    const previousClassModules = state.classData?.[activeId]?.modules;
+    state.modules = {...previousModules};
+    if (editingKey && editingKey !== key) delete state.modules[editingKey];
+    keys.forEach(target => { state.modules[target] = classClone(moduleData, {}); });
+    if (saveData() === false) {
+      state.modules = previousModules;
+      if (state.classData?.[activeId]) state.classData[activeId].modules = previousClassModules;
+      return;
+    }
+    const next = goNext ? findNextFreePresencialSlot(dayIdx, Math.max(...numbers)) : null;
+    const discipline = moduleData.disc;
     closeModal();
     render();
-    showToast('Módulo salvo!');
+    if (next) {
+      openModal(next.dateKey, String(next.number));
+      document.getElementById('fDisc').value = discipline;
+      onPlannerDisciplineChange();
+      document.querySelector('#modalOverlay .modal').scrollTop = 0;
+      document.getElementById('fTopic').focus();
+    }
+    showToast(`${keys.length > 1 ? keys.length + ' módulos salvos!' : 'Módulo salvo!'}${goNext && !next ? ' Não há mais horários livres nesta semana.' : ''}`);
   } catch (error) {
     console.error('Falha ao salvar o módulo:', error);
     showToast('Não foi possível salvar o módulo. Confira o console para detalhes.', true);
@@ -12094,11 +12204,16 @@ function applyModuleTemplate(template){
     continuidade:{title:'Continuação de conteúdo',obs:'Continuação do módulo anterior.',tag:'teoria'}
   };
   const p=presets[template]; if(!p) return;
-  document.getElementById('fTitle').value=p.title;
-  if(p.teoria) document.getElementById('fTeoria').value=p.teoria;
-  if(p.ativ) document.getElementById('fAtiv').value=p.ativ;
-  if(p.aval) document.getElementById('fAval').value=p.aval;
-  if(p.obs) document.getElementById('fObs').value=p.obs;
+  const titleInput = document.getElementById('fTitle');
+  if (!titleInput.value.trim() || titleInput.value === titleInput.dataset.autoTitle) {
+    const title = getSelectedPlannerTopic().topic || p.title;
+    titleInput.value = title;
+    titleInput.dataset.autoTitle = title;
+  }
+  if(p.teoria && !document.getElementById('fTeoria').value.trim()) document.getElementById('fTeoria').value=p.teoria;
+  if(p.ativ && !document.getElementById('fAtiv').value.trim()) document.getElementById('fAtiv').value=p.ativ;
+  if(p.aval && !document.getElementById('fAval').value.trim()) document.getElementById('fAval').value=p.aval;
+  if(p.obs && !document.getElementById('fObs').value.trim()) document.getElementById('fObs').value=p.obs;
   document.querySelectorAll('#tagButtonsContainer .tag-toggle').forEach(b=>{
     const active = b.dataset.tag === p.tag;
     b.classList.toggle('active-tag', active);
