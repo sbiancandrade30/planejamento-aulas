@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="planner-build" content="2026-10-28-chat-import">
+<meta name="planner-build" content="2026-10-29-productivity">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Painel Docente — SENAI</title>
 <meta name="description" content="Painel de gestão docente SENAI — planejamento, frequência, notas e ocorrências">
@@ -201,6 +201,13 @@
   .detail-meta { font-size: 11px; color: var(--text3); margin-bottom: 4px; font-family: 'DM Mono', monospace; }
   .detail-title-text { font-size: 17px; font-weight: 600; letter-spacing: -.02em; }
   .module-materials-box { border:1px solid var(--border); background:var(--surface2); border-radius:var(--radius); padding:10px; display:flex; flex-direction:column; gap:8px; }
+  #productivityOverlay label.form-group{display:flex;flex-direction:column;gap:6px;min-width:0}
+  #productivityOverlay .form-row>*{flex:1;min-width:0}
+  #productivityOverlay select{width:100%}
+  #productivityOverlay h3{font-size:15px;line-height:1.4;margin:0}
+  #productivityOverlay .modal-head{gap:12px;flex-shrink:0}
+  #productivityOverlay .modal-footer{flex-shrink:0}
+  @media(max-width:600px){#productivityOverlay .form-row{flex-direction:column}#productivityOverlay .modal-head,#productivityOverlay .modal-body,#productivityOverlay .modal-footer{padding:16px!important}}
   #modalOverlay .modal-body{display:flex;flex-direction:column;gap:0}
   #modalOverlay .modal-body>.form-row:first-child{order:0}
   #modalOverlay .modal-body>#fBatchGroup{order:1}
@@ -3813,6 +3820,7 @@
         </div>
         <button type="button" class="btn btn-outline" id="modalBtnPresencial" onclick="openPresencialModuleModalFromToolbar(event)">+ Novo módulo</button>
         <button type="button" class="btn btn-outline" id="weeklyRoutineBtn" onclick="openWeeklyRoutine()" style="display:none">Rotina semanal</button>
+        <button type="button" class="btn btn-outline" id="planningToolsBtn" onclick="openPlanningTools()" style="display:none">Organizar planejamento</button>
         <button type="button" class="btn btn-outline" onclick="openPlanningPrintDialog()">Imprimir planejamento</button>
         <button class="btn btn-outline btn-professor-preview" id="btnPreviewProfessor" onclick="visualizarComoProfessor()" title="Ver como ficará a versão compartilhada com o professor">Visualizar como professor</button>
         <button class="btn btn-outline btn-professor-generate" id="btnGerarProfessor" onclick="gerarVersaoProfessor()" title="Gerar um HTML de visualização para compartilhar">Gerar versão para professor</button>
@@ -3824,6 +3832,8 @@
         <div class="toolbar-menu-wrap" id="toolbarMenuWrap">
           <button class="btn btn-outline toolbar-menu-btn" onclick="toggleToolbarMenu(event)" title="Mais opções">⋯</button>
           <div class="toolbar-menu" id="toolbarMenu">
+            <button class="toolbar-menu-item" onclick="openPlannerPending(); closeToolbarMenu()">Pendências da turma</button>
+            <button class="toolbar-menu-item" onclick="undoPlannerChange(); closeToolbarMenu()">↶ Desfazer última alteração salva</button>
             <button class="toolbar-menu-item" onclick="exportarDados(); closeToolbarMenu()">↓ Exportar dados</button>
             <button class="toolbar-menu-item" onclick="document.getElementById('importFileInput').click(); closeToolbarMenu()">↑ Importar dados</button>
             <div style="height:1px;background:var(--border);margin:4px 0"></div>
@@ -9710,6 +9720,7 @@ function saveData() {
     return false;
   }
   try {
+    const previousPayload = localStorage.getItem(PROFESSOR_EXPORT_MODE ? professorLocalStorageKey() : STORAGE_KEY);
     captureCurrentClassData();
     markStateUpdated();
     const payload = JSON.stringify(state);
@@ -9737,6 +9748,7 @@ function saveData() {
       }
     }
     setOperationalTimestamp('oficial_app_last_local_save_at');
+    rememberPlannerUndo(previousPayload, payload);
     try { refreshConfigIfOpen(); } catch (_) {}
     clearTimeout(saveTimer);
     setSyncStatus(pendingCloudSave ? 'syncing' : 'error');
@@ -10001,6 +10013,11 @@ function mergeProfessorContributions(cloudRaw, professorRaw, baseRaw) {
           }
         });
       });
+      const mergedEntry = cloud.freq?.[disc]?.[data];
+      if (mergedEntry && isFreqCallConfirmed(entry) && freqCallSignature(mergedEntry) === entry.confirmedSignature) {
+        mergedEntry.confirmedAt = entry.confirmedAt;
+        mergedEntry.confirmedSignature = entry.confirmedSignature;
+      }
     });
   });
 
@@ -10911,7 +10928,7 @@ function renderInicio() {
   const modsEadHoje = [];
   for (let m = 1; m <= 2; m++) {
     const key = `${todayKey}_${m}`;
-    const mod = state.eadModules[key];
+    const mod = state.eadModules[`ead_${key}`];
     if (mod) modsEadHoje.push({ m, key, mod });
   }
 
@@ -11399,6 +11416,7 @@ function renderInicio() {
         </div>
       </div>
     </div>`;
+  el.insertAdjacentHTML('afterbegin', plannerPendingStrip());
 }
 
 
@@ -12237,8 +12255,9 @@ function deleteModule() {
     return;
   }
   if (confirm('Excluir este módulo?')) {
-    delete state.modules[currentDetailKey];
-    saveData(); closeDetail(); render();
+    if (commitProductivity('exclusão de módulo presencial', () => { delete state.modules[currentDetailKey]; })) {
+      closeDetail(); render();
+    }
   }
 }
 
@@ -12889,6 +12908,7 @@ function setView(v, btn) {
   planningAddBtn.textContent = '+ Novo módulo';
   planningAddBtn.onclick = (event) => openPresencialModuleModalFromToolbar(event);
   document.getElementById('weeklyRoutineBtn').style.display = !isProfessorMode() && v === 'presencial' ? '' : 'none';
+  document.getElementById('planningToolsBtn').style.display = !isProfessorMode() && ['presencial','ead'].includes(v) ? '' : 'none';
   document.getElementById('weekToolbarNav').style.display = (v === 'presencial' || v === 'ead') ? '' : 'none';
   if (v === 'inicio') renderInicio();
   if (v === 'ead') renderEad();
@@ -13218,8 +13238,9 @@ function deleteEadModule() {
     return;
   }
   if (confirm('Excluir esta tarefa EaD?')) {
-    delete state.eadModules[currentEadKey];
-    saveData(); closeEadDetail(); renderEad();
+    if (commitProductivity('exclusão de módulo EaD', () => { delete state.eadModules[currentEadKey]; })) {
+      closeEadDetail(); renderEad();
+    }
   }
 }
 
@@ -13646,6 +13667,7 @@ function renderFreqCallActions(disc, data, entry) {
     <div>
       <div class="freq-call-title">Chamada de ${escapeHtml(disc)}</div>
       <div class="freq-call-sub">${formatDateKeyPtBr(data)} · P ${stats.presentes} · CJ ${stats.comJust} · SJ ${stats.semJust} · ${stats.documentos} documento${stats.documentos === 1 ? '' : 's'}</div>
+      <div class="freq-call-sub" style="color:${isFreqCallConfirmed(entry) ? 'var(--green)' : 'var(--amber)'}">${isFreqCallConfirmed(entry) ? 'Chamada confirmada' : 'Conferência pendente · confirme em Salvar chamada'}</div>
     </div>
     <div class="freq-call-buttons">
       <label class="freq-day-toggle" title="Quando estiver ativado, o lançamento feito em um módulo vale para todos os módulos desse aluno no dia.">
@@ -13653,6 +13675,7 @@ function renderFreqCallActions(disc, data, entry) {
         Aplicar no dia inteiro
       </label>
       <button class="freq-call-btn" onclick="adjustFreqModuleCount('${discArg}','${dataArg}')">Ajustar módulos</button>
+      <button class="freq-call-btn" title="Preenche apenas campos vazios; mantém faltas e suspensões" onclick="markBlankFreqPresent()">Marcar presentes</button>
       <button class="freq-call-btn" onclick="confirmFreqCall()">Salvar chamada</button>
       <button class="freq-call-btn warn" onclick="clearFreqJustificativas('${discArg}','${dataArg}')">Limpar justificativas</button>
     </div>
@@ -13770,8 +13793,17 @@ function renderFreq() {
 }
 
 function confirmFreqCall() {
-  if (!document.getElementById('freqDisc').value || !document.getElementById('freqData').value) return;
-  if (saveData() !== false) showToast('Chamada salva.');
+  const disc = document.getElementById('freqDisc').value, date = document.getElementById('freqData').value;
+  if (!disc || !date) return;
+  const entry = getFreqEntry(disc, date), count = getClassModuleCountForDate(date);
+  if (getNomesAlunos().some(name => !getAfastamentoOcorrenciaParaFrequencia(date, name) && Array.from({length:count}, (_, i) => entry.alunos[name]?.mods?.[i]).some(status => !['P','CJ','SJ'].includes(status)))) {
+    showToast('Preencha os módulos de todos os alunos antes de confirmar a chamada.', true); return;
+  }
+  const before = classClone(entry, {});
+  entry.confirmedAt = new Date().toISOString();
+  entry.confirmedSignature = freqCallSignature(entry);
+  if (saveData() === false) { state.freq[disc][date] = before; return; }
+  renderFreq(); showToast('Chamada salva e confirmada.');
 }
 
 function adjustFreqModuleCount(disc, data) {
@@ -14149,7 +14181,7 @@ function renderNotasEad() {
     }
   });
   html += '</tbody></table></div>';
-  notasView.innerHTML = html;
+  notasView.innerHTML = gradePasteButton('ead') + html;
 }
 
 function onNeadAtivChange() {
@@ -16266,7 +16298,7 @@ function renderNpNotas() {
   });
 
   html += '</tbody></table></div>';
-  wrap.innerHTML = html;
+  wrap.innerHTML = gradePasteButton('presencial') + html;
 }
 
 function setNpNota(disc, nome, avId, val) {
@@ -16394,6 +16426,350 @@ function saveNpConfig() {
   data.totalAtiv = parseInt(document.getElementById('npTotalAtiv').value) || 0;
   saveData(); closeNpConfig(); renderNpNotas();
   showToast('Configuração salva!');
+}
+
+// Bulk workflows keep previews separate from committed class data.
+var plannerUndoSnapshot, plannerUndoPaused, plannerMutationLabel;
+let productivityPreview = null;
+
+function plannerDataFingerprint(value) {
+  const transient = new Set(['view','weekOffset','_syncMeta']);
+  return JSON.stringify(Object.fromEntries(Object.keys(value).filter(key=>!transient.has(key)).sort().map(key=>[key,value[key]])));
+}
+function rememberPlannerUndo(previous, next) {
+  if (plannerUndoPaused || isProfessorMode() || !previous) return;
+  try {
+    const before = JSON.parse(previous), after = JSON.parse(next);
+    if (before._activeClassDataId !== after._activeClassDataId) return;
+    if (plannerDataFingerprint(before) === plannerDataFingerprint(after)) {
+      let snapshot = plannerUndoSnapshot;
+      if (!snapshot) { try { snapshot = JSON.parse(sessionStorage.getItem('planner_undo_v1')); } catch (_) {} }
+      if (snapshot?.revision === cloudRevision(before) && snapshot.classId === getActiveClassId()) {
+        plannerUndoSnapshot = {...snapshot,revision:cloudRevision(after)};
+        try { sessionStorage.setItem('planner_undo_v1',JSON.stringify(plannerUndoSnapshot)); } catch (_) {}
+      }
+      return;
+    }
+    plannerUndoSnapshot = {before, revision:cloudRevision(after), classId:getActiveClassId(), label:plannerMutationLabel || 'última alteração salva'};
+    try { sessionStorage.setItem('planner_undo_v1', JSON.stringify(plannerUndoSnapshot)); } catch (_) {}
+  } catch (_) {}
+}
+function undoPlannerChange() {
+  if (isProfessorMode()) return;
+  let snapshot = plannerUndoSnapshot;
+  if (!snapshot) { try { snapshot = JSON.parse(sessionStorage.getItem('planner_undo_v1')); } catch (_) {} }
+  if (!snapshot || snapshot.classId !== getActiveClassId() || snapshot.revision !== cloudRevision(state)) {
+    showToast('Não há uma alteração recente desta turma que possa ser desfeita com segurança.', true); return;
+  }
+  if (document.querySelector('.modal-overlay.open:not(#productivityOverlay), .ead-modal-overlay.open')) {
+    showToast('Feche o formulário em edição antes de desfazer.', true); return;
+  }
+  if (!confirm('Desfazer: '+snapshot.label+'? As informações anteriores serão restauradas.')) return;
+  const current = classClone(state, {}), view = state.view, week = state.weekOffset;
+  const selections = Object.fromEntries(['freqDisc','npDisc','neadDisc'].map(id=>[id,document.getElementById(id).value]));
+  plannerUndoPaused = true;
+  try {
+    state = classClone(snapshot.before, {}); state.view = view; state.weekOffset = week;
+    if (saveData() === false) { state = current; return; }
+    plannerUndoSnapshot = null;
+    try { sessionStorage.removeItem('planner_undo_v1'); } catch (_) {}
+    closeProductivity(); closeDetail(); closeEadDetail(); rebuildAllDiscSelects(); rebuildActiveClassSelect();
+    Object.entries(selections).forEach(([id,value])=>{const select=document.getElementById(id);if([...select.options].some(option=>option.value===value))select.value=value;});
+    renderAllClassDependentViews(); setView(view);
+    showToast('Alteração desfeita e salva.');
+  } finally { plannerUndoPaused = false; }
+}
+function commitProductivity(label, apply) {
+  const before = classClone(state, {});
+  plannerMutationLabel = label;
+  try {
+    apply();
+    if (saveData() === false) throw new Error('Não foi possível salvar. Nenhum registro foi alterado.');
+    return true;
+  } catch (error) { state = before; showToast(error.message, true); return false; }
+  finally { plannerMutationLabel = ''; }
+}
+function freqCallSignature(entry) { return JSON.stringify(entry?.alunos || {}); }
+function isFreqCallConfirmed(entry) { return !!entry?.confirmedAt && entry.confirmedSignature === freqCallSignature(entry); }
+function markBlankFreqPresent() {
+  const disc = document.getElementById('freqDisc').value, date = document.getElementById('freqData').value;
+  if (!disc || !date) return;
+  const ok = commitProductivity('preenchimento dos campos vazios da chamada', () => {
+    const entry = getFreqEntry(disc, date), count = getClassModuleCountForDate(date);
+    getNomesAlunos().forEach(name => {
+      if (getAfastamentoOcorrenciaParaFrequencia(date,name)) return;
+      const student = entry.alunos[name] || (entry.alunos[name] = {mods:[],obs:'',link:''});
+      if (!Array.isArray(student.mods)) student.mods = [];
+      for (let i=0; i<count; i++) if (!student.mods[i] && professorCanEditFreq(disc,date,name,'mods',i)) student.mods[i] = 'P';
+    });
+  });
+  if (ok) { renderFreq(); showToast('Campos vazios preenchidos. Faltas existentes foram mantidas.'); }
+}
+function productivityOverlay(title, body, footer = '') {
+  let overlay = document.getElementById('productivityOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div'); overlay.id = 'productivityOverlay'; overlay.className = 'modal-overlay';
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeProductivity(); }); document.body.appendChild(overlay);
+    overlay.addEventListener('keydown',event=>{
+      if(event.key==='Escape'){event.preventDefault();closeProductivity();}
+      if(event.key!=='Tab')return;
+      const controls=[...overlay.querySelectorAll('button,select,input,textarea,a[href]')].filter(node=>!node.disabled&&node.getClientRects().length);
+      const first=controls[0],last=controls[controls.length-1];
+      if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}
+      else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}
+    });
+  }
+  overlay._returnFocus=document.activeElement;
+  overlay._ownerClassId=getActiveClassId();
+  productivityPreview = null;
+  overlay.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="productivityTitle" style="width:900px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column">
+    <div class="modal-head"><h3 id="productivityTitle">${escapeHtml(title)}</h3><button type="button" class="btn btn-outline" aria-label="Fechar" onclick="closeProductivity()">×</button></div>
+    <div class="modal-body" style="overflow:auto;min-height:0">${body}<div id="productivityPreview" aria-live="polite"></div></div>
+    <div class="modal-footer" style="display:flex;flex-wrap:wrap;gap:8px;padding:16px 24px;border-top:1px solid var(--border)"><button class="btn btn-outline" onclick="closeProductivity()">Cancelar</button>${footer}</div></div>`;
+  overlay.classList.add('open');
+  overlay.querySelector('.modal-body').addEventListener('input', () => invalidateProductivityPreview());
+  overlay.querySelector('.modal-body').addEventListener('change', () => invalidateProductivityPreview());
+  setTimeout(() => overlay.querySelector('.modal-body select,.modal-body input,.modal-body textarea,.modal-head button')?.focus(),0);
+}
+function closeProductivity() { const overlay=document.getElementById('productivityOverlay');overlay?.classList.remove('open');if(overlay?._returnFocus?.isConnected)overlay._returnFocus.focus();productivityPreview = null; }
+function invalidateProductivityPreview() {
+  productivityPreview = null;
+  const preview = document.getElementById('productivityPreview'); if (preview) preview.innerHTML = '';
+  const apply = document.getElementById('productivityApply'); if (apply) apply.disabled = true;
+}
+function productivitySelect(id, label, choices, value = '') {
+  return `<label class="form-group">${escapeHtml(label)}<select class="form-input" id="${id}">${choices.map(([key,text]) => `<option value="${escapeHtml(key)}" ${String(key)===String(value)?'selected':''}>${escapeHtml(text)}</option>`).join('')}</select></label>`;
+}
+function showProductivityPreview(rows, apply, label) {
+  productivityPreview = {rows,apply,label,classId:getActiveClassId(),fingerprint:plannerDataFingerprint(state)};
+  document.getElementById('productivityPreview').innerHTML = `<p style="margin:16px 0 8px"><strong>${rows.filter(row=>row.ready).length}</strong> registros a salvar · ${rows.filter(row=>!row.ready).length} mantidos sem alteração</p>
+    <div style="overflow:auto;max-height:350px"><table class="nead-table"><thead><tr><th>Registro</th><th>Resultado</th></tr></thead><tbody>${rows.map(row=>`<tr><td class="td-l">${escapeHtml(row.label)}</td><td class="td-l">${escapeHtml(row.message || (row.ready?'Novo registro':'Já preenchido · mantido'))}</td></tr>`).join('')}</tbody></table></div>`;
+  document.getElementById('productivityApply').disabled = !rows.some(row=>row.ready);
+  document.getElementById('productivityPreview').scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+function applyProductivityPreview() {
+  const preview = productivityPreview;
+  if (!preview || preview.classId!==getActiveClassId() || preview.fingerprint!==plannerDataFingerprint(state)) {
+    invalidateProductivityPreview(); showToast('Os dados mudaram. Confira uma nova prévia antes de salvar.',true); return;
+  }
+  if (preview.rows.some(row=>row.replace) && !confirm('Substituir as notas já preenchidas indicadas na prévia?')) return;
+  if (commitProductivity(preview.label, preview.apply)) {
+    closeProductivity(); renderAllClassDependentViews(); showToast('Registros salvos. Você pode desfazer em Mais opções.');
+  } else invalidateProductivityPreview();
+}
+function productivityFooter(previewFn) {
+  return `<button class="btn btn-outline" onclick="${previewFn}()">Conferir prévia</button><button id="productivityApply" class="btn btn-primary" disabled onclick="applyProductivityPreview()">Salvar registros</button>`;
+}
+function assertProductivityClass() {
+  if(document.getElementById('productivityOverlay')._ownerClassId!==getActiveClassId())throw new Error('A turma mudou. Feche esta janela e abra novamente na turma desejada.');
+}
+function openPlanningTools(mode = 'copy') {
+  if (isProfessorMode()) return;
+  const monday = localDateKey(getWeekDates(state.weekOffset)[0]);
+  const kind = state.view === 'ead' ? 'ead' : 'presencial';
+  const nav = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px"><button class="btn ${mode==='copy'?'btn-primary':'btn-outline'}" onclick="openPlanningTools('copy')">Copiar dia ou semana</button><button class="btn ${mode==='sequence'?'btn-primary':'btn-outline'}" onclick="openPlanningTools('sequence')">Distribuir tópicos</button></div>`;
+  const common = productivitySelect('productivityKind','Planejamento',[['presencial','Presencial'],['ead','EaD']],kind);
+  if (mode === 'copy') {
+    productivityOverlay('Organizar planejamento', nav+common+
+      productivitySelect('copyPeriod','Período',[['day','Um dia'],['week','Uma semana (segunda a sexta)']])+
+      `<div class="form-row"><label class="form-group">Data de origem<input class="form-input" id="copySource" type="date" value="${monday}"></label><label class="form-group">Data de destino<input class="form-input" id="copyTarget" type="date" value="${monday}"></label></div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap"><label><input id="copyDetails" type="checkbox" checked> Descrições e atividades</label><label><input id="copyMaterials" type="checkbox" checked> Materiais</label><label><input id="copyNotes" type="checkbox" checked> Observações</label></div>`, productivityFooter('previewPlanningCopy'));
+  } else {
+    const disciplines = [...new Set([...getDiscs('presencial'),...getDiscs('ead'),...getDiscs('presEad')])];
+    productivityOverlay('Distribuir tópicos', nav+common+
+      productivitySelect('sequenceDisc','Disciplina',disciplines.map(name=>[name,name]))+
+      `<div class="form-row"><label class="form-group">De<input class="form-input" id="sequenceStart" type="date" value="${monday}"></label><label class="form-group">Até<input class="form-input" id="sequenceEnd" type="date" value="${localDateKey(getWeekDates(state.weekOffset)[4])}"></label></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin:12px 0">${DAY_NAMES.map((name,index)=>`<label><input type="checkbox" name="sequenceDay" value="${index+1}" checked> ${name}</label>`).join('')}</div>
+      <div class="form-row"><label class="form-group">Módulos por tópico<input class="form-input" id="sequenceRepeat" type="number" min="1" max="8" step="1" value="1"></label><label class="form-group">Módulos por dia<input class="form-input" id="sequenceCount" type="number" min="1" max="${kind==='ead'?2:8}" step="1" value="${kind==='ead'?2:6}"></label></div>
+      <div id="sequenceType"></div><div id="sequenceTopics" style="margin-top:12px"></div>`,productivityFooter('previewTopicSequence'));
+    document.getElementById('sequenceType').innerHTML = productivitySelect('sequenceTag','Tipo',kind==='ead'?Object.entries(TIPO_LABELS):getTiposAula().map(type=>[type.id,type.nome]));
+    document.getElementById('sequenceDisc').addEventListener('change',renderSequenceTopics);
+    document.getElementById('productivityKind').addEventListener('change',()=>{
+      const ead = document.getElementById('productivityKind').value==='ead';
+      document.getElementById('sequenceType').innerHTML=productivitySelect('sequenceTag','Tipo',ead?Object.entries(TIPO_LABELS):getTiposAula().map(type=>[type.id,type.nome]));
+      document.getElementById('sequenceCount').value=ead?2:6;
+      document.getElementById('sequenceCount').max=ead?2:8;
+    });
+    renderSequenceTopics();
+  }
+}
+function renderSequenceTopics() {
+  const topics = getLibraryTopicsForPlannerDiscipline(document.getElementById('sequenceDisc').value);
+  document.getElementById('sequenceTopics').innerHTML = topics.length ? topics.map((topic,index)=>`<label style="display:block;padding:7px 0;border-bottom:1px solid var(--border)"><input type="checkbox" name="sequenceTopic" value="${index}" checked> ${escapeHtml(topic.nome)}</label>`).join('') : '<p>Nenhum tópico cadastrado para esta disciplina.</p>';
+}
+function productivityDates(start,end) {
+  chatImportDate(start); chatImportDate(end);
+  if (end<start || (new Date(end+'T12:00:00')-new Date(start+'T12:00:00'))/86400000>370) throw new Error('Escolha um período de até um ano, com o término após o início.');
+  const dates=[];
+  for(let date=new Date(start+'T12:00:00');localDateKey(date)<=end;date.setDate(date.getDate()+1)) dates.push(localDateKey(date));
+  return dates;
+}
+function freshPlanningCopy(source,kind) {
+  const copy = classClone(source, {});
+  delete copy._professorAdded;
+  if(kind==='presencial') { copy.executionStatus='planejada'; copy.executionObs=''; copy.printed=false; copy.activityBuilt=false; }
+  if(!document.getElementById('copyDetails').checked) { if(kind==='ead')copy.desc='';else {copy.teoria='';copy.ativ='';copy.aval='';} }
+  if(!document.getElementById('copyMaterials').checked)copy.materials=[];
+  if(!document.getElementById('copyNotes').checked)copy.obs='';
+  return copy;
+}
+function previewPlanningCopy() {
+  invalidateProductivityPreview();
+  try {
+    assertProductivityClass();
+    const kind=document.getElementById('productivityKind').value, collection=kind==='ead'?'eadModules':'modules';
+    const source=chatImportDate(document.getElementById('copySource').value), target=chatImportDate(document.getElementById('copyTarget').value), week=document.getElementById('copyPeriod').value==='week';
+    if(source===target)throw new Error('Escolha uma data de destino diferente da origem.');
+    if(week && [source,target].some(date=>new Date(date+'T12:00:00').getDay()!==1))throw new Error('Para copiar uma semana, escolha a segunda-feira na origem e no destino.');
+    if(!week && [source,target].some(date=>![1,2,3,4,5].includes(new Date(date+'T12:00:00').getDay())))throw new Error('Escolha dias de segunda a sexta.');
+    const rows=[], snapshot=classClone(state[collection],{});
+    for(let day=0;day<(week?5:1);day++) {
+      const from=new Date(source+'T12:00:00'),to=new Date(target+'T12:00:00');from.setDate(from.getDate()+day);to.setDate(to.getDate()+day);
+      const sourceDate=localDateKey(from),targetDate=localDateKey(to),prefix=kind==='ead'?'ead_':'';
+      Object.entries(snapshot).filter(([key])=>key.startsWith(prefix+sourceDate+'_')).sort(([a],[b])=>Number(a.split('_').pop())-Number(b.split('_').pop())).forEach(([key,module])=>{
+        const number=Number(key.split('_').pop());if(!Number.isInteger(number)||number<1||number>8)return;
+        const dest=prefix+targetDate+'_'+number;
+        rows.push({key:dest,date:targetDate,number,module:freshPlanningCopy(module,kind),ready:!snapshot[dest]&&(kind!=='ead'||number<=2),message:kind==='ead'&&number>2?'EaD limitado a dois módulos por dia · mantido na origem':'',label:targetDate+' · M'+number+' · '+(module.title||module.aula||module.disc||'')});
+      });
+    }
+    if(!rows.length)throw new Error('Não há módulos na origem selecionada.');
+    showProductivityPreview(rows,()=>applyPlanningRows(rows,collection,kind),'cópia de '+(week?'semana':'dia'));
+  }catch(error){showToast(error.message,true);}
+}
+function applyPlanningRows(rows,collection,kind) {
+  rows.filter(row=>row.ready).forEach(row=>{
+    if(state[collection][row.key])throw new Error('Um destino foi preenchido. Gere uma nova prévia.');
+    state[collection][row.key]=classClone(row.module,{});
+    if(kind==='presencial' && row.number>getClassModuleCountForDate(row.date)) {
+      const config=state.classConfigs.find(item=>item.id===getActiveClassId());
+      config.modulosPorData={...(config.modulosPorData||{}),[row.date]:Math.max(row.number,Number(config.modulosPorData?.[row.date])||0)};
+    }
+  });
+}
+function previewTopicSequence() {
+  invalidateProductivityPreview();
+  try {
+    assertProductivityClass();
+    const kind=document.getElementById('productivityKind').value,collection=kind==='ead'?'eadModules':'modules',disc=document.getElementById('sequenceDisc').value;
+    if(kind==='presencial'&&!getDiscs('presencial').includes(disc))throw new Error('Escolha uma disciplina presencial.');
+    const repeat=chatImportNumber(document.getElementById('sequenceRepeat').value,1,8,true),count=chatImportNumber(document.getElementById('sequenceCount').value,1,kind==='ead'?2:8,true),tag=document.getElementById('sequenceTag').value;
+    const days=[...document.querySelectorAll('[name="sequenceDay"]:checked')].map(item=>Number(item.value));
+    const topics=getLibraryTopicsForPlannerDiscipline(disc),selected=[...document.querySelectorAll('[name="sequenceTopic"]:checked')].map(input=>topics[Number(input.value)]).filter(Boolean);
+    if(!selected.length||!days.length)throw new Error('Selecione ao menos um tópico e um dia da semana.');
+    const dates=productivityDates(document.getElementById('sequenceStart').value,document.getElementById('sequenceEnd').value).filter(date=>days.includes(new Date(date+'T12:00:00').getDay()));
+    const slots=[];
+    dates.forEach(date=>{for(let number=1;number<=count;number++){const key=(kind==='ead'?'ead_':'')+date+'_'+number;if(!state[collection][key])slots.push({key,date,number});}});
+    if(slots.length<selected.length*repeat)throw new Error('Não há módulos vazios suficientes. Amplie o período ou reduza os tópicos/módulos por tópico.');
+    const rows=[];
+    selected.forEach(topic=>{for(let i=0;i<repeat;i++){
+      const slot=slots[rows.length];
+      const module=kind==='ead'?{disc,aula:topic.nome,topicId:topic.id,topic:topic.nome,tipo:tag,tipos:[tag],desc:'',obs:''}:{title:topic.nome,disc,topicId:topic.id,topic:topic.nome,tags:[tag],teoria:'',ativ:'',aval:'',obs:'',materials:[],executionStatus:'planejada',executionObs:''};
+      rows.push({...slot,module,ready:true,label:slot.date+' · M'+slot.number+' · '+topic.nome});
+    }});
+    showProductivityPreview(rows,()=>applyPlanningRows(rows,collection,kind),'distribuição de tópicos');
+  }catch(error){showToast(error.message,true);}
+}
+
+function openGradePaste(kind) {
+  const disc=document.getElementById(kind==='ead'?'neadDisc':'npDisc').value;
+  const data=kind==='ead'?state.notasEad?.[disc]:state.notasPres?.[disc];
+  const columns=kind==='ead'?(data?.atividades||[]).filter(item=>item.tipo!=='resumo'&&!neadQuestionarioSemValor(item)):(data?.avals||[]);
+  if(!disc||!columns.length||!ALUNOS.length){showToast('Selecione uma disciplina com avaliações e alunos cadastrados.',true);return;}
+  productivityOverlay('Colar coluna de notas · '+disc,
+    productivitySelect('gradeColumn','Avaliação',columns.map(item=>[item.id,(item.nome||item.aula)+' · '+(kind==='ead'?neadAtivValorMax(item):item.valor)+' pts']))+
+    (kind==='ead'?productivitySelect('gradeStatus','Situação das entregas',[['prazo','No prazo'],['atrasado','Em atraso']]):'')+
+    `<label class="form-group">Notas, na ordem dos alunos abaixo<textarea class="form-input" style="min-height:150px" id="gradePasteValues" spellcheck="false"></textarea></label>
+    <label style="display:block;margin:12px 0"><input type="checkbox" id="gradeReplace"> Substituir notas já preenchidas</label>
+    <ol style="font-size:12px;max-height:170px;overflow:auto;padding-left:24px">${ALUNOS.map(name=>`<li>${escapeHtml(name)}</li>`).join('')}</ol>`,productivityFooter('previewGradePaste'));
+  document.getElementById('productivityOverlay').dataset.gradeKind=kind;
+  document.getElementById('productivityOverlay').dataset.gradeDisc=disc;
+  document.getElementById('productivityOverlay').dataset.gradeRoster=JSON.stringify(ALUNOS);
+}
+function previewGradePaste() {
+  invalidateProductivityPreview();
+  try {
+    assertProductivityClass();
+    const overlay=document.getElementById('productivityOverlay'),kind=overlay.dataset.gradeKind,disc=overlay.dataset.gradeDisc,id=document.getElementById('gradeColumn').value;
+    if(overlay.dataset.gradeRoster!==JSON.stringify(ALUNOS))throw new Error('A lista de alunos mudou. Reabra a colagem para conferir a nova ordem.');
+    const data=kind==='ead'?state.notasEad[disc]:state.notasPres[disc],column=(kind==='ead'?data.atividades:data.avals).find(item=>item.id===id);
+    const max=kind==='ead'?neadAtivValorMax(column):Number(String(column.valor).replace(',','.')),replace=document.getElementById('gradeReplace').checked,status=document.getElementById('gradeStatus')?.value;
+    if(!Number.isFinite(max)||max<0)throw new Error('Defina uma pontuação válida para esta avaliação antes de colar notas.');
+    const raw=document.getElementById('gradePasteValues').value.replace(/\r/g,'');
+    const values=raw.split('\n');if(raw.endsWith('\n'))values.pop();
+    if(values.length!==ALUNOS.length)throw new Error('Cole exatamente '+ALUNOS.length+' linhas, na ordem exibida. Linhas vazias mantêm a nota atual.');
+    const rows=ALUNOS.map((name,index)=>{
+      const value=values[index].trim();
+      if(value==='')return {label:name,ready:false,message:'Linha vazia · mantida'};
+      const grade=chatImportNumber(value,0,max),old=kind==='ead'?data.alunos[name]?.[id]?.nota:data.alunos[name]?.[id];
+      const existing=old!==undefined&&old!==null&&old!=='';
+      const permitted=kind==='ead'?professorCanEditNeadField(disc,name,id,'nota')&&professorCanEditNeadField(disc,name,id,'status'):professorCanEditNpField(disc,name,id);
+      const deliveryBlocked=kind==='ead'&&data.alunos[name]?.[id]?.status==='nao'&&!replace;
+      const ready=permitted&&(!existing||replace)&&!deliveryBlocked;
+      return {name,grade,ready,replace:ready&&existing,label:name,message:!permitted?'Campo protegido':deliveryBlocked?'Não entregue · mantido':existing&&!replace?'Nota existente · mantida':(existing?'Substituir '+old+' por ':'Salvar ')+grade+(kind==='ead'?' · '+(status==='prazo'?'no prazo':'em atraso'):'')};
+    });
+    showProductivityPreview(rows,()=>{
+      const currentData=kind==='ead'?state.notasEad[disc]:state.notasPres[disc];
+      rows.filter(row=>row.ready).forEach(row=>{
+        if(!currentData.alunos[row.name])currentData.alunos[row.name]={};
+        if(kind==='ead')currentData.alunos[row.name][id]={...(currentData.alunos[row.name][id]||{}),nota:String(row.grade),status};
+        else currentData.alunos[row.name][id]=String(row.grade);
+      });
+    },'colagem de notas');
+  }catch(error){showToast(error.message,true);}
+}
+function gradePasteButton(kind) { return `<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-outline" onclick="openGradePaste('${kind}')">Colar coluna de notas</button></div>`; }
+
+function getPlannerPending() {
+  const dates=getWeekDates(state.weekOffset).map(date=>localDateKey(date)),today=localDateKey(),rows=[];
+  dates.forEach(date=>{
+    const modules=Object.entries(state.modules||{}).filter(([key])=>key.startsWith(date+'_'));
+    if(!modules.length)rows.push({view:'presencial',label:date+' · sem planejamento presencial'});
+    else {
+      const missing=Array.from({length:getClassModuleCountForDate(date)},(_,i)=>i+1).filter(number=>!state.modules[date+'_'+number]);
+      if(missing.length)rows.push({view:'presencial',label:date+' · módulos vazios: '+missing.join(', ')});
+    }
+    if(date>today||!getNomesAlunos().length)return;
+    [...new Set(modules.map(([,module])=>module.disc).filter(Boolean))].forEach(disc=>{
+      const entry=state.freq?.[disc]?.[date];
+      if(!isFreqCallConfirmed(entry))rows.push({view:'frequencia',date,disc,label:date+' · chamada sem confirmação · '+disc});
+    });
+  });
+  ['presencial','ead'].forEach(kind=>{
+    const data=kind==='ead'?state.notasEad:state.notasPres;
+    Object.entries(data||{}).forEach(([disc,record])=>{
+      const columns=kind==='ead'?(record.atividades||[]):(record.avals||[]);
+      columns.forEach(column=>{
+        const missing=getNomesAlunos().filter(name=>{
+          const entry=record.alunos?.[name]?.[column.id];
+          if(kind==='ead'&&column.tipo==='resumo')return !entry?.status;
+          const value=kind==='ead'?entry?.nota:entry;
+          if(kind==='ead'&&entry?.status==='nao')return false;
+          return value===undefined||value===null||value==='';
+        }).length;
+        if(missing)rows.push({view:kind==='ead'?'notasead':'notaspres',disc,label:disc+' · '+(column.nome||column.aula)+' · '+missing+' notas/entregas em branco'});
+      });
+    });
+  });
+  return rows;
+}
+function openPlannerPending() {
+  const rows=getPlannerPending();
+  productivityOverlay('Pendências · '+(getActiveClass()?.nome||'Turma atual'),
+    `<p style="margin-bottom:16px">Planejamento e chamadas da semana ${fmtDate(getWeekDates(state.weekOffset)[0])} a ${fmtDate(getWeekDates(state.weekOffset)[4])}. Notas em branco das avaliações cadastradas, sem presumir atraso.</p>`+
+    (rows.length?rows.map((row,index)=>`<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)"><span style="flex:1">${escapeHtml(row.label)}</span><button class="btn btn-outline" onclick="goToPlannerPending(${index})">Abrir</button></div>`).join(''):'<p>Nenhuma pendência identificada para este recorte.</p>'));
+  document.getElementById('productivityOverlay')._pendingRows=rows;
+}
+function goToPlannerPending(index) {
+  const row=document.getElementById('productivityOverlay')._pendingRows[index];if(!row)return;
+  closeProductivity();setView(row.view);
+  const select=row.view==='frequencia'?'freqDisc':row.view==='notasead'?'neadDisc':row.view==='notaspres'?'npDisc':'';
+  if(select)document.getElementById(select).value=row.disc;
+  if(row.date)document.getElementById('freqData').value=row.date;
+  renderAllClassDependentViews();
+}
+function plannerPendingStrip() {
+  if(isProfessorMode())return '';
+  return `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0;margin-bottom:12px;border-bottom:1px solid var(--border)"><strong style="flex:1">${getPlannerPending().length} itens para conferir na turma</strong><button class="btn btn-outline" onclick="openPlannerPending()">Ver pendências</button></div>`;
 }
 
 // --- INIT ------------------------------------------------
