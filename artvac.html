@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><meta name="referrer" content="no-referrer"><meta http-equiv="Cache-Control" content="no-store"><title>Acompanhamento ARTVAC</title><link rel="stylesheet" href="artvac-report.css">
+<style>body{margin:0;background:#f4f6f8;color:#172334;font:14px/1.5 Arial,sans-serif}header.av-toolbar{background:#fff;border-bottom:1px solid #dbe2e9;padding:14px 24px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}header.av-toolbar strong{margin-right:auto}button,select{font:inherit;border:1px solid #ccd5df;border-radius:4px;background:#fff;color:#172334;padding:9px 12px}button{cursor:pointer}button:disabled{cursor:default;opacity:.5}main{max-width:1400px;margin:0 auto;padding:24px;background:white;min-height:70vh}#avPublicStatus{color:#546275;padding-bottom:14px}select{max-width:100%}@media(max-width:600px){main{padding:16px}header.av-toolbar{padding:14px 16px}}@media print{main{padding:0;max-width:none}.av-long-period .av-attendance-grid{display:none}}</style></head>
+<body><header class="av-toolbar av-no-print"><strong>ARTVAC · Aprendizes</strong><select id="avPeriod" aria-label="Período publicado" hidden></select><button id="avReload" disabled>Atualizar</button><button id="avPrint" disabled>Imprimir / salvar PDF</button></header><main><div id="avPublicStatus" role="status">Carregando publicação…</div><div id="avPublicReport"></div></main>
+<script src="artvac-report.js"></script><script>
+'use strict';
+let avRequestId=0,avController=null;
+async function loadPublicArtvac(period=''){
+  const requestId=++avRequestId;avController?.abort();
+  const params=new URLSearchParams(location.hash.slice(1)),avEndpoint=params.get('endpoint'),avToken=params.get('token');
+  const status=document.getElementById('avPublicStatus'),select=document.getElementById('avPeriod');
+  document.getElementById('avPrint').disabled=true;document.getElementById('avReload').disabled=true;document.getElementById('avPublicReport').innerHTML='';status.textContent='Consultando publicação…';
+  try{
+    if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(avEndpoint||'')||!/^[a-f0-9]{64}$/.test(avToken||''))throw Error('Este link está incompleto ou é inválido. Solicite um novo link à professora.');
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);avController=controller;let result;
+    try{const response=await fetch(avEndpoint+'?'+new URLSearchParams({action:'read',token:avToken,period,t:String(Date.now())}),{signal:controller.signal,cache:'no-store',referrerPolicy:'no-referrer'});if(!response.ok)throw Error('Falha de conexão.');result=await response.json();}finally{clearTimeout(timer);}
+    if(requestId!==avRequestId)return;
+    if(!result.ok||result.service!=='artvac-v1')throw Error('Publicação indisponível ou acesso revogado. Solicite um link atualizado à professora.');
+    if(!result.report){select.hidden=true;status.textContent='Ainda não há períodos publicados para consulta.';return;}
+    if(!Array.isArray(result.periods)||result.periods.length>120||!Array.isArray(result.report.students)||result.report.students.length>100)throw Error('Publicação inválida.');
+    select.innerHTML=result.periods.map(item=>`<option value="${ArtvacReport.escape(item.key)}">${ArtvacReport.escape(ArtvacReport.formatDate(item.start)+' a '+ArtvacReport.formatDate(item.end))}</option>`).join('');select.value=result.selected;select.hidden=false;
+    document.getElementById('avPublicReport').innerHTML=ArtvacReport.render(result.report);status.textContent='Somente leitura · versão conferida e publicada pela professora.';document.getElementById('avPrint').disabled=false;
+  }catch(error){if(requestId!==avRequestId)return;status.textContent=error.name==='AbortError'?'A consulta demorou mais que o esperado. Tente atualizar.':error.message;select.hidden=true;}
+  finally{if(requestId===avRequestId)document.getElementById('avReload').disabled=false;}
+}
+document.getElementById('avPeriod').addEventListener('change',event=>loadPublicArtvac(event.target.value));document.getElementById('avReload').addEventListener('click',()=>loadPublicArtvac(document.getElementById('avPeriod').value));document.getElementById('avPrint').addEventListener('click',()=>window.print());window.addEventListener('hashchange',()=>loadPublicArtvac());loadPublicArtvac();
+</script></body></html>
