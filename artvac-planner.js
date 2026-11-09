@@ -53,7 +53,7 @@ function renderArtvacPreview(){
   try{
     assertArtvacOwner();const {start,end}=artvacRange(),days=ArtvacReport.dates(start,end);
     const students=artvacStudents(),effectiveAbsences=Object.fromEntries(days.map(date=>[date,students.filter(student=>getAfastamentoOcorrenciaParaFrequencia(date,student.name)).map(student=>student.id)]));
-    const input={className:getActiveClass().nome,start,end,students,effectiveAbsences,modules:state.modules,freq:state.freq,records:artvacData().artvacRecords||[],excluded:[...document.querySelectorAll('[name="avIncludedDate"]:not(:checked)')].map(item=>item.value),counts:Object.fromEntries(days.map(date=>[date,getClassModuleCountForDate(date)])),pointSentAt:document.getElementById('avPointSent').value};
+    const input={className:getActiveClass().nome,start,end,students,effectiveAbsences,modules:state.modules,freq:state.freq,records:artvacData().artvacRecords||[],excluded:[...document.querySelectorAll('[name="avIncludedDate"]:not(:checked)')].map(item=>item.value),counts:Object.fromEntries(days.map(date=>[date,getFreqModuleCount(date)])),pointSentAt:document.getElementById('avPointSent').value};
     const report=ArtvacReport.build(input);
     artvacDraft={report,fingerprint:plannerDataFingerprint(state),classId:getActiveClassId()};
     document.getElementById('avReportContent').innerHTML=ArtvacReport.render(report);

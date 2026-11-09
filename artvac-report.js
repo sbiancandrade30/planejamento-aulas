@@ -30,7 +30,7 @@
         const statuses=[];
         for(let index=1;index<=count;index++){
           const planned=input.modules?.[date+'_'+index]?.disc;
-          const sources=planned?entries.filter(source=>source.disc===planned):entries;
+          const sources=planned&&entries.some(source=>source.disc===planned)?entries.filter(source=>source.disc===planned):entries;
           const values=sources.map(source=>{
             if(!confirmed(source.entry))return '';
             const row=Object.entries(source.entry.alunos||{}).find(([nome])=>normalize(nome)===key)?.[1];
