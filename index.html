@@ -13725,7 +13725,7 @@ function frequencyPercent(value){return value===null?'—':value.toLocaleString(
 function renderStudentFrequencyIndicator(disc,name){
   const m=getStudentFrequencyMetrics(disc,name);
   const summary=m.total?`${m.present}/${m.total} módulos · ${m.absent} falta(s)${m.remaining>0?' · '+m.remaining+' restante(s)':''}`:'Sem carga horária';
-  const flags=[m.daysAbsent?`${m.daysAbsent} dia(s)`: '',m.draft?'prévia':'',m.overPlan?'revisar carga':''].filter(Boolean).join(' · ');
+  const flags=[m.daysAbsent?`${m.daysAbsent} dia(s)`: '',m.overPlan?'revisar carga':''].filter(Boolean).join(' · ');
   return `<div class="freq-attendance-indicator freq-attendance-${m.level}"><span>${m.recorded?frequencyPercent(m.percent):'—'} <small>nas chamadas</small></span><small>${summary}</small>${flags?`<small>${flags}</small>`:''}</div>`;
 }
 function markAllFreqPresent(){
@@ -13812,9 +13812,9 @@ function renderFreqCallActions(disc, data, entry) {
   return `<div class="freq-call-actions">
     <div>
       <div class="freq-call-title">Chamada de ${escapeHtml(disc)}</div>
-      <div class="freq-call-sub">Meta: 75%${total?' · '+total+' módulos previstos · mínimo '+Math.ceil(total*.75)+' presentes · até '+(total-Math.ceil(total*.75))+' ausentes':' · carga horária não cadastrada'}</div>
-      <div class="freq-call-sub">${formatDateKeyPtBr(data)} · módulos: P ${stats.presentes} · CJ ${stats.comJust} · SJ ${stats.semJust} · ${stats.diasAusentes} aluno/dia com ausência · ${stats.documentos} documento${stats.documentos === 1 ? '' : 's'}</div>
-      <div class="freq-call-sub freq-confirm-status" style="color:${freqCallReady(entry,data,disc) ? 'var(--green)' : 'var(--amber)'}">${freqCallReady(entry,data,disc) ? 'Chamada confirmada' : 'Conferência pendente · confirme em Salvar e confirmar'}</div>
+      <div class="freq-call-sub">75% mínimo${total?' · '+total+' módulos · até '+(total-Math.ceil(total*.75))+' faltas':''}</div>
+      <div class="freq-call-sub">${formatDateKeyPtBr(data)} · P ${stats.presentes} · CJ ${stats.comJust} · SJ ${stats.semJust} · ${stats.documentos} doc.</div>
+      <div class="freq-call-sub freq-confirm-status" style="color:${freqCallReady(entry,data,disc) ? 'var(--green)' : 'var(--amber)'}">${freqCallReady(entry,data,disc) ? 'Confirmada' : 'Pendente · use Salvar e confirmar'}</div>
       <div class="freq-call-sub" id="freqStorageStatus" role="status">${escapeHtml(freqStorageText())}</div>
     </div>
     <div class="freq-call-buttons">
