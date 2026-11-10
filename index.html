@@ -2693,6 +2693,31 @@
     flex:0 1 auto;
   }
   .freq-call-info { min-width:0; flex:1 1 320px; }
+  .freq-period-toolbar { display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; margin:12px 0; }
+  .freq-period-toolbar label { display:flex; flex-direction:column; gap:4px; font-size:10px; color:var(--text2); }
+  .freq-period-toolbar .freq-select { min-height:34px; max-width:280px; }
+  .freq-period-presets { display:flex; gap:6px; flex-wrap:wrap; }
+  #freqPeriodError { color:var(--red); font-size:12px; }
+  .freq-student-toolbar { display:flex; gap:10px; margin:14px 0 10px; }
+  .freq-student-toolbar>* { min-width:0; flex:1; }
+  .freq-dashboard .freq-insight-card { border-radius:8px; }
+  .freq-dashboard .freq-mini-metric { background:none; border:0; border-radius:0; padding:4px 8px; border-left:2px solid var(--border); }
+  .freq-period-title { font-size:14px; font-weight:600; margin:18px 0 10px; }
+  .freq-period-title span { display:block; font-size:11px; color:var(--text2); font-weight:400; margin-top:3px; }
+  .freq-period-students { background:var(--surface); border:1px solid var(--border); border-radius:8px; }
+  .freq-student-history { border-bottom:1px solid var(--border); }
+  .freq-student-history:last-child { border-bottom:0; }
+  .freq-student-history summary { display:grid; grid-template-columns:minmax(0,1fr) 100px 140px; align-items:center; gap:12px; padding:12px 30px 12px 16px; cursor:pointer; font-size:12px; position:relative; }
+  .freq-student-history summary::after { content:''; position:absolute; right:14px; width:5px; height:5px; border-right:1px solid var(--text2); border-bottom:1px solid var(--text2); transform:rotate(45deg); }
+  .freq-student-history[open] summary::after { transform:rotate(225deg); }
+  .freq-student-history summary:hover { background:var(--surface2); }
+  .freq-student-history summary strong { font-weight:500; overflow-wrap:anywhere; }
+  .freq-student-history summary>span:last-child { color:var(--text2); font-size:11px; }
+  .freq-student-rate { font-weight:600; }
+  .freq-history-body { padding:0 16px 12px; font-size:12px; }
+  .freq-history-record { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; gap:12px; align-items:center; padding:9px 0; border-top:1px solid var(--border); }
+  .freq-history-record small { display:block; color:var(--text2); font-size:10px; margin-top:3px; }
+  @media(max-width:700px) { .freq-period-toolbar label { flex:1 1 130px; }.freq-period-toolbar .freq-select{width:100%;max-width:none}.freq-student-toolbar{flex-direction:column}.freq-student-history summary{grid-template-columns:minmax(0,1fr) 65px;gap:6px}.freq-student-history summary>span:last-child{grid-column:1/-1}.freq-history-record{grid-template-columns:1fr auto}.freq-history-record>span:nth-child(2){grid-column:1/-1;grid-row:2}.freq-period-presets{width:100%} }
   .freq-call-heading { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
   .freq-call-date { font-size:11px; color:var(--text2); font-variant-numeric:tabular-nums; }
   .freq-call-meta { display:flex; align-items:center; flex-wrap:wrap; gap:6px 12px; font-size:11px; color:var(--text2); }
@@ -3892,20 +3917,28 @@
       <div class="page-head freq-page-head">
         <div>
           <div class="page-title">Frequência</div>
-          <div class="page-sub">Registre presença, faltas justificadas, atestados e suspensões por data e disciplina.</div>
         </div>
       </div>
       <div class="freq-toolbar">
-        <input type="date" class="freq-select" id="freqData" onchange="onFreqDateChange()">
-        <select class="freq-select" id="freqDisc" onchange="onFreqDisciplineChange()">
+        <input type="date" class="freq-select" id="freqData" aria-label="Data da chamada" onchange="onFreqDateChange()">
+        <select class="freq-select" id="freqDisc" aria-label="Disciplina da chamada" onchange="onFreqDisciplineChange()">
           <option value="">Selecione a disciplina</option>
         </select>
-        <button class="btn btn-outline" id="btnResumo" onclick="setFreqView('resumo')">Ver resumo</button>
+        <button class="btn btn-outline" onclick="freqToday()">Hoje</button>
+        <button class="btn btn-outline" id="btnResumo" onclick="setFreqView('resumo')">Consultar período</button>
         <button class="btn btn-outline" id="artvacReportBtn" onclick="openArtvacReport()">Relatório ARTVAC</button>
         <button class="btn btn-outline" id="btnChamada" onclick="setFreqView('chamada')" style="display:none">← Chamada</button>
       </div>
+      <div class="freq-period-toolbar">
+        <label>Disciplina do painel<select id="freqPeriodDisc" class="freq-select" onchange="refreshFreqPeriod()"><option value="">Todas as disciplinas</option></select></label>
+        <label>De<input type="date" id="freqPeriodStart" class="freq-select" onchange="refreshFreqPeriod()"></label>
+        <label>Até<input type="date" id="freqPeriodEnd" class="freq-select" onchange="refreshFreqPeriod()"></label>
+        <div class="freq-period-presets"><button class="btn btn-outline" onclick="setFreqPeriod('week')">Semana</button><button class="btn btn-outline" onclick="setFreqPeriod('month')">Mês</button><button class="btn btn-outline" onclick="setFreqPeriod('all')">Todo o histórico</button></div>
+        <span id="freqPeriodError" role="status"></span>
+      </div>
       <div id="freqInsightWrap"></div>
       <div id="freqChamadaView">
+        <div class="freq-student-toolbar"><input type="search" class="freq-select" id="freqStudentSearch" placeholder="Buscar aluno…" aria-label="Buscar aluno na chamada" oninput="filterFreqRows()"><select class="freq-select" id="freqHistory" aria-label="Abrir chamada anterior" onchange="openFreqHistory(this.value)"><option value="">Selecionar chamada</option></select></div>
         <div id="freqTableWrap"></div>
       </div>
       <div id="freqResumoView" style="display:none">
@@ -13582,7 +13615,37 @@ function getAfastamentoOcorrenciaParaFrequencia(data, nome) {
   ) || null;
 }
 
-function getFreqInsights() {
+function getFreqPeriod(){
+  const start=document.getElementById('freqPeriodStart'),end=document.getElementById('freqPeriodEnd'),select=document.getElementById('freqPeriodDisc');
+  const previous=select.value;
+  select.innerHTML='<option value="">Todas as disciplinas</option>'+[...new Set([...getDiscs('presencial'),...getDiscs('presEad'),...Object.keys(state.freq||{})])].map(d=>`<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');select.value=previous;
+  if(!start.dataset.initialized){const today=localDateKey();start.value=today.slice(0,8)+'01';end.value=today;start.dataset.initialized='1';}
+  const invalid=!!(start.value&&end.value&&start.value>end.value);
+  document.getElementById('freqPeriodError').textContent=invalid?'A data final deve ser igual ou posterior à inicial.':'';
+  return {start:invalid?'9999':start.value,end:invalid?'0000':end.value,disc:select.value};
+}
+function setFreqPeriod(mode){
+  const start=document.getElementById('freqPeriodStart'),end=document.getElementById('freqPeriodEnd');start.dataset.initialized='1';
+  const date=new Date((document.getElementById('freqData').value||localDateKey())+'T12:00:00');
+  if(mode==='all'){start.value='';end.value='';}
+  else if(mode==='month'){start.value=localDateKey(new Date(date.getFullYear(),date.getMonth(),1,12));end.value=localDateKey(new Date(date.getFullYear(),date.getMonth()+1,0,12));}
+  else{date.setDate(date.getDate()-((date.getDay()+6)%7));start.value=localDateKey(date);date.setDate(date.getDate()+6);end.value=localDateKey(date);}
+  refreshFreqPeriod();
+}
+function refreshFreqPeriod(){renderFreqInsights();if(document.getElementById('freqResumoView').style.display!=='none')renderFreqPeriodStudents();}
+function renderFreqPeriodStudents(){
+  const period=getFreqPeriod();
+  const records=Object.entries(state.freq||{}).flatMap(([disc,dates])=>Object.entries(dates||{}).filter(([date])=>(!period.disc||period.disc===disc)&&(!period.start||date>=period.start)&&(!period.end||date<=period.end)).map(([date,entry])=>({disc,date,entry}))).sort((a,b)=>b.date.localeCompare(a.date));
+  const names=[...new Set([...getNomesAlunos(),...records.flatMap(r=>Object.keys(r.entry.alunos||{}))])];
+  document.getElementById('freqResumoWrap').innerHTML='<div class="freq-period-title">Frequência por aluno <span>Percentuais das chamadas registradas no período</span></div><div class="freq-period-students">'+names.map(name=>{
+    const rows=records.filter(r=>r.entry.alunos?.[name]),counts={P:0,CJ:0,SJ:0};let days=0;
+    rows.forEach(r=>{const mods=r.entry.alunos[name].mods||[];mods.forEach(s=>{if(s in counts)counts[s]++;});});
+    days=new Set(rows.filter(r=>(r.entry.alunos[name].mods||[]).some(s=>s==='CJ'||s==='SJ')).map(r=>r.date)).size;
+    const total=counts.P+counts.CJ+counts.SJ,pct=total?counts.P/total*100:null;
+    return `<details class="freq-student-history"><summary><strong>${escapeHtml(name)}</strong><span class="freq-student-rate" style="color:${pct===null?'var(--text2)':pct<75?'var(--red)':'var(--green)'}">${pct===null?'Sem registro':frequencyPercent(pct)}</span><span>${counts.CJ+counts.SJ} faltas · ${days} dia(s)</span></summary><div class="freq-history-body">${rows.length?rows.map(r=>`<div class="freq-history-record"><span>${formatDateKeyPtBr(r.date)}<small>${escapeHtml(r.disc)}</small></span><span>${(r.entry.alunos[name].mods||[]).map(s=>['P','CJ','SJ'].includes(s)?s:'—').join(' · ')}</span><button class="btn btn-outline" onclick="openFreqHistory('${freqArg(JSON.stringify([r.date,r.disc]))}')">Abrir chamada</button></div>`).join(''):'Nenhuma chamada no período.'}</div></details>`;
+  }).join('')+'</div>';
+}
+function getFreqInsights(period) {
   const alunos = getNomesAlunos();
   const resumo = {
     chamadas:0,
@@ -13598,9 +13661,11 @@ function getFreqInsights() {
   alunos.forEach(nome => { resumo.porAluno[nome] = { faltas:0, semJust:0, comJust:0 }; });
   const diasComAusencia=new Set();
   Object.entries(state.freq || {}).forEach(([disc, datas]) => {
+    if(period?.disc && period.disc!==disc)return;
     let discTemRegistro = false;
     const discTotal = resumo.porDisc[disc] || { faltas:0, semJust:0, comJust:0 };
     Object.entries(datas || {}).forEach(([date,entry]) => {
+      if(period && ((period.start && date<period.start)||(period.end && date>period.end)))return;
       resumo.chamadas++;
       discTemRegistro = true;
       Object.entries(entry.alunos || {}).forEach(([nome, aluno]) => {
@@ -13628,7 +13693,7 @@ function getFreqInsights() {
 function renderFreqInsights() {
   const wrap = document.getElementById('freqInsightWrap');
   if (!wrap) return;
-  const r = getFreqInsights();
+  const r = getFreqInsights(getFreqPeriod());
   const discs = Object.entries(r.porDisc)
     .filter(([,v]) => v.faltas > 0)
     .sort((a,b) => b[1].faltas - a[1].faltas)
@@ -13657,16 +13722,16 @@ function renderFreqInsights() {
     : '<div class="freq-insight-sub">Nenhum aluno com falta registrada ainda.</div>';
 
   wrap.innerHTML = `
-    <div class="freq-insights-grid">
+    <div class="freq-insights-grid freq-dashboard">
       <div class="freq-insight-card">
-        <div class="freq-insight-title">Resumo da frequência</div>
+        <div class="freq-insight-title">No período selecionado</div>
         <div class="freq-metric-row">
           <div class="freq-mini-metric"><div class="freq-mini-value">${r.chamadas}</div><div class="freq-mini-label">Chamadas</div></div>
-          <div class="freq-mini-metric"><div class="freq-mini-value">${r.semJust}</div><div class="freq-mini-label">Módulos SJ</div></div>
-          <div class="freq-mini-metric"><div class="freq-mini-value">${r.comJust}</div><div class="freq-mini-label">Módulos CJ</div></div>
+          <div class="freq-mini-metric"><div class="freq-mini-value">${r.presentes+r.comJust+r.semJust?frequencyPercent(r.presentes/(r.presentes+r.comJust+r.semJust)*100):'—'}</div><div class="freq-mini-label">Presença registrada</div></div>
+          <div class="freq-mini-metric"><div class="freq-mini-value">${r.comJust+r.semJust}</div><div class="freq-mini-label">Módulos ausentes</div></div>
           <div class="freq-mini-metric"><div class="freq-mini-value">${r.docs}</div><div class="freq-mini-label">Documentos</div></div>
         </div>
-        <div class="freq-insight-sub">${r.diasComAusencia} dia(s) com ausência · contagem por aluno/dia</div>
+        <div class="freq-insight-sub">${r.comJust} CJ · ${r.semJust} SJ · ${r.diasComAusencia} aluno/dia com ausência</div>
       </div>
       <div class="freq-insight-card">
         <div class="freq-insight-title">Módulos ausentes por disciplina</div>
@@ -14193,7 +14258,8 @@ function setFreqView(v) {
   document.getElementById('freqResumoView').style.display = v === 'resumo' ? '' : 'none';
   document.getElementById('btnResumo').style.display = v === 'resumo' ? 'none' : '';
   document.getElementById('btnChamada').style.display = v === 'resumo' ? '' : 'none';
-  if (v === 'resumo') renderResumoFreq();
+  renderFreqInsights();
+  if (v === 'resumo') renderFreqPeriodStudents();
 }
 
 function renderResumoFreq() {
