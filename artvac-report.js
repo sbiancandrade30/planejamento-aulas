@@ -27,13 +27,14 @@
         const count=Number(input.counts?.[date])||6;
         if(!Number.isInteger(count)||count<1||count>8)throw Error('Quantidade de módulos inválida para '+formatDate(date)+'.');
         const entries=Object.entries(input.freq||{}).filter(([,byDate])=>byDate?.[date]).map(([disc,byDate])=>({disc,entry:byDate[date]}));
-        const statuses=[];
+        const statuses=[],usedRows=new Set();
         for(let index=1;index<=count;index++){
           const planned=input.modules?.[date+'_'+index]?.disc;
           const sources=planned&&entries.some(source=>source.disc===planned)?entries.filter(source=>source.disc===planned):entries;
           const values=sources.map(source=>{
             if(!confirmed(source.entry))return '';
             const row=Object.entries(source.entry.alunos||{}).find(([nome])=>normalize(nome)===key)?.[1];
+            if(row)usedRows.add(row);
             if(input.effectiveAbsences?.[date]?.includes(student.id)&&row?.mods?.[index-1]!=='CJ')return '';
             return ['P','CJ','SJ'].includes(row?.mods?.[index-1])?row.mods[index-1]:'';
           });
@@ -42,8 +43,18 @@
         const absent=statuses.filter(status=>status==='CJ'||status==='SJ').length,justified=statuses.filter(status=>status==='CJ').length;
         const pending=statuses.some(status=>!status),status=pending?'pendente':absent===count?'falta':absent?'parcial':'presente';
         const notes=records.filter(record=>record.studentId===student.id&&record.date===date);
-        const justification=notes.filter(record=>record.type==='justificativa').at(-1)?.justification||(absent&&justified===absent?'frequencia':'nao_informada');
         const events=notes.map(record=>({type:record.type,time:record.time||'',justification:record.justification||'nao_informada',document:record.document||'',note:record.note||''}));
+        if(!notes.some(record=>record.type==='justificativa')){
+          const seenDocuments=new Set();
+          usedRows.forEach(row=>{
+            const status=row.docStatus||(row.docData?'apresentado':'nao_informado');
+            if(!['aguardando','apresentado','dispensado'].includes(status))return;
+            const document={atestado:'atestado',declaracao:'declaracao'}[row.afastamentoTipo]||'',signature=status+'_'+document;
+            if(seenDocuments.has(signature))return;seenDocuments.add(signature);
+            events.push({type:'justificativa',time:'',justification:status==='dispensado'?'informada':status,document,note:status==='dispensado'?'Documento dispensado.':''});
+          });
+        }
+        const justification=events.filter(record=>record.type==='justificativa').at(-1)?.justification||(absent&&justified===absent?'frequencia':'nao_informada');
         if(pending)summary.pendingCells++;
         if(!pending&&absent){summary.absences++;if(justified===absent)summary.justified++;}
         summary.late+=events.filter(event=>event.type==='atraso').length;
