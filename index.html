@@ -2717,6 +2717,14 @@
   .freq-history-body { padding:0 16px 12px; font-size:12px; }
   .freq-history-record { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; gap:12px; align-items:center; padding:9px 0; border-top:1px solid var(--border); }
   .freq-history-record small { display:block; color:var(--text2); font-size:10px; margin-top:3px; }
+  .freq-period-call { padding:0 14px 10px; border-bottom:1px solid var(--border); }
+  .freq-period-call:last-child { border-bottom:0; }
+  .freq-period-call>.freq-history-record { border-top:0; }
+  .freq-period-call summary { cursor:pointer; font-size:11px; color:var(--accent); padding:4px 0; }
+  .freq-period-call-student { display:grid; gap:4px; padding:10px 0; border-top:1px solid var(--border); font-size:11px; overflow-wrap:anywhere; }
+  .freq-period-call-student strong { font-weight:500; }
+  .freq-period-call-student small { color:var(--text2); }
+  .freq-period-call-student p { margin:0; white-space:pre-wrap; }
   @media(max-width:700px) { .freq-period-toolbar label { flex:1 1 130px; }.freq-period-toolbar .freq-select{width:100%;max-width:none}.freq-student-toolbar{flex-direction:column}.freq-student-history summary{grid-template-columns:minmax(0,1fr) 65px;gap:6px}.freq-student-history summary>span:last-child{grid-column:1/-1}.freq-history-record{grid-template-columns:1fr auto}.freq-history-record>span:nth-child(2){grid-column:1/-1;grid-row:2}.freq-period-presets{width:100%} }
   .freq-call-heading { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
   .freq-call-date { font-size:11px; color:var(--text2); font-variant-numeric:tabular-nums; }
@@ -13637,7 +13645,15 @@ function renderFreqPeriodStudents(){
   const period=getFreqPeriod();
   const records=Object.entries(state.freq||{}).flatMap(([disc,dates])=>Object.entries(dates||{}).filter(([date])=>(!period.disc||period.disc===disc)&&(!period.start||date>=period.start)&&(!period.end||date<=period.end)).map(([date,entry])=>({disc,date,entry}))).sort((a,b)=>b.date.localeCompare(a.date));
   const names=[...new Set([...getNomesAlunos(),...records.flatMap(r=>Object.keys(r.entry.alunos||{}))])];
-  document.getElementById('freqResumoWrap').innerHTML='<div class="freq-period-title">Frequência por aluno <span>Percentuais das chamadas registradas no período</span></div><div class="freq-period-students">'+names.map(name=>{
+  const calls='<div class="freq-period-title">Registros do período <span>'+records.length+' chamada(s)</span></div><div class="freq-period-students">'+(records.length?records.map(r=>{
+    const stats=getFreqEntryStats(r.entry),arg=freqArg(JSON.stringify([r.date,r.disc]));
+    return `<div class="freq-period-call"><div class="freq-history-record"><span><strong>${formatDateKeyPtBr(r.date)}</strong><small>${escapeHtml(r.disc)}</small></span><span>${stats.presentes} P · ${stats.comJust} CJ · ${stats.semJust} SJ<small>${freqCallReady(r.entry,r.date,r.disc)?'Confirmada':'Não confirmada'}</small></span><button class="btn btn-outline" onclick="openFreqHistory('${arg}')">Editar chamada</button></div><details><summary>Ver alunos e detalhes</summary><div class="freq-period-call-students">${Object.entries(r.entry.alunos||{}).map(([name,a])=>{
+      const reason={atestado:'Atestado',suspensao:'Suspensão',declaracao:'Declaração de comparecimento',outro:'Outro motivo'}[a.afastamentoTipo]||'';
+      const documentStatus={aguardando:'Documento pendente',apresentado:'Documento apresentado',dispensado:'Documento dispensado'}[getFreqDocumentStatus(a)]||'';
+      return `<div class="freq-period-call-student"><strong>${escapeHtml(name)}</strong><span>${(a.mods||[]).map((s,i)=>'M'+(i+1)+': '+(['P','CJ','SJ'].includes(s)?s:'—')).join(' · ')}</span>${a.obs?`<p>${escapeHtml(a.obs)}</p>`:''}${reason||documentStatus?`<small>${escapeHtml([reason,documentStatus].filter(Boolean).join(' · '))}</small>`:''}${a.docName||a.link?`<small>${escapeHtml(a.docName||a.link)}</small>`:''}${a.afastamentoDias||a.afastamentoRetorno?`<small>${escapeHtml([a.afastamentoDias?a.afastamentoDias+' dia(s)':'',a.afastamentoRetorno?'Retorno: '+formatDateKeyPtBr(a.afastamentoRetorno):''].filter(Boolean).join(' · '))}</small>`:''}</div>`;
+    }).join('')||'Nenhum aluno registrado.'}</div></details></div>`;
+  }).join(''):'<div class="freq-history-body" style="padding-top:12px">Nenhuma chamada neste período.</div>')+'</div>';
+  document.getElementById('freqResumoWrap').innerHTML=calls+'<div class="freq-period-title">Frequência por aluno <span>Percentuais das chamadas registradas no período</span></div><div class="freq-period-students">'+names.map(name=>{
     const rows=records.filter(r=>r.entry.alunos?.[name]),counts={P:0,CJ:0,SJ:0};let days=0;
     rows.forEach(r=>{const mods=r.entry.alunos[name].mods||[];mods.forEach(s=>{if(s in counts)counts[s]++;});});
     days=new Set(rows.filter(r=>(r.entry.alunos[name].mods||[]).some(s=>s==='CJ'||s==='SJ')).map(r=>r.date)).size;
