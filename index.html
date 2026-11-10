@@ -2182,6 +2182,22 @@
   .day-col {
     min-width:0!important;
   }
+  .main.presencial-active #workspaceToolbar { position:sticky; top:0; z-index:25; }
+  #weekGrid .day-head { position:sticky; top:var(--presencial-day-top,0px); z-index:20; }
+  #weekGrid .mod-card[data-key] { cursor:pointer; }
+  #weekGrid .mod-card.module-selected { outline:2px solid var(--accent); outline-offset:-2px; }
+  .module-select-check { width:16px; height:16px; flex:none; accent-color:var(--accent); cursor:pointer; }
+  .presencial-selection, #fEditActions { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .presencial-selection { width:100%; }
+  .presencial-selection [role="status"] { font-size:12px; }
+  .presencial-action-danger { color:var(--red)!important; border-color:var(--red)!important; }
+  #presencialSelectBtn[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); }
+  .presencial-selection[hidden], #fEditActions[hidden], #fPrintFields[hidden] { display:none; }
+  @media(max-width:900px) {
+    .main.presencial-active { overflow:visible; }
+    .main.presencial-active #workspaceToolbar { position:static; }
+    #weekGrid .day-head { top:var(--presencial-brand-height,58px); }
+  }
   .day-head {
     background:#fff!important;
     border:1px solid var(--border)!important;
@@ -3882,6 +3898,14 @@
         <button type="button" class="btn btn-outline" id="modalBtnPresencial" onclick="openPresencialModuleModalFromToolbar(event)">+ Novo módulo</button>
         <button type="button" class="btn btn-outline" id="weeklyRoutineBtn" onclick="openWeeklyRoutine()" style="display:none">Rotina semanal</button>
         <button type="button" class="btn btn-outline" id="planningToolsBtn" onclick="openPlanningTools()" style="display:none">Organizar planejamento</button>
+        <button type="button" class="btn btn-outline" id="presencialSelectBtn" onclick="togglePresencialSelection()" aria-pressed="false" hidden>Selecionar módulos</button>
+        <div class="presencial-selection" id="presencialSelection" hidden>
+          <span id="presencialSelectionCount" role="status"></span>
+          <button type="button" class="btn btn-outline" onclick="selectVisiblePresencial()">Selecionar visíveis</button>
+          <button type="button" class="btn btn-outline" data-selected-action onclick="openPresencialMove()">Mover</button>
+          <button type="button" class="btn btn-outline" data-selected-action onclick="openPresencialBatchEdit()">Editar em lote</button>
+          <button type="button" class="btn btn-outline presencial-action-danger" data-selected-action onclick="deletePresencialSelection()">Excluir</button>
+        </div>
         <button type="button" class="btn btn-outline" onclick="openPlanningPrintDialog()">Imprimir planejamento</button>
         <button class="btn btn-outline btn-professor-preview" id="btnPreviewProfessor" onclick="visualizarComoProfessor()" title="Ver como ficará a versão compartilhada com o professor">Visualizar como professor</button>
         <button class="btn btn-outline btn-professor-generate" id="btnGerarProfessor" onclick="gerarVersaoProfessor()" title="Gerar um HTML de visualização para compartilhar">Gerar versão para professor</button>
@@ -4430,6 +4454,13 @@
       </div>
       <details class="module-extra-fields" id="fAdvanced">
         <summary>Mais detalhes</summary>
+        <div class="form-group" id="fPrintFields" hidden>
+          <label class="check-line"><input type="checkbox" id="fNeedPrint"> Precisa imprimir</label>
+          <label class="check-line"><input type="checkbox" id="fPrinted"> Já imprimi</label>
+          <label class="check-line"><input type="checkbox" id="fActivityBuilt"> Atividade montada</label>
+          <label class="form-label" for="fPrintWhat">O que imprimir</label>
+          <input class="form-input" id="fPrintWhat">
+        </div>
         <div class="form-group">
           <label class="form-label">Modelo rápido</label>
           <select class="form-input" id="fTemplate" onchange="applyModuleTemplate(this.value)">
@@ -4480,6 +4511,11 @@
       </div>
     </div>
     <div class="modal-foot">
+      <div id="fEditActions" hidden>
+        <button type="button" class="btn btn-outline" onclick="moveFromPresencialEditor()">Mover</button>
+        <button type="button" class="btn btn-outline" onclick="duplicateModule(editingKey)">Duplicar</button>
+        <button type="button" class="btn btn-outline presencial-action-danger" onclick="deleteModule(editingKey)">Excluir</button>
+      </div>
       <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
       <button class="btn btn-outline" id="fSaveNext" onclick="saveModule(true)">Salvar e próximo</button>
       <button class="btn btn-primary" onclick="saveModule()">Salvar módulo</button>
@@ -11829,7 +11865,141 @@ function moduleExecutionClass(status) {
   return 'mod-exec-planned';
 }
 
+let presencialSelectionMode=false;
+let presencialSelectionContext='';
+const presencialSelected=new Set();
+
+function clearPresencialSelection(){
+  presencialSelected.clear();
+  presencialSelectionMode=false;
+}
+function refreshPresencialSelection(){
+  const context=getActiveClassId()+'_'+state.weekOffset;
+  if(context!==presencialSelectionContext || isProfessorMode())clearPresencialSelection();
+  presencialSelectionContext=context;
+  document.getElementById('presencialSelectBtn').hidden=state.view!=='presencial'||isProfessorMode();
+  document.getElementById('presencialSelectBtn').setAttribute('aria-pressed',String(presencialSelectionMode));
+  document.getElementById('presencialSelection').hidden=!presencialSelectionMode;
+  document.getElementById('presencialSelectionCount').textContent=presencialSelected.size+' selecionado(s)';
+  document.querySelectorAll('[data-selected-action]').forEach(button=>button.disabled=!presencialSelected.size);
+  document.querySelectorAll('#weekGrid .mod-card[data-key]').forEach(card=>{
+    const selected=presencialSelected.has(card.dataset.key);
+    card.classList.toggle('module-selected',selected);
+    const check=card.querySelector('.module-select-check');
+    if(check)check.checked=selected;
+  });
+}
+function togglePresencialSelection(){
+  if(isProfessorMode())return;
+  if(presencialSelectionMode)clearPresencialSelection();
+  else presencialSelectionMode=true;
+  render();
+}
+function toggleSelectedPresencial(key){
+  if(!presencialSelectionMode || !state.modules[key])return;
+  if(presencialSelected.has(key))presencialSelected.delete(key);
+  else presencialSelected.add(key);
+  refreshPresencialSelection();
+}
+function selectVisiblePresencial(){
+  if(!presencialSelectionMode)return;
+  document.querySelectorAll('#weekGrid .mod-card[data-key]:not(.planning-filter-muted)').forEach(card=>presencialSelected.add(card.dataset.key));
+  refreshPresencialSelection();
+}
+function presencialSelectionKeys(){
+  return [...presencialSelected].filter(key=>state.modules[key]).sort();
+}
+function finishPresencialAction(message){
+  closeProductivity();
+  closeModal();
+  clearPresencialSelection();
+  render();
+  showToast(message);
+}
+function deletePresencialSelection(){
+  const keys=presencialSelectionKeys();
+  if(isProfessorMode() || !keys.length || !confirm('Excluir '+keys.length+' módulo(s) selecionado(s)?'))return;
+  if(commitProductivity('exclusão de módulos presenciais',()=>keys.forEach(key=>delete state.modules[key])))finishPresencialAction('Módulos excluídos.');
+}
+function presencialActionDialog(title,keys,body,footer){
+  productivityOverlay(title,body,footer);
+  document.getElementById('productivityOverlay')._presencialAction={keys,fingerprint:plannerDataFingerprint(state)};
+}
+function presencialActionKeys(){
+  assertProductivityClass();
+  const action=document.getElementById('productivityOverlay')._presencialAction;
+  if(!action || action.fingerprint!==plannerDataFingerprint(state) || action.keys.some(key=>!state.modules[key]||!professorOwnsPlanningModule(key))){
+    throw new Error('Os módulos mudaram. Feche a janela e selecione novamente.');
+  }
+  return action.keys;
+}
+function moveFromPresencialEditor(){
+  const key=editingKey;
+  if(!key)return;
+  if(!confirm('Mover a versão salva do módulo? Alterações não salvas neste formulário serão descartadas.'))return;
+  closeModal();
+  openPresencialMove([key]);
+}
+function openPresencialMove(keys=presencialSelectionKeys()){
+  if(!keys.length || keys.some(key=>!state.modules[key]||!professorOwnsPlanningModule(key)))return;
+  if(keys.length>8){showToast('Selecione até 8 módulos para mover para o mesmo dia.',true);return;}
+  const date=new Date(keys[0].split('_')[0]+'T12:00:00');
+  do{date.setDate(date.getDate()+1);}while(date.getDay()===0||date.getDay()===6);
+  presencialActionDialog('Mover '+keys.length+' módulo(s)',keys,
+    `<div class="form-row"><label class="form-group">Data de destino<input type="date" class="form-input" id="presencialMoveDate" value="${localDateKey(date)}"></label>
+      ${productivitySelect('presencialMoveSlot','Primeiro horário',Array.from({length:9-keys.length},(_,i)=>[i+1,'Módulo '+(i+1)]),1)}</div>`,
+    '<button class="btn btn-primary" onclick="savePresencialMove()">Mover módulos</button>');
+}
+function savePresencialMove(){
+  try{
+    const keys=presencialActionKeys();
+    const date=chatImportDate(document.getElementById('presencialMoveDate').value);
+    const day=new Date(date+'T12:00:00');
+    if(day.getDay()===0 || day.getDay()===6)throw new Error('Escolha um dia de segunda a sexta.');
+    const start=Number(document.getElementById('presencialMoveSlot').value);
+    if(!Number.isInteger(start)||start<1||start+keys.length-1>8)throw new Error('Os módulos não cabem nos horários escolhidos.');
+    const targets=keys.map((_,i)=>date+'_'+(start+i));
+    if(targets.some(key=>state.modules[key]&&!keys.includes(key)))throw new Error('Há um módulo no destino. Escolha horários livres.');
+    const items=keys.map(key=>state.modules[key]);
+    if(!commitProductivity('movimentação de módulos presenciais',()=>{
+      keys.forEach(key=>delete state.modules[key]);
+      targets.forEach((key,i)=>state.modules[key]=items[i]);
+    }))return;
+    const currentMonday=plannerWeekStart(getWeekDates(state.weekOffset)[0]);
+    state.weekOffset+=Math.round((plannerWeekStart(day)-currentMonday)/604800000);
+    finishPresencialAction('Módulos movidos e salvos.');
+  }catch(error){showToast(error.message,true);}
+}
+function openPresencialBatchEdit(){
+  const keys=presencialSelectionKeys();
+  if(isProfessorMode()||!keys.length)return;
+  const keep=['','Manter como está'];
+  const disciplines=[...new Set([...getDiscs('presencial'),...getDiscs('presEad')])];
+  presencialActionDialog('Editar '+keys.length+' módulo(s)',keys,
+    '<label class="form-group">Título<input class="form-input" id="presencialBatchTitle" placeholder="Manter como está"></label>'+
+    productivitySelect('presencialBatchDisc','Disciplina',[keep,...disciplines.map(d=>[d,d])])+
+    productivitySelect('presencialBatchType','Tipo de aula',[keep,...getTiposAula().map(t=>[t.id,t.nome])])+
+    productivitySelect('presencialBatchStatus','Status da execução',[keep,...[...document.getElementById('fExecStatus').options].map(o=>[o.value,o.textContent])]),
+    '<button class="btn btn-primary" onclick="savePresencialBatchEdit()">Aplicar alterações</button>');
+}
+function savePresencialBatchEdit(){
+  try{
+    if(isProfessorMode())return;
+    const keys=presencialActionKeys();
+    const [title,disc,type,status]=['Title','Disc','Type','Status'].map(field=>document.getElementById('presencialBatch'+field).value.trim());
+    if(!title&&!disc&&!type&&!status)throw new Error('Preencha ao menos um campo para alterar.');
+    if(commitProductivity('edição em lote de módulos presenciais',()=>keys.forEach(key=>{
+      const mod=state.modules[key];
+      if(title)mod.title=title;
+      if(disc && mod.disc!==disc){mod.disc=disc;mod.topic='';mod.topicId='';}
+      if(type)mod.tags=[type];
+      if(status)mod.executionStatus=status;
+    })))finishPresencialAction('Módulos atualizados.');
+  }catch(error){showToast(error.message,true);}
+}
+
 function render() {
+  if(presencialSelectionContext!==getActiveClassId()+'_'+state.weekOffset)clearPresencialSelection();
   const dates = getWeekDates(state.weekOffset);
   renderPlanningConsult('presencial');
   const first = dates[0], last = dates[4];
@@ -11863,7 +12033,7 @@ function render() {
       if (mod) {
         card.className = 'mod-card' + (planningHasActiveFilters('presencial') && !planningModuleMatches('presencial', mod) ? ' planning-filter-muted' : '');
         card.dataset.key = key;
-        card.draggable = true;
+        card.draggable = !isProfessorMode() && !presencialSelectionMode;
         card.addEventListener('dragstart', e=>{ draggedPresencialKey=key; e.dataTransfer.setData('text/plain',key); e.dataTransfer.effectAllowed='move'; card.classList.add('dragging'); });
         card.addEventListener('dragend', ()=>{ draggedPresencialKey=null; card.classList.remove('dragging'); });
         card.addEventListener('dragover', e=>{e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect='move'; card.classList.add('drop-target');});
@@ -11899,7 +12069,27 @@ function render() {
             <div class="tags">${tagsHtml}</div>
             <div class="mod-icons">${iconsHtml}</div>
           </div>`;
-        card.addEventListener('click', () => openDetail(key));
+        const activate = () => {
+          if(suppressPresencialClick)return;
+          if(presencialSelectionMode && !isProfessorMode())toggleSelectedPresencial(key);
+          else if(professorOwnsPlanningModule(key))editModule(key);
+          else openDetail(key);
+        };
+        card.tabIndex=0;
+        card.setAttribute('role','button');
+        card.addEventListener('click',activate);
+        card.addEventListener('keydown',event=>{
+          if(event.target===card && ['Enter',' '].includes(event.key)){event.preventDefault();activate();}
+        });
+        if(presencialSelectionMode && !isProfessorMode()){
+          const check=document.createElement('input');
+          check.type='checkbox';check.className='module-select-check';
+          check.setAttribute('aria-label','Selecionar '+moduleCopyLabel(key,mod));
+          check.addEventListener('click',event=>event.stopPropagation());
+          check.addEventListener('change',()=>toggleSelectedPresencial(key));
+          card.querySelector('.mod-heading').appendChild(check);
+          card.removeAttribute('role');card.removeAttribute('tabindex');
+        }
       } else {
         card.className = 'mod-card empty';
         card.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2v8M2 6h8"/></svg><span class="mod-slot-label"><span>Módulo ${m}</span><span class="mod-slot-time">${moduleTime}</span></span>`;
@@ -11921,6 +12111,7 @@ function render() {
     }
     grid.appendChild(col);
   });
+  refreshPresencialSelection();
 }
 
 // --- DETAIL PANEL ----------------------------------------
@@ -12011,14 +12202,14 @@ function updatePrintWhat(val) {
   state.modules[currentDetailKey].printWhat = val;
 }
 
-function editModule() {
-  if (!currentDetailKey) return;
-  if (isProfessorMode() && !professorOwnsPlanningModule(currentDetailKey)) {
+function editModule(key = currentDetailKey) {
+  if (!state.modules[key]) return;
+  if (isProfessorMode() && !professorOwnsPlanningModule(key)) {
     showToast('O professor pode editar somente os módulos que ele mesmo adicionar.');
     return;
   }
-  const mod = state.modules[currentDetailKey];
-  const [dateStr, mNum] = currentDetailKey.split('_');
+  const mod = state.modules[key];
+  const [dateStr, mNum] = key.split('_');
   const d = new Date(dateStr + 'T12:00:00');
 
   document.getElementById('fDay').value = d.getDay() - 1;
@@ -12044,14 +12235,24 @@ function editModule() {
   });
 
   document.getElementById('modalTitle').textContent = 'Editar módulo';
+  document.getElementById('fAdvanced').open = false;
+  document.getElementById('fTemplate').value = '';
+  document.getElementById('fEditActions').hidden = false;
+  document.getElementById('fPrintFields').hidden = false;
+  document.getElementById('fNeedPrint').checked = !!mod.needPrint;
+  document.getElementById('fPrinted').checked = !!mod.printed;
+  document.getElementById('fActivityBuilt').checked = !!mod.activityBuilt;
+  document.getElementById('fPrintWhat').value = mod.printWhat || '';
   document.getElementById('fCopyModuleGroup').style.display = 'none';
   document.getElementById('fCopyModule').value = '';
   document.getElementById('modalOverlay').classList.add('open');
-  editingKey = currentDetailKey;
+  editingKey = key;
+  closeDetail();
   document.querySelector('#modalOverlay .modal').scrollTop = 0;
   delete document.getElementById('fTitle').dataset.autoTitle;
   renderModuleBatchOptions();
   renderModuleMaterialPicker();
+  document.getElementById('fTitle').focus({preventScroll:true});
 }
 function openPlanningPrintDialog(){
   let overlay=document.getElementById('planningPrintOverlay');
@@ -12199,7 +12400,7 @@ function updateExecutionStatus(value){
 let draggedPresencialKey=null;
 let suppressPresencialClick=false;
 function movePresencialModule(sourceKey,targetDateKey,targetModule){
-  if(!sourceKey||!targetDateKey) return;
+  if(!sourceKey||!targetDateKey||isProfessorMode()) return;
   const sourceDateKey=sourceKey.slice(0,sourceKey.lastIndexOf('_'));
   const sourceNumber=Number(sourceKey.slice(sourceKey.lastIndexOf('_')+1));
   if(!sourceDateKey||!Number.isFinite(sourceNumber)) return;
@@ -12248,18 +12449,20 @@ function handlePresencialDrop(event,dateKey,targetModule){
   movePresencialModule(source,dateKey,target); draggedPresencialKey=null;
 }
 
-function duplicateModule() {
-  if (!currentDetailKey) return;
-  const mod = state.modules[currentDetailKey];
+function duplicateModule(key = currentDetailKey) {
+  if (!key) return;
+  const mod = state.modules[key];
   if (!mod) return;
 
   editingKey = null;
+  document.getElementById('fEditActions').hidden = true;
+  document.getElementById('fPrintFields').hidden = true;
   const freeSlot = findFirstFreePlanningSlot('presencial');
   if (freeSlot) {
     document.getElementById('fDay').value = String(freeSlot.dayIdx);
     document.getElementById('fMod').value = freeSlot.mod;
   } else {
-    const [dateStr, mNum] = currentDetailKey.split('_');
+    const [dateStr, mNum] = key.split('_');
     const d = new Date(dateStr + 'T12:00:00');
     document.getElementById('fDay').value = Math.max(0, d.getDay() - 1);
     document.getElementById('fMod').value = mNum || '1';
@@ -12288,7 +12491,7 @@ function duplicateModule() {
   document.getElementById('modalTitle').textContent = 'Duplicar módulo';
   document.getElementById('fCopyModuleGroup').style.display = '';
   populateModuleCopySelect();
-  document.getElementById('fCopyModule').value = currentDetailKey;
+  document.getElementById('fCopyModule').value = key;
   closeDetail();
   document.getElementById('modalOverlay').classList.add('open');
   delete document.getElementById('fTitle').dataset.autoTitle;
@@ -12367,15 +12570,15 @@ function copyPreviousModuleIntoForm() {
   showToast(`Informações copiadas do módulo ${modNum - 1}.`);
 }
 
-function deleteModule() {
-  if (!currentDetailKey) return;
-  if (isProfessorMode() && !professorOwnsPlanningModule(currentDetailKey)) {
+function deleteModule(key = currentDetailKey) {
+  if (!state.modules[key]) return;
+  if (isProfessorMode() && !professorOwnsPlanningModule(key)) {
     showToast('O professor pode excluir somente os módulos que ele mesmo adicionar.');
     return;
   }
   if (confirm('Excluir este módulo?')) {
-    if (commitProductivity('exclusão de módulo presencial', () => { delete state.modules[currentDetailKey]; })) {
-      closeDetail(); render();
+    if (commitProductivity('exclusão de módulo presencial', () => { delete state.modules[key]; })) {
+      closeDetail(); closeModal(); render();
     }
   }
 }
@@ -12402,6 +12605,8 @@ function findFirstFreePlanningSlot(kind = 'presencial') {
 
 function openModal(dateKey, modNum) {
   editingKey = null;
+  document.getElementById('fEditActions').hidden = true;
+  document.getElementById('fPrintFields').hidden = true;
   document.getElementById('fAdvanced').open = false;
   document.getElementById('modalTitle').textContent = 'Novo módulo';
   document.getElementById('fCopyModuleGroup').style.display = '';
@@ -12543,6 +12748,12 @@ function saveModule(goNext = false) {
 
     const moduleData = {
       ...(state.modules[editingKey || key]||{}),
+      ...(editingKey?{
+        needPrint:document.getElementById('fNeedPrint').checked,
+        printed:document.getElementById('fPrinted').checked,
+        activityBuilt:document.getElementById('fActivityBuilt').checked,
+        printWhat:document.getElementById('fPrintWhat').value
+      }:{}),
       ...(isProfessorMode() ? { _professorAdded: true } : {}),
       title,
       disc: document.getElementById('fDisc').value,
@@ -13010,6 +13221,9 @@ function setView(v, btn) {
   if (btn) btn.classList.add('active');
   document.getElementById('viewInicio').style.display = v === 'inicio' ? '' : 'none';
   document.getElementById('viewPresencial').style.display = v === 'presencial' ? '' : 'none';
+  document.querySelector('main.main').classList.toggle('presencial-active',v==='presencial');
+  if(v!=='presencial')clearPresencialSelection();
+  refreshPresencialSelection();
   document.getElementById('viewEad').style.display = v === 'ead' ? '' : 'none';
   document.getElementById('viewFrequencia').style.display = v === 'frequencia' ? '' : 'none';
   document.getElementById('viewNotasEad').style.display = v === 'notasead' ? '' : 'none';
@@ -17770,6 +17984,13 @@ setTimeout(async () => {
   resumePendingCloudSave();
 }, 700);
 window.addEventListener('online', resumePendingCloudSave);
+const presencialHeaderObserver=new ResizeObserver(()=>{
+  const toolbar=document.getElementById('workspaceToolbar');
+  document.documentElement.style.setProperty('--presencial-day-top',toolbar.offsetHeight+6+'px');
+  document.documentElement.style.setProperty('--presencial-brand-height',document.querySelector('.brand-header').offsetHeight+'px');
+});
+presencialHeaderObserver.observe(document.getElementById('workspaceToolbar'));
+presencialHeaderObserver.observe(document.querySelector('.brand-header'));
 let lastCloudResumeAt=0;
 function resumeCloudOnReturn(){
   if(document.visibilityState==='hidden'||Date.now()-lastCloudResumeAt<30000)return;
