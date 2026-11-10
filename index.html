@@ -2694,6 +2694,14 @@
   }
   .freq-call-info { min-width:0; flex:1 1 320px; }
   .freq-period-toolbar { display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; margin:12px 0; }
+  .freq-control-panel { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:12px; }
+  .freq-control-top { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .freq-mode-tabs { display:flex; gap:2px; padding:3px; background:var(--surface2); border-radius:6px; }
+  .freq-mode-tabs button { border:0; background:transparent; color:var(--text2); font:inherit; font-size:12px; padding:8px 12px; cursor:pointer; border-radius:4px; }
+  .freq-mode-tabs button[aria-pressed="true"] { background:var(--surface); color:var(--accent); font-weight:600; box-shadow:0 1px 3px #0001; }
+  .freq-mode-tabs button:focus-visible { outline:2px solid var(--accent); }
+  .freq-control-panel .freq-toolbar { border:0; border-radius:0; padding:0; margin:12px 0 0; box-shadow:none; }
+  .freq-control-panel .freq-period-toolbar { margin-bottom:0; }
   .freq-period-toolbar label { display:flex; flex-direction:column; gap:4px; font-size:10px; color:var(--text2); }
   .freq-period-toolbar .freq-select { min-height:34px; max-width:280px; }
   .freq-period-presets { display:flex; gap:6px; flex-wrap:wrap; }
@@ -3927,22 +3935,22 @@
           <div class="page-title">Frequência</div>
         </div>
       </div>
-      <div class="freq-toolbar">
+      <div class="freq-control-panel">
+        <div class="freq-control-top"><div class="freq-mode-tabs" role="group" aria-label="Visualização da frequência"><button type="button" id="btnChamada" aria-pressed="true" onclick="setFreqView('chamada')">Chamada do dia</button><button type="button" id="btnResumo" aria-pressed="false" onclick="setFreqView('resumo')">Consultar período</button></div><button class="btn btn-outline" id="artvacReportBtn" onclick="openArtvacReport()">Relatório ARTVAC</button></div>
+      <div class="freq-toolbar" id="freqDayFilters">
         <input type="date" class="freq-select" id="freqData" aria-label="Data da chamada" onchange="onFreqDateChange()">
         <select class="freq-select" id="freqDisc" aria-label="Disciplina da chamada" onchange="onFreqDisciplineChange()">
           <option value="">Selecione a disciplina</option>
         </select>
         <button class="btn btn-outline" onclick="freqToday()">Hoje</button>
-        <button class="btn btn-outline" id="btnResumo" onclick="setFreqView('resumo')">Consultar período</button>
-        <button class="btn btn-outline" id="artvacReportBtn" onclick="openArtvacReport()">Relatório ARTVAC</button>
-        <button class="btn btn-outline" id="btnChamada" onclick="setFreqView('chamada')" style="display:none">← Chamada</button>
       </div>
-      <div class="freq-period-toolbar">
+      <div class="freq-period-toolbar" id="freqPeriodFilters" style="display:none">
         <label>Disciplina do painel<select id="freqPeriodDisc" class="freq-select" onchange="refreshFreqPeriod()"><option value="">Todas as disciplinas</option></select></label>
         <label>De<input type="date" id="freqPeriodStart" class="freq-select" onchange="refreshFreqPeriod()"></label>
         <label>Até<input type="date" id="freqPeriodEnd" class="freq-select" onchange="refreshFreqPeriod()"></label>
         <div class="freq-period-presets"><button class="btn btn-outline" onclick="setFreqPeriod('week')">Semana</button><button class="btn btn-outline" onclick="setFreqPeriod('month')">Mês</button><button class="btn btn-outline" onclick="setFreqPeriod('all')">Todo o histórico</button></div>
         <span id="freqPeriodError" role="status"></span>
+      </div>
       </div>
       <div id="freqInsightWrap"></div>
       <div id="freqChamadaView">
@@ -13709,7 +13717,8 @@ function getFreqInsights(period) {
 function renderFreqInsights() {
   const wrap = document.getElementById('freqInsightWrap');
   if (!wrap) return;
-  const r = getFreqInsights(getFreqPeriod());
+  const consulting=document.getElementById('freqResumoView').style.display!=='none';
+  const r = getFreqInsights(consulting?getFreqPeriod():{start:document.getElementById('freqData').value,end:document.getElementById('freqData').value,disc:document.getElementById('freqDisc').value});
   const discs = Object.entries(r.porDisc)
     .filter(([,v]) => v.faltas > 0)
     .sort((a,b) => b[1].faltas - a[1].faltas)
@@ -13740,7 +13749,7 @@ function renderFreqInsights() {
   wrap.innerHTML = `
     <div class="freq-insights-grid freq-dashboard">
       <div class="freq-insight-card">
-        <div class="freq-insight-title">No período selecionado</div>
+        <div class="freq-insight-title">${consulting?'No período selecionado':'Na chamada do dia'}</div>
         <div class="freq-metric-row">
           <div class="freq-mini-metric"><div class="freq-mini-value">${r.chamadas}</div><div class="freq-mini-label">Chamadas</div></div>
           <div class="freq-mini-metric"><div class="freq-mini-value">${r.presentes+r.comJust+r.semJust?frequencyPercent(r.presentes/(r.presentes+r.comJust+r.semJust)*100):'—'}</div><div class="freq-mini-label">Presença registrada</div></div>
@@ -14272,8 +14281,10 @@ function setFreqDocumentStatus(disc,date,name,status){
 function setFreqView(v) {
   document.getElementById('freqChamadaView').style.display = v === 'chamada' ? '' : 'none';
   document.getElementById('freqResumoView').style.display = v === 'resumo' ? '' : 'none';
-  document.getElementById('btnResumo').style.display = v === 'resumo' ? 'none' : '';
-  document.getElementById('btnChamada').style.display = v === 'resumo' ? '' : 'none';
+  document.getElementById('freqDayFilters').style.display=v==='chamada'?'':'none';
+  document.getElementById('freqPeriodFilters').style.display=v==='resumo'?'':'none';
+  document.getElementById('btnResumo').setAttribute('aria-pressed',String(v==='resumo'));
+  document.getElementById('btnChamada').setAttribute('aria-pressed',String(v==='chamada'));
   renderFreqInsights();
   if (v === 'resumo') renderFreqPeriodStudents();
 }
