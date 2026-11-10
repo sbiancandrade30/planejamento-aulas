@@ -9950,6 +9950,32 @@ function _pushToSheets(payload, attempt = 0, manual = false) {
   return result;
 }
 
+async function storeCloudSafetyCopy(key, snapshot) {
+  const json=JSON.stringify(snapshot);
+  try { localStorage.setItem(key,json); return; }
+  catch(error) {
+    if(error.name!=='QuotaExceededError'&&error.name!=='NS_ERROR_DOM_QUOTA_REACHED')throw error;
+  }
+  // Large safety snapshots must not compete with the active local save quota.
+  await new Promise((resolve,reject)=>{
+    let settled=false,db;
+    const finish=error=>{if(settled)return;settled=true;clearTimeout(timer);if(db)db.close();error?reject(error):resolve();};
+    const timer=setTimeout(()=>finish(new Error('Não foi possível guardar a cópia de segurança. Nenhum envio foi feito. Baixe um backup manual antes de tentar novamente.')),15000);
+    let request;
+    try { request=indexedDB.open('senai_planner_safety_v1',1); } catch(error) { finish(error); return; }
+    request.onupgradeneeded=()=>request.result.createObjectStore('snapshots',{keyPath:'key'});
+    request.onerror=()=>finish(new Error('Não foi possível guardar a cópia de segurança neste navegador. Nenhum envio foi feito.'));
+    request.onsuccess=()=>{
+      db=request.result;if(settled){db.close();return;}
+      try {
+        const tx=db.transaction('snapshots','readwrite');
+        tx.objectStore('snapshots').put({key,createdAt:new Date().toISOString(),json});
+        tx.oncomplete=()=>finish();
+        tx.onerror=tx.onabort=()=>finish(new Error('Sem espaço para a cópia de segurança. Nenhum envio foi feito; seus dados locais foram mantidos.'));
+      } catch(error) { finish(error); }
+    };
+  });
+}
 async function performCloudPush(payload, attempt = 0, manual = false) {
   if (isProfessorMode()) return;
   if (!cloudSyncConfigured()) {
@@ -9975,7 +10001,7 @@ async function performCloudPush(payload, attempt = 0, manual = false) {
       const detail = 'Há cópias diferentes. Use Carregar para buscar a nuvem ou Salvar para revisar o envio deste computador. Nenhum dado foi substituído automaticamente.';
       setSyncStatus('conflict', detail);
       if (!manual || !confirm('A nuvem contém uma cópia diferente ou atualizada em outro computador.\n\nEnviar os dados deste computador substituirá a base central. Uma cópia de segurança da nuvem será guardada neste navegador.\n\nConfirma substituir a base central pelos dados deste computador?')) return false;
-      localStorage.setItem('oficial_app_before_cloud_overwrite_v1', JSON.stringify(remote));
+      await storeCloudSafetyCopy('oficial_app_before_cloud_overwrite_v1',remote);
     }
     setSyncStatus('syncing');
     if (!alreadySaved) {
@@ -10293,7 +10319,7 @@ async function syncFromSheets(options = {}) {
       setSyncStatus('pending');
       return;
     }
-    if (hasCurrentLocalCopy) localStorage.setItem('oficial_app_before_cloud_load_v1', JSON.stringify(state));
+    if (hasCurrentLocalCopy) await storeCloudSafetyCopy('oficial_app_before_cloud_load_v1',state);
     previousStateBeforeLoad = state;
     const viewBeforeCloudLoad = state.view || 'inicio';
     state = { ...state, ...cloudState };
