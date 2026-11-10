@@ -2669,12 +2669,12 @@
     gap:16px;
     background:#fff;
     border:1px solid var(--border);
-    border-radius:var(--radius-lg);
-    padding:8px 12px;
+    border-radius:8px;
+    padding:14px 16px;
     margin-bottom:10px;
   }
   .freq-call-title {
-    font-size:13px;
+    font-size:14px;
     font-weight:800;
     color:var(--text);
   }
@@ -2692,6 +2692,22 @@
     align-items:center;
     flex:0 1 auto;
   }
+  .freq-call-info { min-width:0; flex:1 1 320px; }
+  .freq-call-heading { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
+  .freq-call-date { font-size:11px; color:var(--text2); font-variant-numeric:tabular-nums; }
+  .freq-call-meta { display:flex; align-items:center; flex-wrap:wrap; gap:6px 12px; font-size:11px; color:var(--text2); }
+  .freq-call-counts { display:flex; gap:10px; padding-right:12px; border-right:1px solid var(--border); }
+  .freq-call-counts b { color:var(--text); font-weight:600; }
+  .freq-call-counts span { white-space:nowrap; }
+  .freq-call-actions .freq-confirm-status { font-size:10px; font-weight:600; margin:0; }
+  .freq-call-actions #freqStorageStatus { margin-top:4px; font-size:10px; }
+  .freq-call-actions .freq-call-btn { border-radius:6px; font-weight:500; white-space:nowrap; }
+  .freq-call-actions .freq-day-toggle { border-radius:6px; font-weight:500; }
+  .freq-call-actions .freq-exception-actions { position:relative; }
+  .freq-call-actions .freq-exception-actions summary { padding:8px; cursor:pointer; color:var(--text2); }
+  .freq-call-actions .freq-exception-actions[open] button { position:absolute; right:0; top:100%; z-index:5; width:240px; height:auto; padding:12px; box-shadow:0 4px 16px #0002; }
+  .freq-call-actions .freq-call-btn:hover { border-color:var(--accent); }
+  .freq-call-actions .freq-call-btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   .freq-call-btn {
     border:1px solid var(--border);
     background:#fff;
@@ -13810,11 +13826,13 @@ function renderFreqCallActions(disc, data, entry) {
   const discArg = freqArg(disc);
   const dataArg = freqArg(data);
   return `<div class="freq-call-actions">
-    <div>
-      <div class="freq-call-title">Chamada de ${escapeHtml(disc)}</div>
-      <div class="freq-call-sub">75% mínimo${total?' · '+total+' módulos · até '+(total-Math.ceil(total*.75))+' faltas':''}</div>
-      <div class="freq-call-sub">${formatDateKeyPtBr(data)} · P ${stats.presentes} · CJ ${stats.comJust} · SJ ${stats.semJust} · ${stats.documentos} doc.</div>
-      <div class="freq-call-sub freq-confirm-status" style="color:${freqCallReady(entry,data,disc) ? 'var(--green)' : 'var(--amber)'}">${freqCallReady(entry,data,disc) ? 'Confirmada' : 'Pendente · use Salvar e confirmar'}</div>
+    <div class="freq-call-info">
+      <div class="freq-call-heading"><div class="freq-call-title">${escapeHtml(disc)}</div><span class="freq-call-date">${formatDateKeyPtBr(data)}</span></div>
+      <div class="freq-call-meta">
+        <div class="freq-call-counts"><span title="Módulos presentes"><b>${stats.presentes}</b> P</span><span title="Módulos com falta justificada"><b>${stats.comJust}</b> CJ</span><span title="Módulos com falta sem justificativa"><b>${stats.semJust}</b> SJ</span></div>
+        <span title="${total?total+' módulos previstos · até '+(total-Math.ceil(total*.75))+' faltas permitidas':'Cadastre a carga horária na disciplina'}">Mínimo 75%</span>
+        <span class="freq-confirm-status" style="color:${freqCallReady(entry,data,disc) ? 'var(--green)' : 'var(--amber)'}">${freqCallReady(entry,data,disc) ? 'Confirmada' : 'Não confirmada'}</span>
+      </div>
       <div class="freq-call-sub" id="freqStorageStatus" role="status">${escapeHtml(freqStorageText())}</div>
     </div>
     <div class="freq-call-buttons">
@@ -13824,7 +13842,7 @@ function renderFreqCallActions(disc, data, entry) {
       </label>
       <button class="freq-call-btn" onclick="adjustFreqModuleCount('${discArg}','${dataArg}')">Ajustar módulos</button>
       <button class="freq-call-btn" title="Preenche apenas campos vazios; mantém faltas e suspensões" onclick="markBlankFreqPresent()">Marcar presentes</button>
-      <button class="freq-call-btn" onclick="confirmFreqCall()">Salvar e confirmar</button>
+      <button class="freq-call-btn primary" onclick="confirmFreqCall()">Salvar e confirmar</button>
       ${isProfessorMode()?'':'<button class="freq-call-btn" onclick="openFreqReassign()">Corrigir disciplina / data</button>'}
       <details class="freq-exception-actions"><summary>Outras ações</summary><button class="freq-call-btn warn" onclick="clearFreqJustificativas('${discArg}','${dataArg}')">Limpar observações, documentos e justificativas</button></details>
     </div>
