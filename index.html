@@ -9724,6 +9724,7 @@ let cloudRetryAttempt = 0;
 let lastSavedHash = '';
 const PENDING_CLOUD_SAVE_KEY = 'oficial_app_pending_cloud_save_v1';
 const CLOUD_BASE_REVISION_KEY = 'oficial_app_cloud_base_revision_v1';
+const CLOUD_PENDING_REVISION_KEY = 'oficial_app_pending_revision_v1';
 let hadLocalStateAtStartup = false;
 let cloudPushQueue = Promise.resolve();
 
@@ -9816,6 +9817,7 @@ function saveData() {
       localStorage.setItem(storageKey, payload);
     }
 
+    if(!PROFESSOR_EXPORT_MODE){try{localStorage.setItem(CLOUD_PENDING_REVISION_KEY,cloudRevision(state));}catch(_){} }
     let pendingCloudSave = true;
     if (!PROFESSOR_EXPORT_MODE) {
       try {
@@ -9921,8 +9923,12 @@ function scheduleCloudRetry(payload, attempt = 0) {
 }
 
 function resumePendingCloudSave() {
-  if (PROFESSOR_EXPORT_MODE || !cloudSyncConfigured()) return;
-  const payload = localStorage.getItem(PENDING_CLOUD_SAVE_KEY) || '';
+  if (PROFESSOR_EXPORT_MODE || !cloudSyncConfigured() || navigator.onLine===false) return;
+  const savedPayload=localStorage.getItem(STORAGE_KEY);
+  const marker=localStorage.getItem(CLOUD_PENDING_REVISION_KEY);
+  let payload=localStorage.getItem(PENDING_CLOUD_SAVE_KEY)||'';
+  // A tiny revision marker survives when there is no room for a duplicate queue.
+  if(!payload&&savedPayload&&marker){try{if(cloudRevision(JSON.parse(savedPayload))===marker)payload=savedPayload;}catch(_){} }
   if (!payload) return;
   try {
     const pending = JSON.parse(payload);
@@ -9930,13 +9936,14 @@ function resumePendingCloudSave() {
     const saved = localStorage.getItem(STORAGE_KEY);
     const localUpdated = saved ? getStateUpdatedAt(JSON.parse(saved)) : 0;
     if (localUpdated > pendingUpdated) {
-      localStorage.setItem(PENDING_CLOUD_SAVE_KEY, saved);
+      payload=saved;
+      try{localStorage.setItem(PENDING_CLOUD_SAVE_KEY,saved);}catch(_){}
     }
   } catch (e) {
     localStorage.removeItem(PENDING_CLOUD_SAVE_KEY);
     return;
   }
-  const latest = localStorage.getItem(PENDING_CLOUD_SAVE_KEY);
+  const latest = payload;
   if (latest) {
     clearTimeout(cloudRetryTimer);
     cloudRetryTimer = null;
@@ -10017,6 +10024,7 @@ async function performCloudPush(payload, attempt = 0, manual = false) {
       if (!confirmed) throw new Error('O envio não foi confirmado pelo Google. Os dados continuam neste computador, com sincronização pendente.');
     }
     rememberCloudRevision(outgoing);
+    if(localStorage.getItem(CLOUD_PENDING_REVISION_KEY)===outgoingRevision)localStorage.removeItem(CLOUD_PENDING_REVISION_KEY);
     if (localStorage.getItem(PENDING_CLOUD_SAVE_KEY) === payload) localStorage.removeItem(PENDING_CLOUD_SAVE_KEY);
     cloudRetryAttempt = 0;
     clearTimeout(cloudRetryTimer);
@@ -10268,7 +10276,7 @@ async function syncFromSheets(options = {}) {
     const localUpdated = getStateUpdatedAt(state);
     const cloudUpdated = getStateUpdatedAt(cloudState);
     const hasCurrentLocalCopy = Boolean(localStorage.getItem(STORAGE_KEY)) && (!startup || hadLocalStateAtStartup || localUpdated > 0);
-    const hasPendingSave = Boolean(localStorage.getItem(PENDING_CLOUD_SAVE_KEY));
+    const hasPendingSave = Boolean(localStorage.getItem(PENDING_CLOUD_SAVE_KEY)||localStorage.getItem(CLOUD_PENDING_REVISION_KEY));
 
     if (!cloudHasData) {
       setSyncStatus('pending', 'A nuvem está vazia. Os dados deste navegador ainda precisam ser enviados.');
@@ -10333,6 +10341,7 @@ async function syncFromSheets(options = {}) {
     clearTimeout(saveTimer);
     clearTimeout(cloudRetryTimer);
     localStorage.removeItem(PENDING_CLOUD_SAVE_KEY);
+    localStorage.removeItem(CLOUD_PENDING_REVISION_KEY);
     rememberCloudRevision(cloudState);
     setOperationalTimestamp('oficial_app_last_local_save_at');
     setOperationalTimestamp('oficial_app_last_cloud_load_at');
@@ -17761,6 +17770,13 @@ setTimeout(async () => {
   resumePendingCloudSave();
 }, 700);
 window.addEventListener('online', resumePendingCloudSave);
+let lastCloudResumeAt=0;
+function resumeCloudOnReturn(){
+  if(document.visibilityState==='hidden'||Date.now()-lastCloudResumeAt<30000)return;
+  lastCloudResumeAt=Date.now();resumePendingCloudSave();
+}
+window.addEventListener('focus',resumeCloudOnReturn);
+document.addEventListener('visibilitychange',resumeCloudOnReturn);
 
 // Ao abrir o sistema, restaurar a última página e posição visitadas.
 (function() {
