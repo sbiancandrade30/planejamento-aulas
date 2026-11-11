@@ -251,7 +251,7 @@
   .module-prep-tag { display:inline-flex; padding:2px 5px; border:1px solid var(--border); border-radius:4px; font-size:10px; line-height:1.3; }
   .module-prep-tag.pending { color:#815513; background:#fff6e3; border-color:#f0dbad; }
   .module-prep-tag.ready { color:#256044; background:#eff8f1; border-color:#cfe5d6; }
-  #moduleCatalogFile[hidden] { display:none; }
+  #moduleCatalogFile[hidden], #moduleSendToLibrary[hidden] { display:none; }
   .module-material-list { display:flex; flex-direction:column; gap:6px; max-height:190px; overflow:auto; }
   .module-material-row { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; background:#fff; border:1px solid var(--border); border-radius:8px; padding:8px 9px; font-size:12px; }
   .module-material-row.attached { background:var(--green-bg); border-color:rgba(42,125,79,.26); }
@@ -4435,6 +4435,7 @@
       <div class="form-group">
         <label class="form-label" for="fAtiv">Atividade da aula <span style="font-weight:400;color:var(--text3)">(opcional)</span></label>
         <textarea class="form-input" id="fAtiv" rows="2" placeholder="Atividade a aplicar ou preparar"></textarea>
+        <button type="button" class="btn btn-outline" id="moduleSendToLibrary" style="margin-top:8px" onclick="openModuleLibraryDraft()">Salvar na Biblioteca</button>
       </div>
       <details class="module-extra-fields module-library-details">
         <summary>Materiais da Biblioteca</summary>
@@ -7219,6 +7220,24 @@ function getPlannerLibraryData() { return getPlannerLibraryCatalog().data; }
 function plannerLibraryLink(value){
   try{const url=new URL(String(value||'').trim());return ['http:','https:'].includes(url.protocol)?url.href:'';}catch(_){return '';}
 }
+function openModuleLibraryDraft(){
+  if(isProfessorMode())return;
+  const discipline=document.getElementById('fDisc').value.trim();
+  const topic=getSelectedPlannerTopic();
+  const title=document.getElementById('fTitle').value.trim()||topic.topic;
+  const description=document.getElementById('fAtiv').value.trim();
+  if(!discipline||!title){showToast('Escolha a disciplina e informe o título antes de enviar.',true);return;}
+  if(title.length>300||description.length>6000){showToast('Use até 300 caracteres no título e 6.000 no texto da atividade para enviar.',true);return;}
+  if(!getLibraryUrl()){showToast('Configure o endereço da Biblioteca antes de enviar.',true);return;}
+  try{
+    const url=new URL(getLibraryUrl(),location.href);
+    if(!['https:','http:','file:'].includes(url.protocol))throw Error('Endereço da Biblioteca inválido.');
+    const libraryDisc=findPlannerLibraryDiscipline(getPlannerLibraryData(),discipline);
+    const draft={v:1,title,description,discipline,disciplineId:libraryDisc?.id||'',topic:topic.topic,topicId:topic.topicId};
+    url.hash=new URLSearchParams({planner_draft:JSON.stringify(draft)}).toString();
+    window.open(url.href,'_blank','noopener,noreferrer');
+  }catch(error){showToast(error.message,true);}
+}
 async function importPlannerLibraryCatalog(input){
   const file=input.files?.[0];
   input.value='';
@@ -7234,6 +7253,7 @@ async function importPlannerLibraryCatalog(input){
       temas:raw.temas.filter(t=>value(t,'id')&&value(t,'nome')).map(t=>({id:t.id,nome:t.nome,disciplinaId:value(t,'disciplinaId'),ordem:Number(t.ordem)||0})),
       materiais:raw.materiais.filter(m=>value(m,'id')&&!m.archived&&!m.hiddenProfessor).map(m=>({
         id:m.id,titulo:value(m,'titulo'),descricao:value(m,'descricao'),disciplinaId:value(m,'disciplinaId'),temaId:value(m,'temaId'),tipoId:value(m,'tipoId'),
+        textMaterial:m.textMaterial===true,
         links:libraryMaterialLinks(m).map(l=>({...l,link:plannerLibraryLink(l.link)})).filter(l=>l.link)
       }))
     };
@@ -7573,14 +7593,16 @@ function getPlannerLibraryMaterials(data=getPlannerLibraryData()||{}) {
     .filter(m => !m.archived && !m.hiddenProfessor)
     .flatMap(m => {
       const links = libraryMaterialLinks(m);
+      const content=m.textMaterial===true?String(m.descricao||'').trim():'';
       const discNome = getLibraryDiscName(data, m.disciplinaId);
       const temaNome = getLibraryThemeName(data, m.temaId);
       const tipoNome = getLibraryTypeName(data, m.tipoId);
-      return links.map((lnk, idx) => ({
-        id: `${m.id || 'mat'}::${idx}`,
+      return (links.length?links:content?[{text:true,titulo:'Atividade em texto'}]:[]).map((lnk, idx) => ({
+        id: `${m.id || 'mat'}::${lnk.text?'text':idx}`,
         materialId: m.id || '',
         title: m.titulo || lnk.titulo || 'Material da Biblioteca',
         link: plannerLibraryLink(lnk.link),
+        content,
         disciplinaId: m.disciplinaId || '',
         temaId: m.temaId || '',
         origem: lnk.origem || lnk.titulo || '',
@@ -7588,7 +7610,7 @@ function getPlannerLibraryMaterials(data=getPlannerLibraryData()||{}) {
         tema: temaNome,
         tipo: tipoNome,
         searchText: normalizeMaterialText([m.titulo, m.descricao, discNome, temaNome, tipoNome, lnk.titulo, lnk.origem, lnk.link].join(' '))
-      })).filter(item=>item.link);
+      })).filter(item=>item.link||item.content);
     });
 }
 
@@ -7607,6 +7629,7 @@ function attachModuleMaterial(id) {
       temaId: item.temaId,
       title: item.title,
       link: item.link,
+      ...(item.content?{content:item.content}:{}),
       origem: item.origem,
       disc: item.disc,
       tema: item.tema,
@@ -7625,6 +7648,7 @@ function renderModuleMaterialPicker() {
   const attachedWrap = document.getElementById('moduleAttachedMaterials');
   const matchesWrap = document.getElementById('moduleLibraryMatches');
   if (!attachedWrap || !matchesWrap) return;
+  document.getElementById('moduleSendToLibrary').hidden=isProfessorMode();
   const disc = document.getElementById('fDisc')?.value || '';
   const search = normalizeMaterialText(document.getElementById('fMaterialSearch')?.value || '');
   const catalog=getPlannerLibraryCatalog();
@@ -7642,6 +7666,7 @@ function renderModuleMaterialPicker() {
         <div>
           <div class="module-material-title">${escapeHtml(m.title)}</div>
           <div class="module-material-meta">${escapeHtml([m.disc, m.tema, m.origem].filter(Boolean).join(' · ') || 'Material anexado')}</div>
+          ${m.content?`<details><summary>Ver texto</summary><div style="white-space:pre-wrap;overflow-wrap:anywhere">${escapeHtml(m.content)}</div></details>`:''}
         </div>
         <div class="module-material-actions">
           ${plannerLibraryLink(m.link) ? `<a class="module-material-btn" href="${escapeHtml(plannerLibraryLink(m.link))}" target="_blank" rel="noopener noreferrer">Abrir</a>` : ''}
@@ -7676,7 +7701,8 @@ function moduleMaterialsHtml(materials=[]) {
   const arr = Array.isArray(materials) ? materials : [];
   if (!arr.length) return '<div class="module-material-empty">Nenhum material anexado.</div>';
   return `<div class="module-attached-materials">${arr.map(m => `
-    <a class="module-material-pill" href="${escapeHtml(m.link || '#')}" target="_blank" rel="noopener">📚 ${escapeHtml(m.title || 'Material')}</a>
+    ${plannerLibraryLink(m.link)?`<a class="module-material-pill" href="${escapeHtml(plannerLibraryLink(m.link))}" target="_blank" rel="noopener noreferrer">${escapeHtml(m.title || 'Material')}</a>`:''}
+    ${m.content?`<details><summary>${escapeHtml(m.title||'Material em texto')}</summary><div style="white-space:pre-wrap;overflow-wrap:anywhere">${escapeHtml(m.content)}</div></details>`:!plannerLibraryLink(m.link)?`<span>${escapeHtml(m.title||'Material')}</span>`:''}
   `).join('')}</div>`;
 }
 
