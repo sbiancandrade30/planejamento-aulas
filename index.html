@@ -6788,6 +6788,7 @@ function renderConfiguracoes() {
             </div>
           </div>
           <div class="config-action-grid">
+            <button class="config-action-btn config-action-wide" onclick="openPlannerPrivateCloud()">Configurar nuvem privada</button>
             <button class="config-action-btn config-action-wide" onclick="syncFromSheets({force:true})">↓ Carregar da nuvem</button>
             <button class="config-action-btn config-action-wide" onclick="saveToCloudNow()">↑ Salvar agora</button>
             <button class="config-action-btn config-action-wide" onclick="visualizarComoProfessor()">👁 Visualizar como professor</button>
@@ -9830,10 +9831,69 @@ function gerarVersaoProfessor() {
 }
 
 // --- GOOGLE APPS SCRIPT SYNC -----------------------------
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyqfFkPJSzjxSyoUnTRsidXxp13hOfd4y3uV7fP8R90BuJKRubHEpX4__R8VW5x2_kIng/exec';
+const PLANNER_PRIVATE_CLOUD_STORAGE = 'planner_private_cloud_v1';
 
 function cloudSyncConfigured() {
-  return Boolean(String(APPS_SCRIPT_URL || '').trim());
+  return !!getPlannerPrivateCloud();
+}
+
+function isPlannerPrivateEndpoint(url) {
+  return typeof url==='string' && /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url);
+}
+function getPlannerPrivateCloud() {
+  if(PROFESSOR_EXPORT_MODE)return null;
+  try {
+    const config=JSON.parse(localStorage.getItem(PLANNER_PRIVATE_CLOUD_STORAGE));
+    return isPlannerPrivateEndpoint(config?.url)&&typeof config.key==='string'&&/^[a-f0-9]{64}$/.test(config.key)?config:null;
+  }catch(_){return null;}
+}
+function samePlannerPrivateCloud(config) {
+  const current=getPlannerPrivateCloud();
+  return !!current&&current.url===config?.url&&current.key===config?.key;
+}
+function openPlannerPrivateCloud() {
+  if(isProfessorMode())return;
+  const config=getPlannerPrivateCloud();
+  productivityOverlay('Nuvem privada do Planner',
+    `<label class="form-group">URL do serviço privado<input class="form-input" id="plannerPrivateUrl" type="url" autocomplete="off" value="${escapeHtml(config?.url||'')}"></label>
+    <label class="form-group">Chave de acesso<input class="form-input" id="plannerPrivateKey" type="password" autocomplete="off"></label>
+    <button class="btn btn-outline" type="button" onclick="generatePlannerPrivateKey()">Gerar chave</button>
+    <button class="btn btn-outline" type="button" onclick="copyPlannerPrivateKey()">Copiar chave</button>`,
+    '<button class="btn btn-primary" id="plannerPrivateConnect" onclick="connectPlannerPrivateCloud()">Testar e conectar</button>');
+}
+function generatePlannerPrivateKey(){
+  const input=document.getElementById('plannerPrivateKey');
+  input.value=Array.from(crypto.getRandomValues(new Uint8Array(32)),byte=>byte.toString(16).padStart(2,'0')).join('');
+}
+async function copyPlannerPrivateKey(){
+  const key=document.getElementById('plannerPrivateKey').value;
+  if(!key)return;
+  try{await navigator.clipboard.writeText(key);showToast('Chave copiada. Mantenha-a privada.');}
+  catch(_){showToast('Não foi possível copiar a chave neste navegador.',true);}
+}
+async function connectPlannerPrivateCloud(){
+  if(isProfessorMode())return;
+  const button=document.getElementById('plannerPrivateConnect');
+  if(button.disabled)return;
+  const existing=getPlannerPrivateCloud();
+  const url=document.getElementById('plannerPrivateUrl').value.trim();
+  const key=document.getElementById('plannerPrivateKey').value.trim()||(existing?.url===url?existing.key:'');
+  if(!isPlannerPrivateEndpoint(url)||!(/^[a-f0-9]{64}$/.test(key))){
+    showToast('Informe a URL /exec e a chave privada de 64 caracteres.',true);return;
+  }
+  button.disabled=true;
+  try{
+    const config={url,key};
+    await plannerPrivateCloudCall('status',{},config);
+    if(!button.isConnected || !document.getElementById('productivityOverlay').classList.contains('open'))return;
+    localStorage.setItem(PLANNER_PRIVATE_CLOUD_STORAGE,JSON.stringify(config));
+    if(existing?.url!==url || existing?.key!==key)localStorage.removeItem(CLOUD_BASE_REVISION_KEY);
+    document.getElementById('plannerPrivateKey').value='';
+    setSyncStatus('pending','Conexão privada testada. Confira qual cópia deve ser usada antes de carregar ou salvar.');
+    closeProductivity();refreshConfigIfOpen();
+    showToast('Conexão privada testada. Nenhum dado foi transferido.');
+  }catch(error){showToast(syncFailureDetail(error),true);}
+  finally{button.disabled=false;}
 }
 
 let saveTimer = null;
@@ -9952,10 +10012,10 @@ function saveData() {
     rememberPlannerUndo(previousPayload, payload);
     try { refreshConfigIfOpen(); } catch (_) {}
     clearTimeout(saveTimer);
+    if(PROFESSOR_EXPORT_MODE){setSyncStatus('disabled','Versão exportada: preenchimento salvo neste navegador.');return true;}
     setSyncStatus(pendingCloudSave ? 'syncing' : 'error');
     saveTimer = setTimeout(() => {
-      if (PROFESSOR_EXPORT_MODE) _pushProfessorMergedToSheets();
-      else _pushToSheets(payload);
+      _pushToSheets(payload);
     }, 1800);
     return true;
   } catch (error) {
@@ -9973,26 +10033,40 @@ async function fetchWithCloudTimeout(url, options = {}) {
   finally { clearTimeout(timeout); }
 }
 
-async function _postPayloadToSheets(payload) {
-  if (!cloudSyncConfigured()) return;
-  const response = await fetchWithCloudTimeout(APPS_SCRIPT_URL, {
+async function plannerPrivateCloudCall(action,fields={},config=getPlannerPrivateCloud()) {
+  if(!config)throw Error('Configure a nuvem privada do Planner.');
+  const response = await fetchWithCloudTimeout(config.url, {
     method: 'POST',
-    mode: 'no-cors',
+    credentials:'omit',
+    cache:'no-store',
     headers: { 'Content-Type': 'text/plain' },
-    body: payload
+    body: JSON.stringify({action,key:config.key,...fields})
   });
-  if (response.type !== 'opaque' && !response.ok) throw new Error(`Envio recusado pelo Google (HTTP ${response.status}).`);
+  if(!response.ok)throw Error(`O Google respondeu HTTP ${response.status}.`);
+  let result;
+  try{result=await response.json();}catch(_){throw Error('O endereço não retornou uma resposta da nuvem privada do Planner.');}
+  if(result?.ok!==true){
+    const messages={
+      AUTH_REQUIRED:'A chave privada não confere com a do Apps Script.',
+      CONFLICT:'A nuvem mudou enquanto você salvava. Nenhum registro foi substituído.',
+      NOT_CONFIGURED:'A planilha privada ainda não foi configurada no Apps Script.',
+      BUSY:'A nuvem está ocupada. A cópia local foi mantida.',
+      STORAGE_ERROR:'O servidor não conseguiu confirmar a gravação na planilha.',
+      INVALID_REQUEST:'O envio não foi aceito. Verifique o tamanho do backup e a versão do servidor.',
+      INVALID_STATE:'O servidor não reconheceu os dados do Planner.'
+    };
+    const error=new Error(messages[result?.code]||'O endereço não reconhece a conexão privada do Planner.');
+    error.code=result?.code;throw error;
+  }
+  return result;
 }
 
-async function fetchCloudState() {
-  const response = await fetchWithCloudTimeout(APPS_SCRIPT_URL + '?t=' + Date.now(), {
-    cache:'no-store'
-  });
-  if (!response.ok) throw new Error(`O Google respondeu HTTP ${response.status}.`);
-  const text = await response.text();
-  let data;
-  try { data = JSON.parse(text || '{}'); }
-  catch (_) { throw new Error('O Google não retornou os dados do Planner. Verifique o acesso à conta e à rede.'); }
+async function _postPayloadToSheets(payload,expectedRevision,config) {
+  return plannerPrivateCloudCall('write',{expectedRevision,state:JSON.parse(payload)},config);
+}
+
+async function fetchCloudState(config) {
+  const {state:data}=await plannerPrivateCloudCall('read',{},config);
   if (!data || typeof data !== 'object' || Array.isArray(data) || (Object.keys(data).length && !['modules','classData','classConfigs','alunos','freq','notasEad','notasPres'].some(key => Object.prototype.hasOwnProperty.call(data,key)))) {
     throw new Error('A resposta do Google não contém uma base válida do Planner.');
   }
@@ -10019,7 +10093,7 @@ function syncFailureDetail(error) {
 async function saveToCloudNow() {
   if (saveData() === false) return false;
   clearTimeout(saveTimer);
-  if (PROFESSOR_EXPORT_MODE) return _pushProfessorMergedToSheets();
+  if (PROFESSOR_EXPORT_MODE) return true;
   return _pushToSheets(localStorage.getItem(STORAGE_KEY), 0, true);
 }
 
@@ -10103,7 +10177,8 @@ async function storeCloudSafetyCopy(key, snapshot) {
 }
 async function performCloudPush(payload, attempt = 0, manual = false) {
   if (isProfessorMode()) return;
-  if (!cloudSyncConfigured()) {
+  const config=getPlannerPrivateCloud();
+  if (!config) {
     lastSavedHash = hashState();
     setSyncStatus('disabled');
     refreshConfigIfOpen();
@@ -10114,11 +10189,16 @@ async function performCloudPush(payload, attempt = 0, manual = false) {
     const pending = localStorage.getItem(PENDING_CLOUD_SAVE_KEY);
     if (pending && getStateUpdatedAt(JSON.parse(pending)) > getStateUpdatedAt(JSON.parse(payload))) payload = pending;
     const outgoing = JSON.parse(payload);
-    const remote = await fetchCloudState();
+    const remote = await fetchCloudState(config);
+    if(!samePlannerPrivateCloud(config))return false;
     const remoteRevision = cloudRevision(remote);
     const outgoingRevision = cloudRevision(outgoing);
     const knownRevision = localStorage.getItem(CLOUD_BASE_REVISION_KEY) || outgoing._syncMeta?.baseRevision || '';
     const alreadySaved = outgoingRevision && outgoingRevision === remoteRevision;
+    if(!remoteRevision&&!hasMeaningfulState(remote)){
+      setSyncStatus('pending','A nuvem privada está vazia. Faça o primeiro envio na cópia completa.');
+      if(!manual||!confirm('A nuvem privada está vazia. Esta é a cópia completa que deve ser enviada aos dois notebooks?'))return false;
+    }
     const conflict = hasMeaningfulState(remote) && !alreadySaved && (
       !knownRevision || remoteRevision !== knownRevision || getStateUpdatedAt(remote) > getStateUpdatedAt(outgoing)
     );
@@ -10128,19 +10208,19 @@ async function performCloudPush(payload, attempt = 0, manual = false) {
       if (!manual || !confirm('A nuvem contém uma cópia diferente ou atualizada em outro computador.\n\nEnviar os dados deste computador substituirá a base central. Uma cópia de segurança da nuvem será guardada neste navegador.\n\nConfirma substituir a base central pelos dados deste computador?')) return false;
       await storeCloudSafetyCopy('oficial_app_before_cloud_overwrite_v1',remote);
     }
+    if(!samePlannerPrivateCloud(config))return false;
     setSyncStatus('syncing');
     if (!alreadySaved) {
-    await _postPayloadToSheets(payload);
-      // O POST opaco não confirma a gravação. Só uma leitura da revisão enviada
-      // pode liberar a fila e anunciar a sincronização.
+      await _postPayloadToSheets(payload,remoteRevision,config);
       let confirmed = false;
       for (let check = 0; check < 3; check++) {
-        const readback = await fetchCloudState();
-        if (outgoingRevision && cloudRevision(readback) === outgoingRevision) { confirmed = true; break; }
+        const readback = await plannerPrivateCloudCall('status',{},config);
+        if (outgoingRevision && readback.revision === outgoingRevision) { confirmed = true; break; }
         if (check < 2) await new Promise(resolve => setTimeout(resolve, 800));
       }
       if (!confirmed) throw new Error('O envio não foi confirmado pelo Google. Os dados continuam neste computador, com sincronização pendente.');
     }
+    if(!samePlannerPrivateCloud(config))return false;
     rememberCloudRevision(outgoing);
     if(localStorage.getItem(CLOUD_PENDING_REVISION_KEY)===outgoingRevision)localStorage.removeItem(CLOUD_PENDING_REVISION_KEY);
     if (localStorage.getItem(PENDING_CLOUD_SAVE_KEY) === payload) localStorage.removeItem(PENDING_CLOUD_SAVE_KEY);
@@ -10153,9 +10233,10 @@ async function performCloudPush(payload, attempt = 0, manual = false) {
     if (manual) showToast('Gravação confirmada na nuvem.');
     return true;
   } catch(e) {
-    setSyncStatus('error', syncFailureDetail(e));
+    if(!samePlannerPrivateCloud(config))return false;
+    setSyncStatus(e.code==='CONFLICT'?'conflict':'error', syncFailureDetail(e));
     if (manual) showToast(syncFailureDetail(e), true);
-    scheduleCloudRetry(payload, attempt);
+    if(!['CONFLICT','AUTH_REQUIRED','NOT_CONFIGURED','INVALID_REQUEST','INVALID_STATE'].includes(e.code))scheduleCloudRetry(payload, attempt);
     return false;
   }
 }
@@ -10320,59 +10401,9 @@ function mergeProfessorContributions(cloudRaw, professorRaw, baseRaw) {
   return { merged: cloud, conflicts };
 }
 
-async function fetchCloudStateForMerge() {
-  if (!cloudSyncConfigured()) return {};
-  const resp = await fetch(APPS_SCRIPT_URL + '?t=' + Date.now());
-  const text = await resp.text();
-  if (!text || text === '{}') return {};
-  return JSON.parse(text);
-}
-
-async function _pushProfessorMergedToSheets() {
-  if (!PROFESSOR_EXPORT_MODE) return;
-  if (!cloudSyncConfigured()) {
-    setSyncStatus('disabled');
-    return;
-  }
-  try {
-    const cloudState = await fetchCloudStateForMerge();
-    captureCurrentClassData();
-    const classId = state._activeClassDataId || getActiveClassId();
-    const cloudClass = cloudState?.classData?.[classId] || createEmptyClassData();
-    const professorClass = state?.classData?.[classId] || snapshotLegacyClassData();
-    const baseClass = PROFESSOR_BASE_STATE?.classData?.[classId] || createEmptyClassData();
-    const cloudProjected = { ...cloudState, ...classClone(cloudClass, createEmptyClassData()) };
-    const professorProjected = { ...state, ...classClone(professorClass, createEmptyClassData()) };
-    const baseProjected = { ...(PROFESSOR_BASE_STATE || {}), ...classClone(baseClass, createEmptyClassData()) };
-    const { merged:mergedClassFields, conflicts } = mergeProfessorContributions(cloudProjected, professorProjected, baseProjected);
-    const merged = classClone(cloudState, {});
-    if (!merged.classData || typeof merged.classData !== 'object') merged.classData = {};
-    const finalClass = classClone(cloudClass, createEmptyClassData());
-    CLASS_DATA_OBJECT_KEYS.forEach(key => { finalClass[key] = classClone(mergedClassFields[key], {}); });
-    CLASS_DATA_ARRAY_KEYS.forEach(key => { finalClass[key] = classClone(mergedClassFields[key], []); });
-    merged.classData[classId] = finalClass;
-    if (merged._activeClassDataId === classId) {
-      CLASS_DATA_OBJECT_KEYS.forEach(key => { merged[key] = classClone(finalClass[key], {}); });
-      CLASS_DATA_ARRAY_KEYS.forEach(key => { merged[key] = classClone(finalClass[key], []); });
-    }
-    // A base mesclada recebe um timestamp novo para que o painel completo reconheça
-    // imediatamente que há dados mais recentes vindos da versão do professor.
-    const mergedMeta = ensureSyncMeta(merged);
-    mergedMeta.updatedAt = new Date().toISOString();
-    if (!mergedMeta.originId) mergedMeta.originId = 'professor_export_' + (PROFESSOR_EXPORT_ID || 'shared');
-    await _postPayloadToSheets(JSON.stringify(merged));
-    setOperationalTimestamp('oficial_app_last_cloud_push_at');
-    lastSavedHash = hashState();
-    setSyncStatus('ok');
-    if (conflicts > 0) showToast('Parte do que foi preenchido não foi enviada porque esses campos já tinham sido atualizados na base original.', true);
-  } catch(e) {
-    setSyncStatus('error');
-    showToast('Não consegui sincronizar agora. O preenchimento continua salvo neste navegador.', true);
-  }
-}
-
 async function syncFromSheets(options = {}) {
-  if (!cloudSyncConfigured()) {
+  const config=getPlannerPrivateCloud();
+  if (!config) {
     setSyncStatus('disabled');
     if (options.force && !options.silent) showToast('Esta versão limpa está sem nuvem configurada. Os dados continuam salvos localmente.');
     return;
@@ -10388,7 +10419,8 @@ async function syncFromSheets(options = {}) {
   setSyncStatus('off');
   let previousStateBeforeLoad = null;
   try {
-    const cloudState = await fetchCloudState();
+    const cloudState = await fetchCloudState(config);
+    if(!samePlannerPrivateCloud(config))return;
     const localHasData = hasMeaningfulState(state);
     const cloudHasData = hasMeaningfulState(cloudState);
     const localUpdated = getStateUpdatedAt(state);
@@ -10446,6 +10478,7 @@ async function syncFromSheets(options = {}) {
       return;
     }
     if (hasCurrentLocalCopy) await storeCloudSafetyCopy('oficial_app_before_cloud_load_v1',state);
+    if(!samePlannerPrivateCloud(config))return;
     previousStateBeforeLoad = state;
     const viewBeforeCloudLoad = state.view || 'inicio';
     state = { ...state, ...cloudState };
