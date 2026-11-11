@@ -217,10 +217,12 @@
   #modalOverlay .modal-body>.form-group:has(#fTemplate){order:5}
   #modalOverlay .modal-body>.form-group:has(#tagButtonsContainer){order:6}
   #modalOverlay .modal-body>.form-group:has(#fTeoria){order:7;margin-bottom:8px}
-  #modalOverlay .modal-body>.form-group:has(#fObs){order:7}
-  #modalOverlay .modal-body>.module-library-details{order:8;margin-bottom:8px}
-  #modalOverlay .modal-body>.module-extra-fields:not(.module-library-details){order:9}
-  #modalOverlay .modal-body>#fCopyModuleGroup{order:10}
+  #modalOverlay .modal-body>.module-library-details{order:7;margin-bottom:8px}
+  #modalOverlay .modal-body>.form-group:has(#fAtiv){order:8}
+  #modalOverlay .modal-body>.module-prep-fields{order:9}
+  #modalOverlay .modal-body>.form-group:has(#fObs){order:10}
+  #modalOverlay .modal-body>.module-extra-fields:not(.module-library-details){order:11}
+  #modalOverlay .modal-body>#fCopyModuleGroup{order:12}
   .module-batch-options{display:flex;flex-wrap:wrap;gap:8px}
   .module-batch-option{display:inline-flex;align-items:center;gap:6px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer}
   .module-batch-option:has(input:checked){background:var(--accent-bg);border-color:var(--accent)}
@@ -242,7 +244,14 @@
   .professor-mode #chatImportBtn{display:none!important}
   .professor-mode #artvacReportBtn{display:none!important}
   #tagButtonsContainer .tag-toggle.active-tag{opacity:1!important;box-shadow:0 0 0 2px rgba(22,65,148,.18);transform:translateY(-1px)}
-  .module-material-toolbar { display:grid; grid-template-columns:minmax(240px,1fr) minmax(170px,210px) auto; gap:8px; align-items:center; }
+  .module-material-toolbar { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; align-items:center; }
+  .module-catalog-tools { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; margin:8px 0; font-size:11px; color:var(--text2); }
+  .module-prep-fields { margin:12px 0; }
+  .module-prep-fields .form-group { min-width:0; }
+  .module-prep-tag { display:inline-flex; padding:2px 5px; border:1px solid var(--border); border-radius:4px; font-size:10px; line-height:1.3; }
+  .module-prep-tag.pending { color:#815513; background:#fff6e3; border-color:#f0dbad; }
+  .module-prep-tag.ready { color:#256044; background:#eff8f1; border-color:#cfe5d6; }
+  #moduleCatalogFile[hidden] { display:none; }
   .module-material-list { display:flex; flex-direction:column; gap:6px; max-height:190px; overflow:auto; }
   .module-material-row { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; background:#fff; border:1px solid var(--border); border-radius:8px; padding:8px 9px; font-size:12px; }
   .module-material-row.attached { background:var(--green-bg); border-color:rgba(42,125,79,.26); }
@@ -4423,12 +4432,21 @@
         <label class="form-label">Tipo</label>
         <div id="tagButtonsContainer" style="display:flex;gap:6px;flex-wrap:wrap"></div>
       </div>
+      <div class="form-group">
+        <label class="form-label" for="fAtiv">Atividade da aula <span style="font-weight:400;color:var(--text3)">(opcional)</span></label>
+        <textarea class="form-input" id="fAtiv" rows="2" placeholder="Atividade a aplicar ou preparar"></textarea>
+      </div>
       <details class="module-extra-fields module-library-details">
         <summary>Materiais da Biblioteca</summary>
         <div class="form-group">
         <div class="module-materials-box">
           <div class="module-material-toolbar">
-            <input type="text" class="form-input" id="fMaterialSearch" placeholder="Buscar material por título, tema ou link..." oninput="renderModuleMaterialPicker()">
+            <input type="search" class="form-input" id="fMaterialSearch" aria-label="Buscar material" placeholder="Buscar material..." oninput="renderModuleMaterialPicker()">
+            <select class="form-input" id="fMaterialScope" aria-label="Mostrar materiais de" onchange="renderModuleMaterialPicker()">
+              <option value="topic">Tópico selecionado</option>
+              <option value="disc">Disciplina inteira</option>
+              <option value="all">Toda a Biblioteca</option>
+            </select>
             <select class="form-input" id="fMaterialType" onchange="renderModuleMaterialPicker()">
               <option value="">Todos os tipos</option>
               <option value="aula">Aula</option>
@@ -4443,24 +4461,29 @@
             </select>
             <button type="button" class="btn btn-outline module-open-library-btn" onclick="openDiscLibrary(document.getElementById('fDisc').value)">📚 Abrir Biblioteca</button>
           </div>
+          <div class="module-catalog-tools">
+            <span id="moduleCatalogStatus" role="status"></span>
+            <button type="button" class="btn btn-outline" onclick="document.getElementById('moduleCatalogFile').click()">Importar catálogo</button>
+            <input type="file" id="moduleCatalogFile" accept=".json,application/json" onchange="importPlannerLibraryCatalog(this)" hidden>
+          </div>
           <div class="module-material-list" id="moduleAttachedMaterials"></div>
           <div class="module-material-list" id="moduleLibraryMatches"></div>
         </div>
         </div>
       </details>
+      <div class="module-prep-fields">
+        <div class="form-row">
+          <label class="form-group"><span class="form-label">Preparo da atividade</span><select class="form-input" id="fActivityPrep"><option value="none">Não precisa</option><option value="pending">A montar</option><option value="ready">Pronta</option></select></label>
+          <label class="form-group"><span class="form-label">Impressão</span><select class="form-input" id="fPrintPrep" onchange="refreshModulePrintField()"><option value="none">Não precisa</option><option value="pending">A imprimir</option><option value="ready">Impresso</option></select></label>
+        </div>
+        <label class="form-group" id="fPrintFields" hidden><span class="form-label">O que imprimir</span><input class="form-input" id="fPrintWhat"></label>
+      </div>
       <div class="form-group">
         <label class="form-label">Observações <span style="font-weight:400;color:var(--text3)">(opcional)</span></label>
         <textarea class="form-input" id="fObs" rows="2" placeholder="Lembretes ou imprevistos..."></textarea>
       </div>
       <details class="module-extra-fields" id="fAdvanced">
         <summary>Mais detalhes</summary>
-        <div class="form-group" id="fPrintFields" hidden>
-          <label class="check-line"><input type="checkbox" id="fNeedPrint"> Precisa imprimir</label>
-          <label class="check-line"><input type="checkbox" id="fPrinted"> Já imprimi</label>
-          <label class="check-line"><input type="checkbox" id="fActivityBuilt"> Atividade montada</label>
-          <label class="form-label" for="fPrintWhat">O que imprimir</label>
-          <input class="form-input" id="fPrintWhat">
-        </div>
         <div class="form-group">
           <label class="form-label">Modelo rápido</label>
           <select class="form-input" id="fTemplate" onchange="applyModuleTemplate(this.value)">
@@ -4474,10 +4497,6 @@
         <div class="form-group">
           <label class="form-label">Avaliação / entregável</label>
           <textarea class="form-input" id="fAval" placeholder="Critério de avaliação, o que deve ser entregue..."></textarea>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Atividade prática</label>
-          <textarea class="form-input" id="fAtiv" placeholder="Descrição da atividade, materiais necessários..."></textarea>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -7185,19 +7204,48 @@ function rebuildAllDiscSelects() {
   renderModuleTopicSelect();
 }
 
-function getPlannerLibraryData() {
-  try {
-    const raw = localStorage.getItem('mat_v8_teste');
-    const data = raw ? JSON.parse(raw) : null;
-    return data && Array.isArray(data.disciplinas) && Array.isArray(data.temas) ? data : null;
-  } catch (error) {
-    return null;
-  }
+function getPlannerLibraryCatalog() {
+  const read=key=>{try{return JSON.parse(localStorage.getItem(key));}catch(_){return null;}};
+  const valid=data=>Array.isArray(data?.disciplinas)&&Array.isArray(data?.temas)&&Array.isArray(data?.materiais);
+  const imported=read('planner_library_catalog_v1');
+  const direct=read('mat_v8_teste')||read('mat_v3');
+  const directTime=Date.parse(direct?._syncMeta?.updatedAt||'')||0;
+  if(valid(direct) && (!valid(imported?.data)||(directTime>0&&directTime>=(imported.catalogTime||0))))return {data:direct,source:'direct'};
+  if(valid(imported?.data))return {data:imported.data,source:'imported',importedAt:imported.importedAt};
+  return {data:null,source:'none'};
 }
 
-function getLibraryTopicsForPlannerDiscipline(disciplineName) {
-  const data = getPlannerLibraryData();
-  if (!disciplineName) return [];
+function getPlannerLibraryData() { return getPlannerLibraryCatalog().data; }
+function plannerLibraryLink(value){
+  try{const url=new URL(String(value||'').trim());return ['http:','https:'].includes(url.protocol)?url.href:'';}catch(_){return '';}
+}
+async function importPlannerLibraryCatalog(input){
+  const file=input.files?.[0];
+  input.value='';
+  if(!file)return;
+  try{
+    if(file.size>12*1024*1024)throw Error('O backup excede 12 MB.');
+    const raw=JSON.parse((await file.text()).replace(/^\uFEFF/,''));
+    if(!['disciplinas','temas','materiais'].every(key=>Array.isArray(raw?.[key])))throw Error('Selecione um backup JSON exportado pela Biblioteca.');
+    const value=(item,key)=>typeof item?.[key]==='string'?item[key]:'';
+    const names=items=>items.filter(item=>value(item,'id')&&value(item,'nome')).map(item=>({id:item.id,nome:item.nome}));
+    const data={
+      disciplinas:names(raw.disciplinas),tipos:names(Array.isArray(raw.tipos)?raw.tipos:[]),
+      temas:raw.temas.filter(t=>value(t,'id')&&value(t,'nome')).map(t=>({id:t.id,nome:t.nome,disciplinaId:value(t,'disciplinaId'),ordem:Number(t.ordem)||0})),
+      materiais:raw.materiais.filter(m=>value(m,'id')&&!m.archived&&!m.hiddenProfessor).map(m=>({
+        id:m.id,titulo:value(m,'titulo'),descricao:value(m,'descricao'),disciplinaId:value(m,'disciplinaId'),temaId:value(m,'temaId'),tipoId:value(m,'tipoId'),
+        links:libraryMaterialLinks(m).map(l=>({...l,link:plannerLibraryLink(l.link)})).filter(l=>l.link)
+      }))
+    };
+    localStorage.setItem('planner_library_catalog_v1',JSON.stringify({data,importedAt:new Date().toISOString(),catalogTime:Date.parse(raw._syncMeta?.updatedAt||'')||0}));
+    const topic=getSelectedPlannerTopic();
+    renderModuleTopicSelect(topic.topicId,topic.topic);
+    renderModuleMaterialPicker();
+    showToast('Catálogo da Biblioteca importado.');
+  }catch(error){showToast(error.name==='QuotaExceededError'?'Sem espaço para importar o catálogo. Os dados anteriores foram mantidos.':error.message,true);}
+}
+function findPlannerLibraryDiscipline(data,disciplineName){
+  if(!disciplineName)return null;
   const name = normalizeMaterialText(disciplineName);
   const aliases = {
     'processos de transformacao de termoplasticos e acabamento': ['processos de transformacao de termoplasticos'],
@@ -7206,7 +7254,13 @@ function getLibraryTopicsForPlannerDiscipline(disciplineName) {
     'raciocinio logico': ['raciocinio logico e analise de dados']
   };
   const names = [name, ...(aliases[name] || [])];
-  const discipline = data?.disciplinas.find(item => names.includes(normalizeMaterialText(item.nome)));
+  return data?.disciplinas.find(item=>names.includes(normalizeMaterialText(item.nome)))||null;
+}
+function getLibraryTopicsForPlannerDiscipline(disciplineName) {
+  const data=getPlannerLibraryData();
+  if(!disciplineName)return [];
+  const discipline=findPlannerLibraryDiscipline(data,disciplineName);
+  const names=[normalizeMaterialText(disciplineName),normalizeMaterialText(discipline?.nome||'')].filter(Boolean);
   const portable = state.classData?.[state._activeClassDataId || getActiveClassId()]?.plannerTopics || [];
   const topics = [...(discipline ? data.temas.filter(topic => topic.disciplinaId === discipline.id) : []),
     ...portable.filter(topic => names.includes(normalizeMaterialText(topic.disciplina)))];
@@ -7224,11 +7278,11 @@ function renderModuleTopicSelect(selectedId='', selectedName='') {
   let html = '<option value="">Sem tópico selecionado</option>';
   html += topics.map(topic => `<option value="${escapeHtml(topic.id)}">${escapeHtml(topic.nome)}</option>`).join('');
   if (selectedName && !topics.some(topic => topic.id === currentId)) {
-    html += `<option value="__legacy_topic__">${escapeHtml(selectedName)}</option>`;
+    html += `<option value="${escapeHtml(selectedId||'__legacy_topic__')}">${escapeHtml(selectedName)}</option>`;
   }
   select.innerHTML = html;
   if (topics.some(topic => topic.id === currentId)) select.value = currentId;
-  else if (selectedName) select.value = '__legacy_topic__';
+  else if (selectedName) select.value = selectedId||'__legacy_topic__';
   else select.value = '';
 }
 
@@ -7248,6 +7302,8 @@ function applyPlannerTopicTitle() {
     input.value = topic.topic;
     input.dataset.autoTitle = topic.topic;
   }
+  document.getElementById('fMaterialScope').value='topic';
+  renderModuleMaterialPicker();
 }
 
 function onPlannerDisciplineChange(automatic = false) {
@@ -7482,14 +7538,6 @@ function normalizeMaterialText(value='') {
     .toLowerCase();
 }
 
-function getLocalLibraryData() {
-  try {
-    return JSON.parse(localStorage.getItem('mat_v8_teste') || localStorage.getItem('mat_v3') || '{}') || {};
-  } catch(e) {
-    return {};
-  }
-}
-
 function libraryMaterialLinks(m={}) {
   if (Array.isArray(m.links) && m.links.length) {
     return m.links
@@ -7519,8 +7567,7 @@ function getLibraryTypeName(data, id) {
   return (data.tipos || []).find(t => t.id === id)?.nome || '';
 }
 
-function getPlannerLibraryMaterials() {
-  const data = getLocalLibraryData();
+function getPlannerLibraryMaterials(data=getPlannerLibraryData()||{}) {
   const mats = Array.isArray(data.materiais) ? data.materiais : [];
   return mats
     .filter(m => !m.archived && !m.hiddenProfessor)
@@ -7533,14 +7580,15 @@ function getPlannerLibraryMaterials() {
         id: `${m.id || 'mat'}::${idx}`,
         materialId: m.id || '',
         title: m.titulo || lnk.titulo || 'Material da Biblioteca',
-        link: lnk.link,
+        link: plannerLibraryLink(lnk.link),
+        disciplinaId: m.disciplinaId || '',
+        temaId: m.temaId || '',
         origem: lnk.origem || lnk.titulo || '',
         disc: discNome,
         tema: temaNome,
         tipo: tipoNome,
-        searchText: normalizeMaterialText([m.titulo, m.descricao, discNome, temaNome, tipoNome, lnk.titulo, lnk.origem, lnk.link].join(' ')),
-        typeText: normalizeMaterialText([m.titulo, m.descricao, temaNome, tipoNome, lnk.titulo, lnk.origem].join(' '))
-      }));
+        searchText: normalizeMaterialText([m.titulo, m.descricao, discNome, temaNome, tipoNome, lnk.titulo, lnk.origem, lnk.link].join(' '))
+      })).filter(item=>item.link);
     });
 }
 
@@ -7555,6 +7603,8 @@ function attachModuleMaterial(id) {
     moduleDraftMaterials.push({
       id: item.id,
       materialId: item.materialId,
+      disciplinaId: item.disciplinaId,
+      temaId: item.temaId,
       title: item.title,
       link: item.link,
       origem: item.origem,
@@ -7577,9 +7627,14 @@ function renderModuleMaterialPicker() {
   if (!attachedWrap || !matchesWrap) return;
   const disc = document.getElementById('fDisc')?.value || '';
   const search = normalizeMaterialText(document.getElementById('fMaterialSearch')?.value || '');
-  const discNorm = normalizeMaterialText(disc);
+  const catalog=getPlannerLibraryCatalog();
+  const topic=getSelectedPlannerTopic(),scope=document.getElementById('fMaterialScope').value;
+  const libraryDisc=findPlannerLibraryDiscipline(catalog.data,disc);
+  const topicIds=(catalog.data?.temas||[]).filter(t=>t.disciplinaId===libraryDisc?.id);
+  const libraryTopic=topicIds.find(t=>t.id===topic.topicId)||topicIds.find(t=>normalizeMaterialText(t.nome)===normalizeMaterialText(topic.topic));
   const materialType = normalizeMaterialText(document.getElementById('fMaterialType')?.value || '');
   const attachedKeys = new Set(moduleDraftMaterials.map(moduleMaterialKey));
+  document.getElementById('moduleCatalogStatus').textContent=catalog.source==='direct'?'Catálogo deste navegador':catalog.source==='imported'?'Catálogo importado em '+new Date(catalog.importedAt).toLocaleDateString('pt-BR'):'Nenhum catálogo disponível';
 
   attachedWrap.innerHTML = moduleDraftMaterials.length
     ? moduleDraftMaterials.map(m => `
@@ -7589,18 +7644,19 @@ function renderModuleMaterialPicker() {
           <div class="module-material-meta">${escapeHtml([m.disc, m.tema, m.origem].filter(Boolean).join(' · ') || 'Material anexado')}</div>
         </div>
         <div class="module-material-actions">
-          ${m.link ? `<button type="button" class="module-material-btn" onclick="window.open('${escapeJsString(m.link)}','_blank','noopener')">Abrir</button>` : ''}
-          <button type="button" class="module-material-btn primary" onclick="detachModuleMaterial('${escapeJsString(moduleMaterialKey(m))}')">Anexado</button>
+          ${plannerLibraryLink(m.link) ? `<a class="module-material-btn" href="${escapeHtml(plannerLibraryLink(m.link))}" target="_blank" rel="noopener noreferrer">Abrir</a>` : ''}
+          <button type="button" class="module-material-btn" onclick="detachModuleMaterial(${freqJs(moduleMaterialKey(m))})">Remover</button>
         </div>
       </div>`).join('')
     : '<div class="module-material-empty">Nenhum material anexado a este módulo.</div>';
 
-  const matches = getPlannerLibraryMaterials()
+  const matches = getPlannerLibraryMaterials(catalog.data||{})
     .filter(m => !attachedKeys.has(moduleMaterialKey(m)))
-    .filter(m => !discNorm || normalizeMaterialText(m.disc).includes(discNorm) || m.searchText.includes(discNorm))
-    .filter(m => !materialType || m.typeText.includes(materialType))
+    .filter(m => scope==='all' || (libraryDisc && m.disciplinaId===libraryDisc.id))
+    .filter(m => scope!=='topic' || !topic.topic || (libraryTopic && m.temaId===libraryTopic.id))
+    .filter(m => !materialType || normalizeMaterialText(m.tipo)===materialType)
     .filter(m => !search || m.searchText.includes(search))
-    .slice(0, 8);
+    .slice(0, 50);
 
   matchesWrap.innerHTML = matches.length
     ? matches.map(m => `
@@ -7610,10 +7666,10 @@ function renderModuleMaterialPicker() {
           <div class="module-material-meta">${escapeHtml([m.disc, m.tema, m.tipo, m.origem].filter(Boolean).join(' · '))}</div>
         </div>
         <div class="module-material-actions">
-          <button type="button" class="module-material-btn" onclick="attachModuleMaterial('${escapeJsString(m.id)}')">Anexar</button>
+          <button type="button" class="module-material-btn" onclick="attachModuleMaterial(${freqJs(m.id)})">Anexar</button>
         </div>
       </div>`).join('')
-    : `<div class="module-material-empty">Nenhum material encontrado para esta disciplina${materialType ? ' e tipo de material' : ''}.</div>`;
+    : `<div class="module-material-empty">${catalog.data?'Nenhum material com estes filtros.':'Abra a Biblioteca ou importe o catálogo.'}</div>`;
 }
 
 function moduleMaterialsHtml(materials=[]) {
@@ -11187,7 +11243,7 @@ function renderInicio() {
         const tags = (mod.tags||[]).map(tagChip).join('');
         const icons = [
           mod.needPrint && !mod.printed ? `<div class="mod-icon icon-print-pending" title="Imprimir pendente" style="width:16px;height:16px"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 1h6v3H3zM2 4h8a1 1 0 0 1 1 1v4H1V5a1 1 0 0 1 1-1zM3 9v2h6V9"/></svg></div>` : '',
-          !mod.activityBuilt ? `<div class="mod-icon icon-activity-pending" title="Atividade pendente" style="width:16px;height:16px"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="1" width="10" height="10" rx="2"/><path d="M6 4v4M4 6h4"/></svg></div>` : '',
+          moduleActivityPrep(mod)==='pending' ? `<div class="mod-icon icon-activity-pending" title="Atividade a montar" style="width:16px;height:16px"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="1" width="10" height="10" rx="2"/><path d="M6 4v4M4 6h4"/></svg></div>` : '',
           Array.isArray(mod.materials) && mod.materials.length ? `<div class="mod-icon icon-material" title="${mod.materials.length} material${mod.materials.length===1?'':'is'} da Biblioteca" style="width:16px;height:16px">📚</div>` : '',
         ].join('');
         return `<div class="dash-mod-item">
@@ -12053,10 +12109,12 @@ function render() {
         }).join('');
 
         let iconsHtml = '';
-        if (mod.needPrint && !mod.printed) iconsHtml += `<div class="mod-icon icon-print-pending" title="Imprimir pendente"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 1h6v3H3zM2 4h8a1 1 0 0 1 1 1v4H1V5a1 1 0 0 1 1-1zM3 9v2h6V9"/></svg></div>`;
-        if (mod.printed) iconsHtml += `<div class="mod-icon icon-print-done" title="Já imprimiu"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 5l3 3 5-5"/></svg></div>`;
-        if (mod.activityBuilt) iconsHtml += `<div class="mod-icon icon-activity-done" title="Atividade montada"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="1" width="10" height="10" rx="2"/><path d="M3 6l2 2 4-4"/></svg></div>`;
         if (Array.isArray(mod.materials) && mod.materials.length) iconsHtml += `<div class="mod-icon icon-material" title="${mod.materials.length} material${mod.materials.length===1?'':'is'} da Biblioteca">📚</div>`;
+        const prep=moduleActivityPrep(mod);
+        const prepHtml=[
+          prep==='pending'?['A montar','pending']:prep==='ready'?['Atividade pronta','ready']:null,
+          mod.printed?['Impresso','ready']:mod.needPrint?['A imprimir','pending']:null
+        ].filter(Boolean).map(([label,status])=>`<span class="module-prep-tag ${status}">${label}</span>`).join('');
 
         const hasNotes = [mod.obs, mod.executionObs].some(value => String(value || '').trim());
         const notesIcon = hasNotes ? '<span class="mod-notes" role="img" aria-label="Contém observações" title="Contém observações"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 8h8M8 12h5"/></svg></span>' : '';
@@ -12066,7 +12124,7 @@ function render() {
           <div class="mod-title">${escapeHtml(mod.title||'Sem título')}</div>
           ${mod.topic ? `<div class="mod-topic">${escapeHtml(mod.topic)}</div>` : ''}
           <div class="mod-footer">
-            <div class="tags">${tagsHtml}</div>
+            <div class="tags">${tagsHtml}${prepHtml}</div>
             <div class="mod-icons">${iconsHtml}</div>
           </div>`;
         const activate = () => {
@@ -12189,6 +12247,7 @@ function updateCheck(field, val) {
     return;
   }
   state.modules[currentDetailKey][field] = val;
+  if(field==='activityBuilt')state.modules[currentDetailKey].activityPrep=val?'ready':'pending';
   if (field === 'needPrint') {
     document.getElementById('printDetailWrap').style.display = val ? 'block' : 'none';
   }
@@ -12238,11 +12297,8 @@ function editModule(key = currentDetailKey) {
   document.getElementById('fAdvanced').open = false;
   document.getElementById('fTemplate').value = '';
   document.getElementById('fEditActions').hidden = false;
-  document.getElementById('fPrintFields').hidden = false;
-  document.getElementById('fNeedPrint').checked = !!mod.needPrint;
-  document.getElementById('fPrinted').checked = !!mod.printed;
-  document.getElementById('fActivityBuilt').checked = !!mod.activityBuilt;
-  document.getElementById('fPrintWhat').value = mod.printWhat || '';
+  setModulePreparationFields(mod);
+  document.getElementById('fMaterialScope').value = 'topic';
   document.getElementById('fCopyModuleGroup').style.display = 'none';
   document.getElementById('fCopyModule').value = '';
   document.getElementById('modalOverlay').classList.add('open');
@@ -12456,7 +12512,8 @@ function duplicateModule(key = currentDetailKey) {
 
   editingKey = null;
   document.getElementById('fEditActions').hidden = true;
-  document.getElementById('fPrintFields').hidden = true;
+  setModulePreparationFields(mod,true);
+  document.getElementById('fMaterialScope').value='topic';
   const freeSlot = findFirstFreePlanningSlot('presencial');
   if (freeSlot) {
     document.getElementById('fDay').value = String(freeSlot.dayIdx);
@@ -12524,6 +12581,8 @@ function populateModuleCopySelect() {
 function applyModuleCopy(sourceKey) {
   const mod = state.modules?.[sourceKey];
   if (!mod) return;
+  setModulePreparationFields(mod,true);
+  document.getElementById('fMaterialScope').value='topic';
   document.getElementById('fTemplate').value = '';
   document.getElementById('fTitle').value = mod.title || '';
   delete document.getElementById('fTitle').dataset.autoTitle;
@@ -12586,6 +12645,24 @@ function deleteModule(key = currentDetailKey) {
 // --- FORM MODAL ------------------------------------------
 let editingKey = null;
 
+function moduleActivityPrep(mod={}){
+  return mod.activityBuilt?'ready':mod.activityPrep==='pending'?'pending':'none';
+}
+function refreshModulePrintField(){
+  document.getElementById('fPrintFields').hidden=document.getElementById('fPrintPrep').value==='none';
+}
+function setModulePreparationFields(mod={},copy=false){
+  const activity=moduleActivityPrep(mod);
+  document.getElementById('fActivityPrep').value=copy&&activity==='ready'?'pending':activity;
+  document.getElementById('fPrintPrep').value=mod.printed&&!copy?'ready':mod.needPrint||mod.printed?'pending':'none';
+  document.getElementById('fPrintWhat').value=mod.printWhat||'';
+  refreshModulePrintField();
+}
+function readModulePreparationFields(){
+  const print=document.getElementById('fPrintPrep').value;
+  const activityPrep=document.getElementById('fActivityPrep').value;
+  return {needPrint:print!=='none',printed:print==='ready',activityPrep,activityBuilt:activityPrep==='ready',printWhat:document.getElementById('fPrintWhat').value};
+}
 
 function findFirstFreePlanningSlot(kind = 'presencial') {
   const dates = getWeekDates(state.weekOffset);
@@ -12606,7 +12683,8 @@ function findFirstFreePlanningSlot(kind = 'presencial') {
 function openModal(dateKey, modNum) {
   editingKey = null;
   document.getElementById('fEditActions').hidden = true;
-  document.getElementById('fPrintFields').hidden = true;
+  setModulePreparationFields();
+  document.getElementById('fMaterialScope').value='topic';
   document.getElementById('fAdvanced').open = false;
   document.getElementById('modalTitle').textContent = 'Novo módulo';
   document.getElementById('fCopyModuleGroup').style.display = '';
@@ -12748,12 +12826,7 @@ function saveModule(goNext = false) {
 
     const moduleData = {
       ...(state.modules[editingKey || key]||{}),
-      ...(editingKey?{
-        needPrint:document.getElementById('fNeedPrint').checked,
-        printed:document.getElementById('fPrinted').checked,
-        activityBuilt:document.getElementById('fActivityBuilt').checked,
-        printWhat:document.getElementById('fPrintWhat').value
-      }:{}),
+      ...readModulePreparationFields(),
       ...(isProfessorMode() ? { _professorAdded: true } : {}),
       title,
       disc: document.getElementById('fDisc').value,
@@ -17148,7 +17221,7 @@ function productivityDates(start,end) {
 function freshPlanningCopy(source,kind) {
   const copy = classClone(source, {});
   delete copy._professorAdded;
-  if(kind==='presencial') { copy.executionStatus='planejada'; copy.executionObs=''; copy.printed=false; copy.activityBuilt=false; }
+  if(kind==='presencial') { copy.executionStatus='planejada'; copy.executionObs=''; copy.printed=false; copy.activityPrep=moduleActivityPrep(copy)==='none'?'none':'pending'; copy.activityBuilt=false; }
   if(!document.getElementById('copyDetails').checked) { if(kind==='ead')copy.desc='';else {copy.teoria='';copy.ativ='';copy.aval='';} }
   if(!document.getElementById('copyMaterials').checked)copy.materials=[];
   if(!document.getElementById('copyNotes').checked)copy.obs='';
@@ -17264,6 +17337,10 @@ function getPlannerPending() {
   const dates=getWeekDates(state.weekOffset).map(date=>localDateKey(date)),today=localDateKey(),rows=[];
   dates.forEach(date=>{
     const modules=Object.entries(state.modules||{}).filter(([key])=>key.startsWith(date+'_'));
+    modules.forEach(([key,mod])=>{
+      const prep=[moduleActivityPrep(mod)==='pending'?'A montar':'',mod.needPrint&&!mod.printed?'A imprimir':''].filter(Boolean);
+      if(prep.length)rows.push({view:'presencial',moduleKey:key,label:formatDateKeyPtBr(date)+' · M'+key.split('_')[1]+' · '+(mod.title||'Sem título')+' · '+prep.join(' / ')});
+    });
     if(!modules.length)rows.push({view:'presencial',label:date+' · sem planejamento presencial'});
     else {
       const missing=Array.from({length:getClassModuleCountForDate(date)},(_,i)=>i+1).filter(number=>!state.modules[date+'_'+number]);
@@ -17303,6 +17380,7 @@ function openPlannerPending() {
 function goToPlannerPending(index) {
   const row=document.getElementById('productivityOverlay')._pendingRows[index];if(!row)return;
   closeProductivity();setView(row.view);
+  if(row.moduleKey && state.modules[row.moduleKey]){editModule(row.moduleKey);return;}
   const select=row.view==='frequencia'?'freqDisc':row.view==='notasead'?'neadDisc':row.view==='notaspres'?'npDisc':'';
   if(select)document.getElementById(select).value=row.disc;
   if(row.date)document.getElementById('freqData').value=row.date;
@@ -17984,6 +18062,12 @@ setTimeout(async () => {
   resumePendingCloudSave();
 }, 700);
 window.addEventListener('online', resumePendingCloudSave);
+window.addEventListener('storage',event=>{
+  if(!['mat_v8_teste','mat_v3','planner_library_catalog_v1'].includes(event.key) || !document.getElementById('modalOverlay').classList.contains('open'))return;
+  const topic=getSelectedPlannerTopic();
+  renderModuleTopicSelect(topic.topicId,topic.topic);
+  renderModuleMaterialPicker();
+});
 const presencialHeaderObserver=new ResizeObserver(()=>{
   const toolbar=document.getElementById('workspaceToolbar');
   document.documentElement.style.setProperty('--presencial-day-top',toolbar.offsetHeight+6+'px');
