@@ -4433,7 +4433,7 @@
         <div id="tagButtonsContainer" style="display:flex;gap:6px;flex-wrap:wrap"></div>
       </div>
       <div class="form-group">
-        <label class="form-label" for="fAtiv">Atividade da aula <span style="font-weight:400;color:var(--text3)">(opcional)</span></label>
+        <label class="form-label" for="fAtiv">Detalhes da atividade <span style="font-weight:400;color:var(--text3)">(opcional)</span></label>
         <textarea class="form-input" id="fAtiv" rows="2" placeholder="Atividade a aplicar ou preparar"></textarea>
         <button type="button" class="btn btn-outline" id="moduleSendToLibrary" style="margin-top:8px" onclick="openModuleLibraryDraft()">Salvar na Biblioteca</button>
       </div>
@@ -4473,11 +4473,12 @@
         </div>
       </details>
       <div class="module-prep-fields">
+        <label class="form-group"><span class="form-label">Tipo de atividade <span style="font-weight:400;color:var(--text3)">(opcional)</span></span><select class="form-input" id="fActivityType" onchange="suggestModulePrintWhat()"></select></label>
         <div class="form-row">
           <label class="form-group"><span class="form-label">Preparo da atividade</span><select class="form-input" id="fActivityPrep"><option value="none">Não precisa</option><option value="pending">A montar</option><option value="ready">Pronta</option></select></label>
-          <label class="form-group"><span class="form-label">Impressão</span><select class="form-input" id="fPrintPrep" onchange="refreshModulePrintField()"><option value="none">Não precisa</option><option value="pending">A imprimir</option><option value="ready">Impresso</option></select></label>
+          <label class="form-group"><span class="form-label">Impressão</span><select class="form-input" id="fPrintPrep" onchange="refreshModulePrintField();suggestModulePrintWhat()"><option value="none">Não precisa</option><option value="pending">A imprimir</option><option value="ready">Impresso</option></select></label>
         </div>
-        <label class="form-group" id="fPrintFields" hidden><span class="form-label">O que imprimir</span><input class="form-input" id="fPrintWhat"></label>
+        <label class="form-group" id="fPrintFields" hidden><span class="form-label">O que imprimir</span><input class="form-input" id="fPrintWhat" oninput="delete this.dataset.suggested"></label>
       </div>
       <div class="form-group">
         <label class="form-label">Observações <span style="font-weight:400;color:var(--text3)">(opcional)</span></label>
@@ -6943,6 +6944,24 @@ function renderConfiguracoes() {
               </div>
             </div>`).join('')}
           <button class="config-add-row" onclick="openTipoModal('aula','')">+ Adicionar tipo de aula</button>
+        </div>
+
+        <div class="config-section" id="moduleActivityTypeSettings">
+          <div class="config-section-head">
+            <div>
+              <div class="config-section-title">Tipos de atividade</div>
+              <div class="config-section-sub">Planejamento presencial</div>
+            </div>
+          </div>
+          ${getModuleActivityTypes().map(type => `
+            <div class="config-item-row">
+              <span class="config-item-label">${escapeHtml(type.name)}${type.archived ? ' · Arquivado' : ''}</span>
+              <div style="display:flex;gap:4px;flex-wrap:wrap">
+                <button type="button" class="config-action-btn" data-type-id="${escapeHtml(type.id)}" onclick="openModuleActivityTypeEditor(this.dataset.typeId)">Editar</button>
+                <button type="button" class="config-action-btn" data-type-id="${escapeHtml(type.id)}" onclick="toggleModuleActivityTypeArchive(this.dataset.typeId)">${type.archived ? 'Reativar' : 'Arquivar'}</button>
+              </div>
+            </div>`).join('')}
+          <button type="button" class="config-add-row" id="addModuleActivityType" onclick="openModuleActivityTypeEditor()">+ Adicionar tipo de atividade</button>
         </div>
 
         <div class="config-section">
@@ -12160,10 +12179,13 @@ function render() {
         const primaryTag = priority.find(id => (mod.tags || []).includes(id)) || mod.tags?.[0];
         const accent = tiposAula.find(type => type.id === primaryTag)?.cor;
         if (accent && /^#[0-9a-f]{6}$/i.test(accent)) card.style.setProperty('--module-accent', accent);
-        const tagsHtml = (mod.tags||[]).map(t => {
+        const activityLabel = moduleActivityLabel(mod.activityType);
+        const cardTags = new Set(mod.tags || []);
+        if (activityLabel) cardTags.add('atividade');
+        const tagsHtml = [...cardTags].map(t => {
           const tipo = tiposAula.find(x => x.id === t);
           const cor = tipo && /^#[0-9a-f]{6}$/i.test(tipo.cor) ? tipo.cor : '#667085';
-          const nome = tipo ? tipo.nome : (t.charAt(0).toUpperCase()+t.slice(1));
+          const nome = (t === 'atividade' && activityLabel) || (tipo ? tipo.nome : (t.charAt(0).toUpperCase()+t.slice(1)));
           return `<span class="lesson-type" style="--lesson-color:${cor}"><span class="lesson-type-dot" aria-hidden="true"></span>${escapeHtml(nome)}</span>`;
         }).join('');
 
@@ -12260,7 +12282,7 @@ function openDetail(key) {
   setField('detailTipo', (mod.tags||[]).map(t=>t.charAt(0).toUpperCase()+t.slice(1)).join(', '));
   setField('detailTeoria', mod.teoria);
   setField('detailAval', mod.aval);
-  setField('detailAtiv', mod.ativ);
+  setField('detailAtiv', [moduleActivityLabel(mod.activityType), mod.ativ].filter(Boolean).join('\n'));
   setField('detailObs', mod.obs);
   document.getElementById('detailExecStatus').value = mod.executionStatus || 'planejada';
   renderDetailExecutionButtons(mod.executionStatus || 'planejada');
@@ -12704,17 +12726,101 @@ function deleteModule(key = currentDetailKey) {
 // --- FORM MODAL ------------------------------------------
 let editingKey = null;
 
+const DEFAULT_MODULE_ACTIVITY_TYPES = [
+  ['individual','Atividade individual'],
+  ['dupla','Atividade em dupla'],
+  ['grupo','Atividade em grupo'],
+  ['quiz','Quiz'],
+  ['pratica','Atividade prática'],
+  ['estudo_caso','Estudo de caso'],
+  ['revisao','Exercício de revisão'],
+  ['outro','Outro']
+].map(([id,name])=>({id,name,archived:false}));
+
+function getModuleActivityTypes(){
+  return Array.isArray(state.moduleActivityTypes) ? state.moduleActivityTypes : DEFAULT_MODULE_ACTIVITY_TYPES;
+}
+function moduleActivityLabel(type){
+  return getModuleActivityTypes().find(entry=>entry.id===type)?.name || '';
+}
+function openModuleActivityTypeEditor(id=''){
+  if(isProfessorMode())return;
+  const current=getModuleActivityTypes().find(type=>type.id===id);
+  if(id&&!current)return;
+  productivityOverlay(current?'Editar tipo de atividade':'Novo tipo de atividade',
+    `<form id="moduleActivityTypeForm" data-type-id="${escapeHtml(id)}" onsubmit="event.preventDefault();saveModuleActivityType(this)">
+      <label class="form-group"><span class="form-label">Nome do tipo</span>
+        <input class="form-input" name="typeName" maxlength="60" required value="${escapeHtml(current?.name||'')}">
+      </label>
+    </form>`,
+    '<button type="submit" form="moduleActivityTypeForm" class="btn btn-primary">Salvar tipo</button>');
+}
+function saveModuleActivityType(form){
+  if(isProfessorMode())return;
+  const id=form.dataset.typeId;
+  const name=form.elements.typeName.value.trim();
+  const types=getModuleActivityTypes();
+  if(!name){showToast('Informe o nome do tipo de atividade.',true);return;}
+  if(id&&!types.some(type=>type.id===id))return;
+  if(types.some(type=>type.id!==id&&normalizeMaterialText(type.name)===normalizeMaterialText(name))){
+    showToast('Já existe um tipo de atividade com esse nome.',true);
+    return;
+  }
+  if(commitProductivity('tipo de atividade',()=>{
+    state.moduleActivityTypes=id ? types.map(type=>type.id===id?{...type,name}:type)
+      : [...types,{id:'activity_'+crypto.randomUUID(),name,archived:false}];
+  })){
+    closeProductivity();
+    render();
+    document.getElementById('addModuleActivityType')?.focus();
+    showToast('Tipo de atividade salvo.');
+  }
+}
+function toggleModuleActivityTypeArchive(id){
+  if(isProfessorMode())return;
+  const types=getModuleActivityTypes();
+  const current=types.find(type=>type.id===id);
+  if(!current)return;
+  if(!current.archived&&!confirm('Arquivar este tipo? Ele continua nos módulos existentes, mas sai da lista para novos módulos.'))return;
+  if(commitProductivity('arquivamento de tipo de atividade',()=>{
+    state.moduleActivityTypes=types.map(type=>type.id===id?{...type,archived:!type.archived}:type);
+  })){
+    document.getElementById('addModuleActivityType')?.focus();
+    showToast(current.archived?'Tipo de atividade reativado.':'Tipo de atividade arquivado.');
+  }
+}
+
 function moduleActivityPrep(mod={}){
   return mod.activityBuilt?'ready':mod.activityPrep==='pending'?'pending':'none';
 }
 function refreshModulePrintField(){
   document.getElementById('fPrintFields').hidden=document.getElementById('fPrintPrep').value==='none';
 }
+function suggestModulePrintWhat(){
+  const type=document.getElementById('fActivityType').value;
+  const input=document.getElementById('fPrintWhat');
+  if(document.getElementById('fPrintPrep').value==='none')return;
+  if(input.value.trim() && input.value!==input.dataset.suggested)return;
+  const activityName=moduleActivityLabel(type);
+  const label=type==='outro'&&activityName==='Outro'?'':activityName;
+  input.value=label;
+  input.dataset.suggested=label;
+}
 function setModulePreparationFields(mod={},copy=false){
+  const type=document.getElementById('fActivityType');
+  type.replaceChildren(new Option('Sem tipo selecionado',''));
+  getModuleActivityTypes().forEach(entry=>{
+    if(!entry.archived||entry.id===mod.activityType){
+      type.add(new Option(entry.name+(entry.archived?' (arquivado)':''),entry.id));
+    }
+  });
+  type.value=moduleActivityLabel(mod.activityType)?mod.activityType:'';
   const activity=moduleActivityPrep(mod);
   document.getElementById('fActivityPrep').value=copy&&activity==='ready'?'pending':activity;
   document.getElementById('fPrintPrep').value=mod.printed&&!copy?'ready':mod.needPrint||mod.printed?'pending':'none';
-  document.getElementById('fPrintWhat').value=mod.printWhat||'';
+  const printWhat=document.getElementById('fPrintWhat');
+  printWhat.value=mod.printWhat||'';
+  delete printWhat.dataset.suggested;
   refreshModulePrintField();
 }
 function readModulePreparationFields(){
@@ -12886,6 +12992,7 @@ function saveModule(goNext = false) {
     const moduleData = {
       ...(state.modules[editingKey || key]||{}),
       ...readModulePreparationFields(),
+      activityType: document.getElementById('fActivityType').value,
       ...(isProfessorMode() ? { _professorAdded: true } : {}),
       title,
       disc: document.getElementById('fDisc').value,
@@ -13417,6 +13524,12 @@ function applyModuleTemplate(template){
     continuidade:{title:'Continuação de conteúdo',obs:'Continuação do módulo anterior.',tag:'teoria'}
   };
   const p=presets[template]; if(!p) return;
+  const activityType=document.getElementById('fActivityType');
+  if(['individual','grupo','quiz'].includes(template) && !activityType.value &&
+    getModuleActivityTypes().some(type=>type.id===template&&!type.archived)){
+    activityType.value=template;
+    suggestModulePrintWhat();
+  }
   const titleInput = document.getElementById('fTitle');
   if (!titleInput.value.trim() || titleInput.value === titleInput.dataset.autoTitle) {
     const title = getSelectedPlannerTopic().topic || p.title;
