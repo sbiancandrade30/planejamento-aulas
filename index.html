@@ -9937,7 +9937,7 @@ function setSyncStatus(status, detail = '') {
   const dot   = document.getElementById('syncDot');
   const label = document.getElementById('syncLabel');
   const colors = { ok:'#2a7d4f', syncing:'#9a6200', pending:'#9a6200', conflict:'#b93232', localerror:'#b93232', error:'#b93232', off:'var(--text3)', disabled:'#6b6860' };
-  const labels = { ok:'Sincronizado', syncing:'Confirmando na nuvem...', pending:'Salvo neste computador', conflict:'Conferir cópias local e nuvem', localerror:'Falha ao salvar neste computador', error:'Nuvem indisponível — cópia local', off:'Carregando...', disabled:'Nuvem não configurada' };
+  const labels = { ok:'Sincronizado', syncing:'Confirmando na nuvem...', pending:'Salvo neste computador', conflict:'Cópias diferentes — comparar', localerror:'Falha ao salvar neste computador', error:'Nuvem indisponível — cópia local', off:'Carregando...', disabled:'Nuvem não configurada' };
   if (dot) dot.style.background = colors[status] || colors.off;
   if (label) {
     label.textContent = labels[status] || labels.off;
@@ -18468,5 +18468,126 @@ function _pwaIconSvg192() {
     <button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="_pwaDismiss()">Agora não</button>
   </div>
 </div>
+<style>
+#plannerSyncCompare{box-sizing:border-box;width:min(720px,calc(100vw - 24px));max-height:90vh;overflow:auto;margin:auto;border:1px solid #d9dde5;border-radius:16px;padding:24px;color:#202633;background:#fff;font:14px/1.5 system-ui,sans-serif}
+#plannerSyncCompare::backdrop{background:rgba(16,24,40,.4)}
+#plannerSyncCompare .planner-sync-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+#plannerSyncCompare h2{font-size:20px;margin:0}#plannerSyncCompare h3{font-size:16px;margin:0}
+#plannerSyncCopies{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}
+#plannerSyncCopies section{border:1px solid #d9dde5;border-radius:12px;padding:16px}
+#plannerSyncCompare button{font:inherit;cursor:pointer;border:1px solid #cdd3df;border-radius:8px;padding:9px 12px;background:#f5f7fb;color:#24436e}
+#plannerSyncCompare button:disabled{opacity:.5;cursor:wait}.planner-sync-actions{display:flex;flex-wrap:wrap;gap:10px}
+@media(max-width:520px){#plannerSyncCopies{grid-template-columns:1fr}#plannerSyncCompare{padding:16px}}
+</style><script>
+// Acesso às opções de sincronização pelo indicador do cabeçalho.
+function instalarComparacaoPlanner() {
+  const chip = document.getElementById('syncStatus');
+  if (!chip) return;
+  chip.setAttribute('role', 'button');
+  chip.setAttribute('tabindex', '0');
+  chip.setAttribute('aria-label', 'Ver situação da sincronização e comparar cópias');
+  chip.style.cursor = 'pointer';
+  chip.onclick = abrirComparacaoPlanner;
+  chip.onkeydown = event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      abrirComparacaoPlanner();
+    }
+  };
+}
+
+async function abrirComparacaoPlanner() {
+  let dialog = document.getElementById('plannerSyncCompare');
+  if (!dialog) {
+    dialog = document.createElement('dialog');
+    dialog.id = 'plannerSyncCompare';
+    document.body.append(dialog);
+  }
+  if (dialog.open) return;
+  dialog.innerHTML = `<div class="planner-sync-head"><h2>Sincronização do Planner</h2><button type="button" data-sync-close>Fechar</button></div>
+    <p>O aviso pede uma escolha quando as cópias deste computador e da nuvem são diferentes.</p>
+    <p id="plannerSyncMessage" role="status">Consultando a nuvem…</p>
+    <div id="plannerSyncCopies"></div><div id="plannerSyncActions" class="planner-sync-actions"></div>`;
+  dialog.querySelector('[data-sync-close]').onclick = () => dialog.close();
+  dialog.showModal();
+  const message = dialog.querySelector('#plannerSyncMessage');
+  const actions = dialog.querySelector('#plannerSyncActions');
+  const config = getPlannerPrivateCloud();
+  if (!config) {
+    message.textContent = 'Configure a nuvem em Configurações para sincronizar este computador.';
+    return;
+  }
+  try {
+    const remote = await fetchCloudState(config);
+    if (!dialog.open) return;
+    if (!samePlannerPrivateCloud(config)) {
+      message.textContent = 'A configuração mudou durante a consulta. Feche e abra novamente para atualizar.';
+      return;
+    }
+    const local = JSON.parse(JSON.stringify(state));
+    const matching = cloudRevision(local) && cloudRevision(local) === cloudRevision(remote);
+    message.textContent = matching
+      ? 'As duas cópias têm a mesma revisão confirmada.'
+      : 'Confira as datas e os cadastros. Escolha a cópia que contém seu trabalho mais recente.';
+    const copies = dialog.querySelector('#plannerSyncCopies');
+    for (const [label, snapshot] of [['Neste computador', local], ['Na nuvem', remote]]) {
+      const section = document.createElement('section');
+      const heading = document.createElement('h3');
+      heading.textContent = label;
+      const date = document.createElement('p');
+      const updated = getStateUpdatedAt(snapshot);
+      date.textContent = updated
+        ? 'Atualização registrada em ' + new Date(updated).toLocaleString('pt-BR')
+        : 'Data de atualização indisponível';
+      const count = value => Array.isArray(value) ? value.length : Object.keys(value || {}).length;
+      const counts = document.createElement('p');
+      counts.textContent = count(snapshot.modules) + ' módulos · ' + count(snapshot.classConfigs) + ' configurações de turmas · ' + count(snapshot.alunos) + ' alunos';
+      const download = document.createElement('button');
+      download.type = 'button';
+      download.textContent = 'Baixar esta cópia';
+      download.onclick = () => {
+        const url = URL.createObjectURL(new Blob([JSON.stringify(snapshot, null, 2)], {type:'application/json'}));
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = label === 'Na nuvem' ? 'planner_copia_nuvem.json' : 'planner_copia_computador.json';
+        anchor.click();
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+      };
+      section.append(heading, date, counts, download);
+      copies.append(section);
+    }
+    if (isProfessorMode()) return;
+    for (const [label, operation] of [
+      ['Carregar a cópia da nuvem', () => syncFromSheets({force:true})],
+      ['Enviar a cópia deste computador', () => saveToCloudNow()]
+    ]) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.onclick = async () => {
+        actions.querySelectorAll('button').forEach(item => item.disabled = true);
+        message.textContent = 'Aguarde a confirmação da operação…';
+        try {
+          await operation();
+          if (freqLastSyncStatus === 'ok') {
+            message.textContent = 'Sincronização confirmada. Você pode fechar esta janela.';
+          } else {
+            message.textContent = document.getElementById('syncLabel')?.title || 'A operação ainda precisa de confirmação. Confira a situação no cabeçalho.';
+          }
+        } catch (error) {
+          message.textContent = syncFailureDetail(error);
+        } finally {
+          actions.querySelectorAll('button').forEach(item => item.disabled = false);
+        }
+      };
+      actions.append(button);
+    }
+  } catch (error) {
+    message.textContent = syncFailureDetail(error);
+  }
+}
+instalarComparacaoPlanner();
+
+</script>
 </body>
 </html>
