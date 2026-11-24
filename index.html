@@ -18502,7 +18502,7 @@ function _pwaIconSvg192() {
 
 .main.presencial-active #workspaceToolbar{position:static!important}
 #weekGrid .day-head,#eadGrid .day-head{position:static!important}
-#weekGrid,#eadGrid{grid-template-columns:repeat(var(--planner-days,5),minmax(180px,1fr));overflow:auto;align-items:start;scrollbar-gutter:stable;padding-bottom:12px}
+#weekGrid,#eadGrid{grid-template-columns:repeat(var(--planner-days,5),minmax(0,1fr));overflow:visible;max-height:none!important;align-items:start;padding-bottom:12px}
 .planner-fixed-days{display:grid;grid-template-columns:repeat(var(--planner-days,5),minmax(180px,1fr));gap:12px;overflow:hidden;box-sizing:border-box;margin-bottom:8px;flex-shrink:0}
 .planner-fixed-days .day-head{position:static!important;margin:0;min-width:0;border-radius:14px;padding:10px 8px;align-self:stretch}
 .planner-fixed-days .day-name{text-transform:uppercase;font-size:12px}
@@ -18525,6 +18525,55 @@ function _pwaIconSvg192() {
 .planner-discipline-settings{padding:20px;border:1px solid var(--border,#ddd);border-radius:14px;margin-bottom:20px}.planner-discipline-settings p{font-size:12px;color:var(--text3)}
 .planner-discipline-row{display:grid;grid-template-columns:minmax(100px,1fr) 90px 50px;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border,#eee);font-size:12px}.planner-discipline-row input{min-width:0;width:100%;box-sizing:border-box;border:1px solid #ccd3df;border-radius:6px;padding:6px}.planner-discipline-row input[type=color]{height:32px;padding:3px}
 @media print{#weekGrid,#eadGrid{max-height:none!important;overflow:visible!important}.planner-day-edit,.planner-quick-tools{display:none!important}}
+
+/* Uma única rolagem para toda a página; o cabeçalho não cobre os módulos. */
+.planner-fixed-days{grid-template-columns:repeat(var(--planner-days,5),minmax(0,1fr));gap:10px;margin-bottom:6px}
+.planner-fixed-days .day-head{padding:7px 6px;border-radius:10px}
+.planner-fixed-days .day-date{font-size:12px;margin:2px 0 0}
+#workspaceToolbar{padding:8px 10px!important;gap:8px!important;margin-bottom:8px!important;position:static!important}
+#workspaceToolbar .toolbar-left{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.planner-quick-tools{margin-top:0;gap:4px}
+#workspaceToolbar .btn,#workspaceToolbar .nav-btn{padding:6px 10px;font-size:11px;min-height:30px}
+#workspaceToolbar .week-label{min-width:105px!important;font-size:12px}
+#workspaceToolbar .toolbar-right{gap:5px!important}
+#workspaceToolbar #toolbarMenu .toolbar-menu-item{width:100%;border:0;border-radius:5px;text-align:left;box-shadow:none;padding:9px 12px;font-size:12px;margin:0}
+.planning-page-head{display:none!important}
+.planning-consult-shell{gap:6px!important;margin-bottom:8px!important}
+.planning-summary-grid{display:flex!important;flex-wrap:wrap;gap:6px!important}
+.planning-summary-card{display:flex;align-items:center;gap:6px;min-height:0!important;padding:5px 9px!important;border-radius:7px!important;background:#fff!important}
+.planning-summary-num{font-size:14px!important;margin:0!important}
+.planning-summary-label{font-size:10px!important;text-transform:none!important;letter-spacing:0!important}
+.planning-filter-panel{padding:6px 8px!important;gap:6px!important;border-radius:10px!important}
+.planning-filter-panel .form-input{height:32px;padding:5px 10px;font-size:12px}
+.planning-filter-panel .btn{padding:6px 10px;font-size:11px}
+.planner-discipline-settings{max-width:1000px;box-sizing:border-box;padding:14px}
+#plannerDisciplineRows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px}
+.planner-discipline-row{grid-template-columns:minmax(100px,1fr) 64px 38px;gap:8px;padding:7px 0;font-size:11px}
+.planner-discipline-row input{padding:5px}.planner-discipline-row input[type=color]{height:28px}
+#modalOverlay .modal{width:min(800px,calc(100vw - 24px))}
+#modalOverlay .modal-body{gap:0!important}
+#modalOverlay .modal-body>*{order:initial!important}
+#modalOverlay .form-group{margin-bottom:12px}
+#modalOverlay .form-input{padding:9px 12px;min-height:36px}
+#modalOverlay .form-label{font-size:11px;margin-bottom:5px}
+#modalOverlay #tagButtonsContainer .tag-toggle{font-size:11px!important;padding:6px 10px!important}
+#modalOverlay .planner-form-section{margin:4px 0 7px!important;padding:10px 12px;border-radius:10px}
+#modalOverlay .planner-form-section>summary{cursor:pointer;font-size:12px;min-height:20px!important;margin-bottom:0!important;gap:8px}
+#modalOverlay .planner-form-section>summary::before{content:'›';font-size:19px;color:#52627a;line-height:1}
+#modalOverlay .planner-form-section[open]>summary::before{transform:rotate(90deg)}
+#modalOverlay .planner-form-section>summary:focus-visible{outline:2px solid #1d4ed8!important;outline-offset:4px}
+#modalOverlay .planner-form-section[open]>summary{margin-bottom:12px!important}
+#modalOverlay .planner-form-section:not([open])>*:not(summary){display:none!important}
+#modalOverlay .modal-head{padding:16px 20px}
+#modalOverlay .modal-foot{padding:12px 18px;gap:6px}
+#modalOverlay .modal-foot .btn{font-size:12px;padding:8px 11px}
+@media(max-width:700px){
+ #plannerDisciplineRows{grid-template-columns:1fr}
+ .planner-fixed-days .day-name{font-size:10px}
+ #weekGrid,#eadGrid,.planner-fixed-days{column-gap:5px!important}
+ .planning-filter-group,.planning-filter-group.compact{min-width:110px!important;flex:1 1 110px!important}
+ .planning-summary-label{font-size:9px!important}
+}
 
 </style><script>
 // Acesso às opções de sincronização pelo indicador do cabeçalho.
@@ -18995,25 +19044,6 @@ function plannerCheckDay(key) {
   const event=plannerDayEvents(key);
   return !event.blocked || confirm(fmtDate(new Date(key+'T12:00:00'))+' — '+event.labels.join(', ')+'. Este dia está marcado como sem aula. Deseja mesmo planejar nele?');
 }
-function openPlannerDay(date=fmtDateKey(getWeekDates(state.weekOffset)[0])) {
-  if(isProfessorMode())return;
-  const event=plannerDayEvents(date);
-  const dialog=plannerDialog('plannerDayDialog','Marcar dia no planejamento',
-    '<label class="form-group">Data<input class="form-input" type="date" id="plannerEventDate" value="'+date+'"></label><label class="form-group">Título<input class="form-input" id="plannerEventTitle" placeholder="Ex.: confraternização da turma"></label><label class="form-group">Tipo<select class="form-input" id="plannerEventType"><option value="confraternizacao">Confraternização</option><option value="feriado">Feriado local</option><option value="recesso">Recesso / sem aula</option><option value="outro">Outro evento</option></select></label><label><input type="checkbox" id="plannerEventNoClass"> Não haverá aula neste dia</label><p>Para ocupar apenas um horário, crie um módulo e marque a etiqueta Confraternização. Os eventos do dia também aparecem no Calendário.</p><button class="btn btn-primary" id="plannerEventSave">Salvar dia</button>'+
-    (event.blocked?'<button class="btn btn-outline" id="plannerDayException">Haverá aula nesta data (exceção)</button>':''));
-  dialog.querySelector('#plannerEventType').onchange=event=>{dialog.querySelector('#plannerEventNoClass').checked=['feriado','recesso'].includes(event.target.value);};
-  dialog.querySelector('#plannerEventSave').onclick=()=>{
-    const key=dialog.querySelector('#plannerEventDate').value,title=dialog.querySelector('#plannerEventTitle').value.trim();
-    if(!key||!title)return showToast('Preencha a data e o título.',true);
-    if(commitProductivity('marcação de dia',()=>{(state.eventos||= []).push({id:'planner_'+Date.now().toString(36),data:key,titulo:title,tipo:dialog.querySelector('#plannerEventType').value,semAula:dialog.querySelector('#plannerEventNoClass').checked});if(state.planningDayOverrides)delete state.planningDayOverrides[key];})){
-      dialog.close();render();renderEad();showToast('Dia marcado. Você pode editar o evento na aba Calendário.');
-    }
-  };
-  dialog.querySelector('#plannerDayException')?.addEventListener('click',()=>{
-    if(commitProductivity('exceção de dia letivo',()=>{(state.planningDayOverrides||= {})[date]=true;})){dialog.close();render();renderEad();}
-  });
-}
-
 const plannerTypesOriginal=getTiposAula;
 getTiposAula=function(){const types=plannerTypesOriginal();return types.some(type=>type.id==='confraternizacao')?types:[...types,{id:'confraternizacao',nome:'Confraternização',cor:'#c02685'}];};
 TIPO_LABELS.confraternizacao='Confraternização';
@@ -19071,7 +19101,7 @@ const plannerConfigOriginal=renderConfiguracoes;
 renderConfiguracoes=function(...args){
   const result=plannerConfigOriginal(...args);if(isProfessorMode())return result;
   const section=document.createElement('section');section.className='planner-discipline-settings';
-  section.innerHTML='<h3>Siglas e cores das disciplinas</h3><p>A cor discreta e a sigla aparecem nos cards. As alterações são salvas automaticamente.</p><div id="plannerDisciplineRows"></div><p>Feriados nacionais são indicados automaticamente. Cadastre feriados municipais, recessos e eventos pelo botão Marcar dia ou na aba Calendário. <a href="https://agenciagov.ebc.com.br/noticias/202512/confira-o-calendario-oficial-de-feriados-nacionais-e-pontos-facultativos-em-2026" target="_blank" rel="noopener">Calendário nacional de referência</a>.</p>';
+  section.innerHTML='<h3>Siglas e cores das disciplinas</h3><p>A cor discreta e a sigla aparecem nos cards. As alterações são salvas automaticamente.</p><div id="plannerDisciplineRows"></div><p>Feriados nacionais são indicados automaticamente. Cadastre feriados municipais, recessos e eventos na aba Calendário. <a href="https://agenciagov.ebc.com.br/noticias/202512/confira-o-calendario-oficial-de-feriados-nacionais-e-pontos-facultativos-em-2026" target="_blank" rel="noopener">Calendário nacional de referência</a>.</p>';
   for(const name of plannerDisciplineNames()){
     const style=plannerDisciplineStyle(name),row=document.createElement('label');row.className='planner-discipline-row';
     const text=document.createElement('span');text.textContent=name;const code=document.createElement('input');code.value=style.code;code.maxLength=8;code.setAttribute('aria-label','Sigla de '+name);code.onchange=()=>plannerSaveDiscipline(name,'code',code.value);
@@ -19094,7 +19124,6 @@ function plannerEnhanceBoard(kind){
     if(head){
       head.querySelector('.day-name').textContent=plannerDayName(date);
       if(event.labels.length){const badge=document.createElement('div');badge.className='planner-day-marker';badge.textContent=(event.blocked?'Sem aula · ':'')+event.labels.join(' · ');head.append(badge);}
-      if(!isProfessorMode()){const button=document.createElement('button');button.type='button';button.className='planner-day-edit';button.textContent='Marcar dia';button.onclick=()=>openPlannerDay(key);head.append(button);}
       heads.append(head);
     }
     column.classList.toggle('planner-no-class',event.blocked);
@@ -19110,7 +19139,7 @@ function plannerEnhanceBoard(kind){
   requestAnimationFrame(plannerFitBoards);
 }
 function plannerFitBoards(){
-  for(const id of ['weekGrid','eadGrid']){const grid=document.getElementById(id);if(!grid?.getClientRects().length)continue;const top=grid.getBoundingClientRect().top;grid.style.maxHeight=Math.max(220,innerHeight-top-24)+'px';const heads=document.getElementById(id+'FixedHeads');if(heads)heads.style.paddingRight=(grid.offsetWidth-grid.clientWidth)+'px';}
+  for(const id of ['weekGrid','eadGrid']){const grid=document.getElementById(id);if(grid){grid.style.maxHeight='none';document.getElementById(id+'FixedHeads')?.style.removeProperty('padding-right');}}
 }
 const plannerRenderOriginal=render;
 render=function(...args){const result=plannerRenderOriginal(...args);plannerEnhanceBoard('presencial');return result;};
@@ -19121,7 +19150,7 @@ setView=function(...args){const result=plannerSetViewOriginal(...args);document.
 window.addEventListener('resize',plannerFitBoards);
 new ResizeObserver(plannerFitBoards).observe(document.getElementById('workspaceToolbar'));
 const plannerQuickTools=document.createElement('div');plannerQuickTools.className='planner-quick-tools';
-plannerQuickTools.innerHTML='<button class="btn btn-outline" onclick="openPlannerDates()">▦ Datas</button><button class="btn btn-outline planner-admin-tool" onclick="openPlannerDay()">Marcar dia</button><button class="btn btn-outline planner-admin-tool" onclick="undoPlannerChange({skipConfirm:true})" title="Desfazer a última alteração salva (Ctrl+Z)">↶ Desfazer</button>';
+plannerQuickTools.innerHTML='<button class="btn btn-outline" onclick="openPlannerDates()">▦ Datas</button><button class="btn btn-outline planner-admin-tool" onclick="undoPlannerChange({skipConfirm:true})" title="Desfazer a última alteração salva (Ctrl+Z)">↶ Desfazer</button>';
 document.getElementById('weekToolbarNav').after(plannerQuickTools);
 plannerQuickTools.hidden=!['presencial','ead'].includes(state.view);
 if(isProfessorMode())plannerQuickTools.querySelectorAll('.planner-admin-tool').forEach(el=>el.remove());
@@ -19130,6 +19159,36 @@ document.addEventListener('keydown',event=>{
   if(event.target.closest('input,textarea,select,[contenteditable="true"]')||document.querySelector('dialog[open]'))return;
   event.preventDefault();undoPlannerChange({skipConfirm:true});
 });
+// Deixe as ações de uso eventual no menu, preservando seus controles e permissões.
+const plannerMoreMenu=document.getElementById('toolbarMenu');
+for(const id of ['weeklyRoutineBtn','planningToolsBtn','presencialSelectBtn','chatImportBtn','btnPreviewProfessor','btnGerarProfessor','btnCarregarNuvem']){
+  const button=document.getElementById(id);if(!button)continue;
+  button.classList.add('toolbar-menu-item');plannerMoreMenu.append(button);
+  button.addEventListener('click',()=>closeToolbarMenu());
+}
+const plannerPrintButton=document.querySelector('#workspaceToolbar [onclick="openPlanningPrintDialog()"]');
+if(plannerPrintButton){plannerPrintButton.classList.add('toolbar-menu-item');plannerMoreMenu.append(plannerPrintButton);plannerPrintButton.addEventListener('click',()=>closeToolbarMenu());}
+
+function plannerCompactModuleForm(){
+  const body=document.querySelector('#modalOverlay .modal-body');
+  function group(id){return document.getElementById(id)?.closest('.form-group');}
+  function section(title){const details=document.createElement('details');details.className='module-extra-fields planner-form-section';const summary=document.createElement('summary');summary.textContent=title;details.append(summary);body.append(details);return details;}
+  const library=body.querySelector('.module-library-details');library.classList.add('planner-form-section');library.querySelector('summary').textContent='Biblioteca · tópico e materiais';library.prepend(group('fTopic'));library.prepend(library.querySelector('summary'));
+  const prep=section('Atividade, preparo e impressão');prep.append(group('fAtiv'),body.querySelector('.module-prep-fields'));
+  const advanced=document.getElementById('fAdvanced');advanced.classList.add('planner-form-section');advanced.querySelector('summary').textContent='Descrição, avaliação e acompanhamento';advanced.append(group('fObs'));
+  const models=section('Modelos e repetição em outros módulos');models.append(group('fTemplate'),document.getElementById('fCopyModuleGroup'),document.getElementById('fBatchGroup'));
+  body.append(library,prep,advanced,models);
+  const baseGroups=['fDisc','fTitle'].map(group);const tags=document.getElementById('tagButtonsContainer').closest('.form-group');
+  body.querySelector('.form-row').after(...baseGroups,tags);
+  const observer=new MutationObserver(()=>{
+    if(!document.getElementById('modalOverlay').classList.contains('open'))return;
+    body.querySelectorAll('.planner-form-section').forEach(details=>details.open=false);
+    body.querySelectorAll('.planner-tag-saved').forEach(note=>note.remove());
+    body.scrollTop=0;
+  });
+  observer.observe(document.getElementById('modalOverlay'),{attributes:true,attributeFilter:['class']});
+}
+plannerCompactModuleForm();
 rebuildTagButtons();render();renderEad();
 
 </script>
