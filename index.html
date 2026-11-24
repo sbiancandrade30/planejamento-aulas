@@ -11156,6 +11156,8 @@ function renderOcorrencias() {
 }
 
 // --- WEEK UTILS ------------------------------------------
+function plannerDayName(date) { return ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][date.getDay()]; }
+function plannerDateIndex(date) { return Math.max(0,getWeekDates(state.weekOffset).findIndex(d=>fmtDateKey(d)===fmtDateKey(date))); }
 function getWeekDates(offset) {
   const now = new Date();
   const day = now.getDay();
@@ -11902,7 +11904,7 @@ function renderPlanningConsult(kind = 'presencial') {
   const target = document.getElementById(kind === 'ead' ? 'planningEadConsult' : 'planningPresencialConsult');
   if (!target) return;
   const dates = getWeekDates(state.weekOffset);
-  const weekLabel = `${fmtDate(dates[0])} a ${fmtDate(dates[4])}`;
+  const weekLabel = `${fmtDate(dates[0])} a ${fmtDate(dates[dates.length - 1])}`;
   const counts = countPlanningWeek(kind);
   const active = planningHasActiveFilters(kind);
 
@@ -12136,7 +12138,7 @@ function render() {
   if(presencialSelectionContext!==getActiveClassId()+'_'+state.weekOffset)clearPresencialSelection();
   const dates = getWeekDates(state.weekOffset);
   renderPlanningConsult('presencial');
-  const first = dates[0], last = dates[4];
+  const first = dates[0], last = dates[dates.length - 1];
   document.getElementById('weekLabel').textContent =
     `${fmtDate(first)} a ${fmtDate(last)}`;
 
@@ -12155,7 +12157,7 @@ function render() {
     col.addEventListener('dragleave', e=>{if(!col.contains(e.relatedTarget)) col.classList.remove('drag-over');});
     col.addEventListener('drop', e=>{col.classList.remove('drag-over'); handlePresencialDrop(e,dateKey,dayModuleCount+1);});
     col.innerHTML = `<div class="day-head ${isT?'day-today':''}">
-      <div class="day-name">${DAY_NAMES[di]}</div>
+      <div class="day-name">${plannerDayName(date)}</div>
       <div class="day-date">${fmtDate(date)}</div>
     </div>`;
 
@@ -12265,7 +12267,7 @@ function openDetail(key) {
   const d = new Date(dateStr + 'T12:00:00');
 
   document.getElementById('detailMeta').textContent =
-    `Módulo ${mNum} - ${DAY_NAMES[d.getDay()-1]}, ${fmtDate(d)}`;
+    `Módulo ${mNum} - ${plannerDayName(d)}, ${fmtDate(d)}`;
   document.getElementById('detailTitle').textContent = mod.title || '-';
 
   const tiposAulaD = getTiposAula();
@@ -12352,7 +12354,7 @@ function editModule(key = currentDetailKey) {
   const [dateStr, mNum] = key.split('_');
   const d = new Date(dateStr + 'T12:00:00');
 
-  document.getElementById('fDay').value = d.getDay() - 1;
+  document.getElementById('fDay').value = plannerDateIndex(d);
   document.getElementById('fMod').value = mNum;
   document.getElementById('fTitle').value = mod.title || '';
   document.getElementById('fDisc').value = mod.disc || '';
@@ -12399,7 +12401,7 @@ function openPlanningPrintDialog(){
     document.body.appendChild(overlay);
   }
   const dates=getWeekDates(state.weekOffset), wrap=document.getElementById('planningPrintDays');
-  wrap.innerHTML=dates.map((d,i)=>`<label class="check-line"><input type="checkbox" value="${i}" checked> ${DAY_NAMES[i]} - ${fmtDate(d)}</label>`).join('');
+  wrap.innerHTML=dates.map((d,i)=>`<label class="check-line"><input type="checkbox" value="${i}" checked> ${plannerDayName(d)} - ${fmtDate(d)}</label>`).join('');
   overlay.classList.add('open');
 }
 function closePlanningPrintDialog(){ document.getElementById('planningPrintOverlay')?.classList.remove('open'); }
@@ -12486,13 +12488,13 @@ function printSelectedPlanning(mode='week'){
   const weeklySlotCount=Math.max(7,...selectedDates.map(({d})=>Math.max(getClassModuleCountForDate(d),existingModuleCountFor(d))));
   const weeklySlotsFor=(date)=>{const key=fmtDateKey(date);return Array.from({length:weeklySlotCount},(_,i)=>state.modules[`${key}_${i+1}`]);};
   const printLogoHtml=`<img class="print-logo" src="${escapeHtml(printLogo)}" onerror="this.onerror=null;this.src='${escapeHtml(printLogoFallback)}'" alt="Logo SENAI Planner">`;
-  const overview=`<section class="weekly-page"><header class="print-header"><div><h1>Planejamento semanal</h1><p>${escapeHtml(document.getElementById('weekLabel')?.textContent||'')}</p></div><div class="print-brand">${printLogoHtml}</div></header><div class="week-grid">${selectedDates.map(({i,d})=>{const slots=weeklySlotsFor(d);return `<article class="week-column"><div class="week-column-head"><h2>${DAY_NAMES[i]}</h2><span>${fmtDate(d)}</span></div>${slots.map((m,index)=>moduleShortHtml(m,index)).join('')}</article>`}).join('')}</div></section>`;
+  const overview=`<section class="weekly-page"><header class="print-header"><div><h1>Planejamento semanal</h1><p>${escapeHtml(document.getElementById('weekLabel')?.textContent||'')}</p></div><div class="print-brand">${printLogoHtml}</div></header><div class="week-grid">${selectedDates.map(({i,d})=>{const slots=weeklySlotsFor(d);return `<article class="week-column"><div class="week-column-head"><h2>${plannerDayName(d)}</h2><span>${fmtDate(d)}</span></div>${slots.map((m,index)=>moduleShortHtml(m,index)).join('')}</article>`}).join('')}</div></section>`;
   const dailyModuleHtml=(mod,index)=>{
     const assessment=isAssessment(mod);
     const assessmentNames=tags(mod).filter(tag=>assessmentTags.includes(normalizeMaterialText(tag))).join(', ');
     return `<article class="daily-module"><div class="daily-module-head"><div><span class="print-kicker">MÓDULO ${index+1}${mod.disc?' · '+escapeHtml(mod.disc):''}</span><h2>${escapeHtml(mod.title||'')}</h2></div></div><div class="daily-grid"><section class="daily-block"><h3>O que será feito</h3><p>${filledText(mod.teoria)}</p></section><section class="daily-block"><h3>Atividade prática</h3><p>${filledText(mod.ativ)}</p></section><section class="daily-block ${assessment?'assessment-block':''}"><h3>Avaliação / entregável${assessment?' · '+escapeHtml(assessmentNames):''}</h3><p>${filledText(mod.aval)}</p></section><section class="daily-block"><h3>Materiais da Biblioteca</h3>${materialsHtml(mod)}</section><section class="daily-block"><h3>Observações</h3><p>${filledText(mod.obs)}</p></section><section class="daily-block"><h3>Ocorrências, ajustes e remanejamento</h3><p>${filledText(mod.executionObs)}</p></section></div></article>`;
   };
-  const daily=selectedDates.map(({i,d})=>{const mods=actualModulesFor(d);const content=mods.length?mods.map(dailyModuleHtml).join(''):'<div class="daily-empty">Nenhum módulo cadastrado neste dia.</div>';return `<section class="daily-page"><header class="print-header"><div><h1>${DAY_NAMES[i]} - ${fmtDate(d)}</h1><p>Planejamento detalhado do dia</p></div><div class="print-brand">${printLogoHtml}</div></header>${content}</section>`}).join('');
+  const daily=selectedDates.map(({i,d})=>{const mods=actualModulesFor(d);const content=mods.length?mods.map(dailyModuleHtml).join(''):'<div class="daily-empty">Nenhum módulo cadastrado neste dia.</div>';return `<section class="daily-page"><header class="print-header"><div><h1>${plannerDayName(d)} - ${fmtDate(d)}</h1><p>Planejamento detalhado do dia</p></div><div class="print-brand">${printLogoHtml}</div></header>${content}</section>`}).join('');
   const documentTitle=onlyDaily?'Planejamento diário':'Planejamento semanal';
   const documentBody=onlyDaily?daily:overview;
   const w=window.open('','_blank'); if(!w){showToast('Permita pop-ups para gerar a impressão.',true);return;} w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${documentTitle}</title><style>
@@ -12602,7 +12604,7 @@ function duplicateModule(key = currentDetailKey) {
   } else {
     const [dateStr, mNum] = key.split('_');
     const d = new Date(dateStr + 'T12:00:00');
-    document.getElementById('fDay').value = Math.max(0, d.getDay() - 1);
+    document.getElementById('fDay').value = plannerDateIndex(d);
     document.getElementById('fMod').value = mNum || '1';
   }
 
@@ -12644,7 +12646,7 @@ function moduleCopyLabel(key, mod, kind='presencial') {
   const dateStr = kind === 'ead' ? cleanKey.split('_')[1] : cleanKey.slice(0, cleanKey.lastIndexOf('_'));
   const number = kind === 'ead' ? cleanKey.split('_')[2] : cleanKey.slice(cleanKey.lastIndexOf('_') + 1);
   const date = new Date(`${dateStr}T12:00:00`);
-  const day = Number.isNaN(date.getTime()) ? '' : `${DAY_NAMES[Math.max(0, date.getDay() - 1)]} ${fmtDate(date)}`;
+  const day = Number.isNaN(date.getTime()) ? '' : `${plannerDayName(date)} ${fmtDate(date)}`;
   const title = kind === 'ead' ? (mod?.disc || mod?.aula || 'Tarefa EaD') : (mod?.title || 'Módulo sem título');
   return `${kind === 'ead' ? 'Módulo EaD' : 'Módulo'} ${number || ''} — ${day} — ${title}`;
 }
@@ -12879,7 +12881,7 @@ function openModal(dateKey, modNum) {
   }
   if (dateKey) {
     const d = new Date(dateKey + 'T12:00:00');
-    document.getElementById('fDay').value = d.getDay() - 1;
+    document.getElementById('fDay').value = plannerDateIndex(d);
   }
   if (modNum) document.getElementById('fMod').value = modNum;
   delete document.getElementById('fDisc').dataset.suggested;
@@ -13602,7 +13604,7 @@ function renderEad() {
     col.className = 'day-col';
     const isT = isToday(date);
     col.innerHTML = `<div class="day-head ${isT?'day-today':''}">
-      <div class="day-name">${DAY_NAMES[di]}</div>
+      <div class="day-name">${plannerDayName(date)}</div>
       <div class="day-date">${fmtDate(date)}</div>
     </div>`;
 
@@ -13655,7 +13657,7 @@ function buildComunicado(dates) {
     }
     if (dayMods.length === 0) return;
     hasAny = true;
-    const dayAbbr = ['seg','ter','qua','qui','sex'][di];
+    const dayAbbr = plannerDayName(date).slice(0,3).toLowerCase();
     const dateStr = fmtDate(date);
     dayMods.forEach(mod => {
       const texto = montarTexto(getEadTipos(mod), mod.desc, mod.disc, mod.aula, `${dateStr} ${dayAbbr}`);
@@ -13670,7 +13672,7 @@ function buildComunicado(dates) {
 
   const semana = (() => {
     const d = getWeekDates(state.weekOffset);
-    return `${fmtDate(d[0])} a ${fmtDate(d[4])}`;
+    return `${fmtDate(d[0])} a ${fmtDate(d[d.length - 1])}`;
   })();
 
   const textoFinal = `Boa tarde, segue o cronograma das atividades EAD dessa semana (${semana}):\n\n${lines.join('\n').trim()}\n\nAs atividades estão no Classroom. Qualquer dúvida, me chamem por aqui.`;
@@ -13729,7 +13731,7 @@ function openEadDetail(key) {
   const parts = key.split('_'); // ead_dateStr_m
   const dateStr = parts[1]; const mNum = parts[2];
   const d = new Date(dateStr + 'T12:00:00');
-  document.getElementById('eadDetailMeta').textContent = `Módulo ${mNum} EaD · ${DAY_NAMES[d.getDay()-1]}, ${fmtDate(d)}`;
+  document.getElementById('eadDetailMeta').textContent = `Módulo ${mNum} EaD · ${plannerDayName(d)}, ${fmtDate(d)}`;
   document.getElementById('eadDetailTitle').textContent = mod.disc || 'Livre / Curso externo';
   const tagHtml = getEadTipos(mod).map(tipo => `<span class="tag tag-${tipo}">${TIPO_LABELS[tipo]||tipo}</span>`).join('');
   document.getElementById('eadDetailTags').innerHTML = `<div class="tags">${tagHtml}</div>`;
@@ -13759,7 +13761,7 @@ function editEadModule() {
   const parts = currentEadKey.split('_');
   const dateStr = parts[1]; const mNum = parts[2];
   const d = new Date(dateStr + 'T12:00:00');
-  document.getElementById('efDay').value = d.getDay() - 1;
+  document.getElementById('efDay').value = plannerDateIndex(d);
   document.getElementById('efMod').value = mNum;
   document.getElementById('efDisc').value = mod.disc || '';
   renderEadTopicSelect(mod.topicId || '', mod.topic || '');
@@ -13789,7 +13791,7 @@ function duplicateEadModule() {
     const dateStr = parts[1];
     const mNum = parts[2];
     const d = new Date(dateStr + 'T12:00:00');
-    document.getElementById('efDay').value = Math.max(0, d.getDay() - 1);
+    document.getElementById('efDay').value = plannerDateIndex(d);
     document.getElementById('efMod').value = mNum || '1';
   }
 
@@ -13888,7 +13890,7 @@ function openEadModal(dateKey, modNum) {
   }
   if (dateKey) {
     const d = new Date(dateKey + 'T12:00:00');
-    document.getElementById('efDay').value = d.getDay() - 1;
+    document.getElementById('efDay').value = plannerDateIndex(d);
   }
   if (modNum) document.getElementById('efMod').value = modNum;
   document.getElementById('eadModalOverlay').classList.add('open');
@@ -17235,7 +17237,7 @@ function rememberPlannerUndo(previous, next) {
     try { sessionStorage.setItem('planner_undo_v1', JSON.stringify(plannerUndoSnapshot)); } catch (_) {}
   } catch (_) {}
 }
-function undoPlannerChange() {
+function undoPlannerChange(options = {}) {
   if (isProfessorMode()) return;
   let snapshot = plannerUndoSnapshot;
   if (!snapshot) { try { snapshot = JSON.parse(sessionStorage.getItem('planner_undo_v1')); } catch (_) {} }
@@ -17245,7 +17247,7 @@ function undoPlannerChange() {
   if (document.querySelector('.modal-overlay.open:not(#productivityOverlay), .ead-modal-overlay.open')) {
     showToast('Feche o formulário em edição antes de desfazer.', true); return;
   }
-  if (!confirm('Desfazer: '+snapshot.label+'? As informações anteriores serão restauradas.')) return;
+  if (!options.skipConfirm && !confirm('Desfazer: '+snapshot.label+'? As informações anteriores serão restauradas.')) return;
   const current = classClone(state, {}), view = state.view, week = state.weekOffset;
   const selections = Object.fromEntries(['freqDisc','npDisc','neadDisc'].map(id=>[id,document.getElementById(id).value]));
   plannerUndoPaused = true;
@@ -18498,6 +18500,32 @@ function _pwaIconSvg192() {
 .planner-card-menu button{display:block;width:100%;border:0;border-radius:5px;background:transparent;color:#263244;text-align:left;padding:9px 11px;cursor:pointer;font:13px/1.3 system-ui,sans-serif}
 .planner-card-menu button:hover,.planner-card-menu button:focus-visible{background:#eef3fa;outline:none}.planner-card-menu button.danger{color:#b93232}
 
+.main.presencial-active #workspaceToolbar{position:static!important}
+#weekGrid .day-head,#eadGrid .day-head{position:static!important}
+#weekGrid,#eadGrid{grid-template-columns:repeat(var(--planner-days,5),minmax(180px,1fr));overflow:auto;align-items:start;scrollbar-gutter:stable;padding-bottom:12px}
+.planner-fixed-days{display:grid;grid-template-columns:repeat(var(--planner-days,5),minmax(180px,1fr));gap:12px;overflow:hidden;box-sizing:border-box;margin-bottom:8px;flex-shrink:0}
+.planner-fixed-days .day-head{position:static!important;margin:0;min-width:0;border-radius:14px;padding:10px 8px;align-self:stretch}
+.planner-fixed-days .day-name{text-transform:uppercase;font-size:12px}
+.planner-fixed-days .day-date{font-size:17px;margin:4px 0}
+.planner-day-marker{font-size:10px;color:#a33417;line-height:1.4;overflow-wrap:anywhere}
+.planner-day-edit{font:inherit;font-size:10px;border:0;background:transparent;color:var(--text3);cursor:pointer;padding:2px 5px}
+.planner-holiday-warning{margin:0 0 8px;padding:10px;background:#fff2e8;color:#97340e;border:1px solid #f5c6a9;border-radius:8px;font-size:11px;line-height:1.45}
+.planner-no-class{background:repeating-linear-gradient(135deg,transparent,transparent 10px,#f6e8dd50 10px,#f6e8dd50 20px);border-radius:10px}
+.planner-discipline-chip{display:inline-block;font-size:10px;font-weight:700;line-height:1.4;padding:3px 5px;border:1px solid;border-radius:5px;letter-spacing:.04em;white-space:nowrap}
+.planner-quick-tools{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.planner-quick-tools[hidden]{display:none}
+.planner-tag-saved{display:block;color:#15803d;font-size:11px;margin-top:6px}
+.tag-confraternizacao,.ead-type-toggle[data-tipo="confraternizacao"]{color:#a21c70!important;background:#fce7f3!important;border-color:#f5b9d9!important}
+.planner-dialog{color:var(--text,#202633);background:var(--surface,#fff);width:min(480px,calc(100vw - 32px));max-height:85vh;overflow:auto;box-sizing:border-box;border:1px solid #d9dde5;border-radius:16px;padding:22px;font:14px/1.5 inherit}
+.planner-dialog::backdrop{background:#10182866}.planner-dialog h2{font-size:20px;margin:0}.planner-dialog p{font-size:12px;color:var(--text3,#667085)}
+.planner-dialog-heading,.planner-calendar-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.planner-dialog-actions{display:flex;gap:8px;flex-wrap:wrap}.planner-dialog .form-group{margin:14px 0}.planner-dialog label{display:block}
+.planner-calendar-days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}.planner-calendar-days span{font-size:11px;color:#667085;padding:6px}
+.planner-calendar-days button{font:inherit;aspect-ratio:1;border:1px solid transparent;background:transparent;color:inherit;border-radius:50%;cursor:pointer}
+.planner-calendar-days button:hover{background:#eaf0ff}.planner-calendar-days button.outside{opacity:.45}.planner-calendar-days button.selected{background:#1d4ed8;color:#fff;opacity:1}.planner-calendar-days button.holiday{text-decoration:underline;text-decoration-color:#dc2626;text-underline-offset:4px}
+.planner-discipline-settings{padding:20px;border:1px solid var(--border,#ddd);border-radius:14px;margin-bottom:20px}.planner-discipline-settings p{font-size:12px;color:var(--text3)}
+.planner-discipline-row{display:grid;grid-template-columns:minmax(100px,1fr) 90px 50px;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border,#eee);font-size:12px}.planner-discipline-row input{min-width:0;width:100%;box-sizing:border-box;border:1px solid #ccd3df;border-radius:6px;padding:6px}.planner-discipline-row input[type=color]{height:32px;padding:3px}
+@media print{#weekGrid,#eadGrid{max-height:none!important;overflow:visible!important}.planner-day-edit,.planner-quick-tools{display:none!important}}
+
 </style><script>
 // Acesso às opções de sincronização pelo indicador do cabeçalho.
 function instalarComparacaoPlanner() {
@@ -18649,7 +18677,7 @@ savePresencialMove = function() {
     const keys = presencialActionKeys();
     const date = chatImportDate(document.getElementById('presencialMoveDate').value);
     const day = new Date(date + 'T12:00:00');
-    if ([0,6].includes(day.getDay())) throw new Error('Escolha um dia de segunda a sexta.');
+    
     const slot = Number(document.getElementById('presencialMoveSlot').value);
     if (!Number.isInteger(slot) || slot < 1 || slot+keys.length-1 > 8) throw new Error('Escolha um módulo de destino válido.');
     const targets = keys.map((_,index) => date+'_'+(slot+index));
@@ -18848,7 +18876,7 @@ function openEadCardMove(key) {
       if (plannerDataFingerprint(state) !== fingerprint) throw new Error('Os dados mudaram. Abra o movimento novamente.');
       const date = chatImportDate(document.getElementById('eadCardMoveDate').value);
       const day = new Date(date + 'T12:00:00');
-      if ([0,6].includes(day.getDay())) throw new Error('Escolha um dia de segunda a sexta.');
+      
       const slot = Number(document.getElementById('eadCardMoveSlot').value);
       if (![1,2].includes(slot)) throw new Error('Escolha o módulo 1 ou 2.');
       const target = 'ead_' + date + '_' + slot;
@@ -18876,6 +18904,233 @@ const renderCardsEad = renderEad;
 renderEad = function(...args) { closePlannerCardMenu(); const result = renderCardsEad(...args); simplifyPlannerCards('ead'); return result; };
 render();
 renderEad();
+
+// Interface de planejamento: datas, identificação, dias sem aula e salvamento rápido.
+const plannerOriginalDates = getWeekDates;
+let plannerDateSelection = null;
+try { plannerDateSelection = JSON.parse(localStorage.getItem('planner_visible_dates_v1')); } catch (_) {}
+function plannerDayName(date) {
+  return ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][date.getDay()];
+}
+getWeekDates = function(offset) {
+  if (!['presencial','ead'].includes(state.view) || !plannerDateSelection?.dates?.length) return plannerOriginalDates(offset);
+  return plannerDateSelection.dates.map(key => {
+    const date = new Date(key+'T12:00:00');
+    date.setDate(date.getDate()+7*(offset-plannerDateSelection.offset));
+    return date;
+  });
+};
+function plannerDateIndex(date) {
+  return Math.max(0,getWeekDates(state.weekOffset).findIndex(item=>fmtDateKey(item)===fmtDateKey(date)));
+}
+function plannerStoreDates(dates) {
+  plannerDateSelection = dates?.length ? {dates:[...new Set(dates)].sort(),offset:state.weekOffset} : null;
+  if (plannerDateSelection) localStorage.setItem('planner_visible_dates_v1',JSON.stringify(plannerDateSelection));
+  else localStorage.removeItem('planner_visible_dates_v1');
+  clearPresencialSelection(); render(); renderEad();
+}
+const plannerTodayOriginal = goToPlanningToday;
+goToPlanningToday = function() { plannerStoreDates(null); plannerTodayOriginal(); };
+window.goToPlanningToday = goToPlanningToday;
+
+function plannerDialog(id,title,content) {
+  document.getElementById(id)?.remove();
+  const dialog=document.createElement('dialog'); dialog.id=id; dialog.className='planner-dialog';
+  dialog.innerHTML='<div class="planner-dialog-heading"><h2>'+title+'</h2><button type="button" class="btn btn-outline" aria-label="Fechar">×</button></div>'+content;
+  dialog.querySelector('button').onclick=()=>dialog.close();
+  document.body.append(dialog); dialog.showModal(); return dialog;
+}
+let plannerCalendarMonth, plannerCalendarPicked;
+function openPlannerDates() {
+  const dates=getWeekDates(state.weekOffset);
+  plannerCalendarPicked=new Set(dates.map(fmtDateKey));
+  plannerCalendarMonth=new Date(dates[0].getFullYear(),dates[0].getMonth(),1,12);
+  plannerDialog('plannerDatesDialog','Datas do planejamento',
+    '<p>Marque os dias que deseja visualizar, incluindo sábados e domingos. As setas do planejamento avançam ou voltam uma semana.</p><div id="plannerMiniCalendar"></div>'+ 
+    '<p id="plannerDatesCount" role="status"></p><div class="planner-dialog-actions"><button class="btn btn-outline" onclick="plannerCalendarPreset(5)">Semana útil</button><button class="btn btn-outline" onclick="plannerCalendarPreset(7)">Semana completa</button><button class="btn btn-outline" onclick="plannerCalendarPicked.clear();renderPlannerMiniCalendar()">Limpar seleção</button><button class="btn btn-primary" id="plannerApplyDates" onclick="plannerStoreDates([...plannerCalendarPicked]);document.getElementById(\'plannerDatesDialog\').close()">Mostrar datas</button></div>');
+  renderPlannerMiniCalendar();
+}
+function plannerCalendarPreset(count) {
+  const first=[...plannerCalendarPicked].sort()[0];
+  const date=first ? new Date(first+'T12:00:00') : new Date(plannerCalendarMonth);
+  date.setDate(date.getDate()-(date.getDay()+6)%7);
+  plannerCalendarPicked=new Set(Array.from({length:count},(_,i)=>{const d=new Date(date);d.setDate(d.getDate()+i);return fmtDateKey(d);}));
+  renderPlannerMiniCalendar();
+}
+function renderPlannerMiniCalendar() {
+  const el=document.getElementById('plannerMiniCalendar'); if(!el)return;
+  el.innerHTML='<div class="planner-calendar-nav"><button class="btn btn-outline" aria-label="Mês anterior">‹</button><strong>'+plannerCalendarMonth.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})+'</strong><button class="btn btn-outline" aria-label="Próximo mês">›</button></div><div class="planner-calendar-days"></div>';
+  el.querySelectorAll('button').forEach((button,i)=>button.onclick=()=>{plannerCalendarMonth.setMonth(plannerCalendarMonth.getMonth()+(i?1:-1));renderPlannerMiniCalendar();});
+  const grid=el.querySelector('.planner-calendar-days');
+  ['S','T','Q','Q','S','S','D'].forEach(text=>{const span=document.createElement('span');span.textContent=text;grid.append(span);});
+  const start=new Date(plannerCalendarMonth);start.setDate(1-(start.getDay()+6)%7);
+  for(let i=0;i<42;i++) {
+    const date=new Date(start);date.setDate(date.getDate()+i);const key=fmtDateKey(date),event=plannerDayEvents(key);
+    const button=document.createElement('button');button.type='button';button.textContent=date.getDate();
+    button.className=(date.getMonth()!==plannerCalendarMonth.getMonth()?'outside ':'')+(plannerCalendarPicked.has(key)?'selected ':'')+(event.blocked?'holiday':'');
+    button.setAttribute('aria-pressed',String(plannerCalendarPicked.has(key)));
+    button.setAttribute('aria-label',date.toLocaleDateString('pt-BR',{dateStyle:'full'})+(event.labels.length?' · '+event.labels.join(', '):''));
+    button.title=button.getAttribute('aria-label');
+    button.onclick=()=>{plannerCalendarPicked.has(key)?plannerCalendarPicked.delete(key):plannerCalendarPicked.add(key);renderPlannerMiniCalendar();};grid.append(button);
+  }
+  document.getElementById('plannerDatesCount').textContent=plannerCalendarPicked.size+' dias selecionados. Feriados aparecem sublinhados em vermelho.';
+  document.getElementById('plannerApplyDates').disabled=!plannerCalendarPicked.size;
+}
+
+function plannerNationalHoliday(key) {
+  const fixed={'01-01':'Confraternização Universal','04-21':'Tiradentes','05-01':'Dia do Trabalho','09-07':'Independência do Brasil','10-12':'Nossa Senhora Aparecida','11-02':'Finados','11-15':'Proclamação da República','11-20':'Consciência Negra','12-25':'Natal'};
+  if(fixed[key.slice(5)])return fixed[key.slice(5)];
+  // Algoritmo gregoriano para a Páscoa; a Paixão de Cristo ocorre dois dias antes.
+  const y=Number(key.slice(0,4)),a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),n=h+l-7*m+114;
+  const friday=new Date(y,Math.floor(n/31)-1,n%31+1,12);friday.setDate(friday.getDate()-2);
+  return key===fmtDateKey(friday)?'Paixão de Cristo':'';
+}
+function plannerDayEvents(key) {
+  const national=plannerNationalHoliday(key),events=(state.eventos||[]).filter(event=>event.data===key);
+  const override=state.planningDayOverrides?.[key];
+  const labels=[...new Set([national,...events.map(event=>event.titulo)].filter(Boolean))];
+  return {labels,blocked:override===true?false:!!national||events.some(event=>['feriado','recesso'].includes(event.tipo)||event.semAula===true)};
+}
+function plannerCheckDay(key) {
+  const event=plannerDayEvents(key);
+  return !event.blocked || confirm(fmtDate(new Date(key+'T12:00:00'))+' — '+event.labels.join(', ')+'. Este dia está marcado como sem aula. Deseja mesmo planejar nele?');
+}
+function openPlannerDay(date=fmtDateKey(getWeekDates(state.weekOffset)[0])) {
+  if(isProfessorMode())return;
+  const event=plannerDayEvents(date);
+  const dialog=plannerDialog('plannerDayDialog','Marcar dia no planejamento',
+    '<label class="form-group">Data<input class="form-input" type="date" id="plannerEventDate" value="'+date+'"></label><label class="form-group">Título<input class="form-input" id="plannerEventTitle" placeholder="Ex.: confraternização da turma"></label><label class="form-group">Tipo<select class="form-input" id="plannerEventType"><option value="confraternizacao">Confraternização</option><option value="feriado">Feriado local</option><option value="recesso">Recesso / sem aula</option><option value="outro">Outro evento</option></select></label><label><input type="checkbox" id="plannerEventNoClass"> Não haverá aula neste dia</label><p>Para ocupar apenas um horário, crie um módulo e marque a etiqueta Confraternização. Os eventos do dia também aparecem no Calendário.</p><button class="btn btn-primary" id="plannerEventSave">Salvar dia</button>'+
+    (event.blocked?'<button class="btn btn-outline" id="plannerDayException">Haverá aula nesta data (exceção)</button>':''));
+  dialog.querySelector('#plannerEventType').onchange=event=>{dialog.querySelector('#plannerEventNoClass').checked=['feriado','recesso'].includes(event.target.value);};
+  dialog.querySelector('#plannerEventSave').onclick=()=>{
+    const key=dialog.querySelector('#plannerEventDate').value,title=dialog.querySelector('#plannerEventTitle').value.trim();
+    if(!key||!title)return showToast('Preencha a data e o título.',true);
+    if(commitProductivity('marcação de dia',()=>{(state.eventos||= []).push({id:'planner_'+Date.now().toString(36),data:key,titulo:title,tipo:dialog.querySelector('#plannerEventType').value,semAula:dialog.querySelector('#plannerEventNoClass').checked});if(state.planningDayOverrides)delete state.planningDayOverrides[key];})){
+      dialog.close();render();renderEad();showToast('Dia marcado. Você pode editar o evento na aba Calendário.');
+    }
+  };
+  dialog.querySelector('#plannerDayException')?.addEventListener('click',()=>{
+    if(commitProductivity('exceção de dia letivo',()=>{(state.planningDayOverrides||= {})[date]=true;})){dialog.close();render();renderEad();}
+  });
+}
+
+const plannerTypesOriginal=getTiposAula;
+getTiposAula=function(){const types=plannerTypesOriginal();return types.some(type=>type.id==='confraternizacao')?types:[...types,{id:'confraternizacao',nome:'Confraternização',cor:'#c02685'}];};
+TIPO_LABELS.confraternizacao='Confraternização';
+const plannerEadTypes=document.querySelector('#efTipoOptions');
+if(plannerEadTypes&&!plannerEadTypes.querySelector('[data-tipo="confraternizacao"]'))plannerEadTypes.insertAdjacentHTML('beforeend','<button type="button" class="ead-type-toggle" data-tipo="confraternizacao" onclick="toggleEadTipo(this)">Confraternização</button>');
+const plannerTagOriginal=toggleTag;
+toggleTag=function(button){
+  plannerTagOriginal(button);
+  if(!editingKey||!state.modules[editingKey]||(isProfessorMode()&&!professorOwnsPlanningModule(editingKey)))return;
+  const tags=[...document.querySelectorAll('#tagButtonsContainer .tag-toggle.active-tag')].map(item=>item.dataset.tag);
+  if(commitProductivity('alteração das etiquetas',()=>{state.modules[editingKey].tags=tags;})){render();plannerTagSaved(button);}
+};
+const plannerEadTagOriginal=toggleEadTipo;
+toggleEadTipo=function(button){
+  plannerEadTagOriginal(button);
+  if(!eadEditingKey||!state.eadModules[eadEditingKey]||(isProfessorMode()&&!professorOwnsEadModule(eadEditingKey)))return;
+  const tipos=getSelectedEadTipos();
+  if(commitProductivity('alteração das etiquetas EaD',()=>{Object.assign(state.eadModules[eadEditingKey],{tipos,tipo:tipos[0]});})){renderEad();plannerTagSaved(button);}
+};
+function plannerTagSaved(button){
+  const container=button.parentElement;let note=container.parentElement.querySelector('.planner-tag-saved');
+  if(!note){note=document.createElement('small');note.className='planner-tag-saved';note.setAttribute('role','status');container.after(note);}
+  note.textContent='Etiquetas salvas automaticamente';
+}
+
+const plannerSaveModule=saveModule;
+saveModule=function(...args){const date=getWeekDates(state.weekOffset)[Number(document.getElementById('fDay').value)];if(date&&(!editingKey||!editingKey.startsWith(fmtDateKey(date)+'_'))&&!plannerCheckDay(fmtDateKey(date)))return;return plannerSaveModule(...args);};
+const plannerSaveEad=saveEadModule;
+saveEadModule=function(...args){const date=getWeekDates(state.weekOffset)[Number(document.getElementById('efDay').value)];if(date&&(!eadEditingKey||!eadEditingKey.startsWith('ead_'+fmtDateKey(date)+'_'))&&!plannerCheckDay(fmtDateKey(date)))return;return plannerSaveEad(...args);};
+const plannerMovePresencial=moverHorariosPresenciais;
+moverHorariosPresenciais=function(keys,targets){if([...new Set(targets.map(key=>key.slice(0,10)))].some(date=>!plannerCheckDay(date)))return false;return plannerMovePresencial(keys,targets);};
+const plannerCommitOriginal=commitProductivity;
+commitProductivity=function(label,apply){
+  if(label!=='movimentação de módulo EaD'&&label!=='troca de horários EaD')return plannerCommitOriginal(label,apply);
+  const before=JSON.stringify(state.eadModules);
+  return plannerCommitOriginal(label,()=>{apply();const old=JSON.parse(before);for(const [key,value]of Object.entries(state.eadModules)){if(JSON.stringify(old[key])!==JSON.stringify(value)&&!plannerCheckDay(key.slice(4,14)))throw new Error('Movimento cancelado.');}});
+};
+
+const plannerPalette=['#1d4ed8','#7e22ce','#047857','#b45309','#be123c','#0e7490','#4d7c0f','#a21caf'];
+function plannerDisciplineStyle(name){
+  const known={'Tecnologia do Plástico':'TP','Gestão da Qualidade':'GQ','Práticas Inovadoras':'PI','Fundamentos da Eletromecânica':'FE'};
+  const words=name.replace(/[^\p{L}\p{N}\s]/gu,'').split(/\s+/).filter(word=>word&&!['de','da','do','das','dos','e','em'].includes(word.toLowerCase()));
+  let hash=0;for(const char of name)hash=(hash*31+char.charCodeAt(0))>>>0;
+  const custom=state.disciplineAppearance?.[name]||{};
+  return {code:custom.code||known[name]||words.map(word=>word[0]).join('').slice(0,5).toUpperCase()||'LIVRE',color:/^#[0-9a-f]{6}$/i.test(custom.color||'')?custom.color:plannerPalette[hash%plannerPalette.length]};
+}
+function plannerDisciplineNames(){return [...new Set([...getDiscs('presencial'),...getDiscs('ead'),...getDiscs('presEad'),...Object.values(state.modules||{}).map(mod=>mod.disc),...Object.values(state.eadModules||{}).map(mod=>mod.disc)].filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));}
+function plannerSaveDiscipline(name,field,value){
+  if(isProfessorMode())return;
+  value=field==='code'?value.trim().toUpperCase().slice(0,8):value;
+  if(field==='code'&&!value)return showToast('Informe uma sigla para a disciplina.',true);
+  if(commitProductivity('identificação da disciplina',()=>{const styles=state.disciplineAppearance||= {};styles[name]={...plannerDisciplineStyle(name),[field]:value};})){render();renderEad();showToast('Identificação salva.');}
+}
+const plannerConfigOriginal=renderConfiguracoes;
+renderConfiguracoes=function(...args){
+  const result=plannerConfigOriginal(...args);if(isProfessorMode())return result;
+  const section=document.createElement('section');section.className='planner-discipline-settings';
+  section.innerHTML='<h3>Siglas e cores das disciplinas</h3><p>A cor discreta e a sigla aparecem nos cards. As alterações são salvas automaticamente.</p><div id="plannerDisciplineRows"></div><p>Feriados nacionais são indicados automaticamente. Cadastre feriados municipais, recessos e eventos pelo botão Marcar dia ou na aba Calendário. <a href="https://agenciagov.ebc.com.br/noticias/202512/confira-o-calendario-oficial-de-feriados-nacionais-e-pontos-facultativos-em-2026" target="_blank" rel="noopener">Calendário nacional de referência</a>.</p>';
+  for(const name of plannerDisciplineNames()){
+    const style=plannerDisciplineStyle(name),row=document.createElement('label');row.className='planner-discipline-row';
+    const text=document.createElement('span');text.textContent=name;const code=document.createElement('input');code.value=style.code;code.maxLength=8;code.setAttribute('aria-label','Sigla de '+name);code.onchange=()=>plannerSaveDiscipline(name,'code',code.value);
+    const color=document.createElement('input');color.type='color';color.value=style.color;color.setAttribute('aria-label','Cor de '+name);color.onchange=()=>plannerSaveDiscipline(name,'color',color.value);
+    row.append(text,code,color);section.querySelector('#plannerDisciplineRows').append(row);
+  }
+  document.getElementById('configContent').prepend(section);return result;
+};
+
+function plannerEnhanceBoard(kind){
+  const grid=document.getElementById(kind==='ead'?'eadGrid':'weekGrid');if(!grid)return;
+  const dates=getWeekDates(state.weekOffset);
+  let heads=document.getElementById(grid.id+'FixedHeads');
+  if(!heads){heads=document.createElement('div');heads.id=grid.id+'FixedHeads';heads.className='planner-fixed-days';grid.before(heads);}
+  heads.replaceChildren();
+  grid.style.setProperty('--planner-days',dates.length);heads.style.setProperty('--planner-days',dates.length);
+  [...grid.children].forEach((column,index)=>{
+    const date=dates[index];if(!date)return;const key=fmtDateKey(date),event=plannerDayEvents(key),head=column.querySelector('.day-head');
+    column.dataset.dateKey=key;
+    if(head){
+      head.querySelector('.day-name').textContent=plannerDayName(date);
+      if(event.labels.length){const badge=document.createElement('div');badge.className='planner-day-marker';badge.textContent=(event.blocked?'Sem aula · ':'')+event.labels.join(' · ');head.append(badge);}
+      if(!isProfessorMode()){const button=document.createElement('button');button.type='button';button.className='planner-day-edit';button.textContent='Marcar dia';button.onclick=()=>openPlannerDay(key);head.append(button);}
+      heads.append(head);
+    }
+    column.classList.toggle('planner-no-class',event.blocked);
+    if(event.blocked){const warning=document.createElement('p');warning.className='planner-holiday-warning';const count=column.querySelectorAll('[data-key]').length;warning.textContent=count?'Sem aula — '+count+' módulo(s) já planejado(s). Revise os horários.':'Sem aula neste dia';column.prepend(warning);}
+  });
+  grid.querySelectorAll('[data-key]').forEach(card=>{
+    const mod=(kind==='ead'?state.eadModules:state.modules)[card.dataset.key];if(!mod)return;
+    const name=mod.disc||'Livre',style=plannerDisciplineStyle(name),chip=document.createElement('span');chip.className='planner-discipline-chip';chip.textContent=style.code;chip.title=name;chip.setAttribute('aria-label','Disciplina: '+name);chip.style.color=style.color;chip.style.background=style.color+'12';chip.style.borderColor=style.color+'35';
+    card.querySelector('.tags')?.prepend(chip);
+  });
+  grid.onscroll=()=>{heads.scrollLeft=grid.scrollLeft;};
+  for(const id of ['fDay','efDay']){const select=document.getElementById(id);if(!select)continue;const value=select.value;select.replaceChildren(...dates.map((date,i)=>new Option(plannerDayName(date)+' · '+fmtDate(date),i)));select.value=value||'0';}
+  requestAnimationFrame(plannerFitBoards);
+}
+function plannerFitBoards(){
+  for(const id of ['weekGrid','eadGrid']){const grid=document.getElementById(id);if(!grid?.getClientRects().length)continue;const top=grid.getBoundingClientRect().top;grid.style.maxHeight=Math.max(220,innerHeight-top-24)+'px';const heads=document.getElementById(id+'FixedHeads');if(heads)heads.style.paddingRight=(grid.offsetWidth-grid.clientWidth)+'px';}
+}
+const plannerRenderOriginal=render;
+render=function(...args){const result=plannerRenderOriginal(...args);plannerEnhanceBoard('presencial');return result;};
+const plannerRenderEadOriginal=renderEad;
+renderEad=function(...args){const result=plannerRenderEadOriginal(...args);plannerEnhanceBoard('ead');return result;};
+const plannerSetViewOriginal=setView;
+setView=function(...args){const result=plannerSetViewOriginal(...args);document.querySelector('.planner-quick-tools').hidden=!['presencial','ead'].includes(state.view);requestAnimationFrame(plannerFitBoards);return result;};
+window.addEventListener('resize',plannerFitBoards);
+new ResizeObserver(plannerFitBoards).observe(document.getElementById('workspaceToolbar'));
+const plannerQuickTools=document.createElement('div');plannerQuickTools.className='planner-quick-tools';
+plannerQuickTools.innerHTML='<button class="btn btn-outline" onclick="openPlannerDates()">▦ Datas</button><button class="btn btn-outline planner-admin-tool" onclick="openPlannerDay()">Marcar dia</button><button class="btn btn-outline planner-admin-tool" onclick="undoPlannerChange({skipConfirm:true})" title="Desfazer a última alteração salva (Ctrl+Z)">↶ Desfazer</button>';
+document.getElementById('weekToolbarNav').after(plannerQuickTools);
+plannerQuickTools.hidden=!['presencial','ead'].includes(state.view);
+if(isProfessorMode())plannerQuickTools.querySelectorAll('.planner-admin-tool').forEach(el=>el.remove());
+document.addEventListener('keydown',event=>{
+  if(!(event.ctrlKey||event.metaKey)||event.altKey||event.shiftKey||event.key.toLowerCase()!=='z'||!['presencial','ead'].includes(state.view))return;
+  if(event.target.closest('input,textarea,select,[contenteditable="true"]')||document.querySelector('dialog[open]'))return;
+  event.preventDefault();undoPlannerChange({skipConfirm:true});
+});
+rebuildTagButtons();render();renderEad();
 
 </script>
 </body>
