@@ -18479,6 +18479,25 @@ function _pwaIconSvg192() {
 #plannerSyncCompare button:disabled{opacity:.5;cursor:wait}.planner-sync-actions{display:flex;flex-wrap:wrap;gap:10px}
 @media(max-width:520px){#plannerSyncCopies{grid-template-columns:1fr}#plannerSyncCompare{padding:16px}}
 .planner-move-button{font:inherit;font-size:11px;border:1px solid #d4dbe6;border-radius:6px;background:#fff;color:#315580;padding:3px 7px;cursor:pointer;margin-left:6px;flex-shrink:0}
+</style><style>
+.planner-simple-card.mod-card,.planner-simple-card.ead-card{padding:9px 10px;margin-bottom:7px;border-radius:10px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.planner-simple-card .mod-heading{gap:6px;margin-bottom:5px;align-items:flex-start}
+.planner-simple-card .mod-slot-label{flex-wrap:wrap;gap:4px 6px;min-width:0}
+.planner-simple-card .mod-num{font-size:9px;line-height:1.5;color:var(--text3);margin-bottom:0}
+.planner-simple-card .mod-slot-time{font-size:10px;line-height:1.4}
+.planner-simple-card .mod-title{font-size:13px!important;line-height:1.35!important;font-weight:650;margin:0 0 7px!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.planner-simple-card .mod-footer{display:flex;align-items:center;justify-content:space-between;gap:5px;flex-wrap:wrap;margin-top:2px}
+.planner-simple-card .tags{gap:4px;flex-wrap:wrap;min-width:0}
+.planner-simple-card .lesson-type,.planner-simple-card .tag{font-size:10px;line-height:1.3;padding:3px 6px;border-radius:4px;font-weight:500}
+.planner-card-more{border:0;background:transparent;color:var(--text2);cursor:pointer;min-width:26px;height:24px;padding:0 3px;border-radius:5px;font:22px/18px system-ui,sans-serif;flex-shrink:0;margin-top:-3px}
+.planner-card-more:hover,.planner-card-more[aria-expanded=true]{background:var(--surface2);color:var(--text)}
+.planner-card-more:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.planner-card-icons{display:flex;gap:6px;align-items:center;margin-left:auto;color:var(--text2)}
+.planner-card-icon{font-size:11px;line-height:1.3;white-space:nowrap}.planner-card-icon.ready{color:#2a7d4f}.planner-card-icon.pending{color:#9a6200}
+.planner-card-menu{position:fixed;z-index:20000;min-width:165px;padding:5px;border:1px solid #dce0e7;border-radius:9px;background:#fff;box-shadow:0 8px 24px rgba(16,24,40,.18)}
+.planner-card-menu button{display:block;width:100%;border:0;border-radius:5px;background:transparent;color:#263244;text-align:left;padding:9px 11px;cursor:pointer;font:13px/1.3 system-ui,sans-serif}
+.planner-card-menu button:hover,.planner-card-menu button:focus-visible{background:#eef3fa;outline:none}.planner-card-menu button.danger{color:#b93232}
+
 </style><script>
 // Acesso às opções de sincronização pelo indicador do cabeçalho.
 function instalarComparacaoPlanner() {
@@ -18683,6 +18702,180 @@ render = function(...args) {
   return result;
 };
 render();
+
+let plannerCardMenu = null;
+
+function closePlannerCardMenu(restoreFocus = false) {
+  if (!plannerCardMenu) return;
+  const {element, button} = plannerCardMenu;
+  element.remove();
+  button.setAttribute('aria-expanded', 'false');
+  plannerCardMenu = null;
+  if (restoreFocus && button.isConnected) button.focus();
+}
+
+function openPlannerCardMenu(button, kind, key) {
+  if (plannerCardMenu?.button === button) return closePlannerCardMenu(true);
+  closePlannerCardMenu();
+  const menu = document.createElement('div');
+  menu.className = 'planner-card-menu';
+  menu.setAttribute('role', 'menu');
+  menu.setAttribute('aria-label', 'Ações do módulo');
+  const eadAction = action => { currentEadKey = key; action(); };
+  const actions = kind === 'ead' ? [
+    ['Editar', () => eadAction(editEadModule)],
+    ['Mover', () => openEadCardMove(key)],
+    ['Duplicar', () => eadAction(duplicateEadModule)],
+    ['Excluir', () => eadAction(deleteEadModule)]
+  ] : [
+    ['Editar', () => editModule(key)],
+    ['Mover', () => openPresencialMove([key])],
+    ['Duplicar', () => duplicateModule(key)],
+    ['Excluir', () => deleteModule(key)]
+  ];
+  for (const [label, action] of actions) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.textContent = label;
+    item.setAttribute('role', 'menuitem');
+    if (label === 'Excluir') item.className = 'danger';
+    item.onclick = () => { closePlannerCardMenu(); action(); };
+    menu.append(item);
+  }
+  menu.onkeydown = event => {
+    const items = [...menu.querySelectorAll('button')];
+    const index = items.indexOf(document.activeElement);
+    if (['ArrowDown', 'ArrowUp'].includes(event.key)) {
+      event.preventDefault();
+      items[(index + (event.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus();
+    }
+  };
+  document.body.append(menu);
+  const bounds = button.getBoundingClientRect();
+  menu.style.left = Math.max(8, Math.min(bounds.right - menu.offsetWidth, innerWidth - menu.offsetWidth - 8)) + 'px';
+  menu.style.top = Math.max(8, Math.min(bounds.bottom + 4, innerHeight - menu.offsetHeight - 8)) + 'px';
+  button.setAttribute('aria-expanded', 'true');
+  plannerCardMenu = {element:menu, button};
+  menu.querySelector('button').focus();
+}
+
+document.addEventListener('pointerdown', event => {
+  if (plannerCardMenu && !plannerCardMenu.element.contains(event.target) && !plannerCardMenu.button.contains(event.target)) closePlannerCardMenu();
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && plannerCardMenu) { event.preventDefault(); closePlannerCardMenu(true); }
+});
+window.addEventListener('resize', () => closePlannerCardMenu());
+
+function addPlannerCardIcons(card, mod) {
+  const footer = card.querySelector('.mod-footer');
+  if (!footer) return;
+  card.querySelectorAll('.mod-icons,.mod-notes,.module-prep-tag').forEach(element => element.remove());
+  const icons = document.createElement('div');
+  icons.className = 'planner-card-icons';
+  function icon(text, label, extraClass = '') {
+    const item = document.createElement('span');
+    item.className = 'planner-card-icon ' + extraClass;
+    item.textContent = text;
+    item.title = label;
+    item.setAttribute('role', 'img');
+    item.setAttribute('aria-label', label);
+    icons.append(item);
+  }
+  if (mod.materials?.length) icon('📎 ' + mod.materials.length, mod.materials.length + ' materiais vinculados');
+  if ([mod.obs, mod.executionObs, mod.desc].some(value => String(value || '').trim())) icon('▤', 'Contém observações ou descrição');
+  if (mod.printed) icon('⎙', 'Impresso', 'ready');
+  else if (mod.needPrint) icon('⎙', 'A imprimir', 'pending');
+  const prep = moduleActivityPrep(mod);
+  if (prep === 'ready') icon('✓', 'Atividade pronta', 'ready');
+  else if (prep === 'pending') icon('◷', 'Atividade a preparar', 'pending');
+  if (icons.children.length) footer.append(icons);
+}
+
+function simplifyPlannerCards(kind) {
+  const grid = document.getElementById(kind === 'ead' ? 'eadGrid' : 'weekGrid');
+  if (!grid) return;
+  grid.querySelectorAll('[data-key]').forEach(card => {
+    const key = card.dataset.key;
+    const mod = (kind === 'ead' ? state.eadModules : state.modules)[key];
+    if (!mod) return;
+    card.classList.add('planner-simple-card');
+    card.querySelectorAll('.mod-topic,.ead-card-desc,.planner-move-button').forEach(element => element.remove());
+    let heading = card.querySelector('.mod-heading');
+    if (!heading) {
+      heading = document.createElement('div');
+      heading.className = 'mod-heading';
+      const slot = card.querySelector('.mod-num');
+      if (slot) heading.append(slot);
+      card.prepend(heading);
+    }
+    addPlannerCardIcons(card, mod);
+    if (!isProfessorMode() && !(kind === 'presencial' && presencialSelectionMode)) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'planner-card-more';
+      button.textContent = '⋯';
+      button.title = 'Ações do módulo';
+      button.setAttribute('aria-label', 'Ações do módulo ' + key.split('_').pop());
+      button.setAttribute('aria-haspopup', 'menu');
+      button.setAttribute('aria-expanded', 'false');
+      button.onclick = event => { event.stopPropagation(); openPlannerCardMenu(button,kind,key); };
+      button.addEventListener('pointerdown', event => event.stopPropagation());
+      heading.append(button);
+    }
+    if (kind === 'ead') {
+      card.tabIndex = 0;
+      card.setAttribute('role', 'button');
+      card.addEventListener('keydown', event => {
+        if (event.target === card && ['Enter',' '].includes(event.key)) { event.preventDefault(); openEadDetail(key); }
+      });
+    }
+  });
+}
+
+function openEadCardMove(key) {
+  if (isProfessorMode() || !state.eadModules[key]) return;
+  const fingerprint = plannerDataFingerprint(state);
+  const parts = key.split('_');
+  productivityOverlay('Mover módulo EaD',
+    '<label class="form-group">Data de destino<input type="date" class="form-input" id="eadCardMoveDate" value="' + parts[1] + '"></label>' +
+    productivitySelect('eadCardMoveSlot','Módulo de destino',[[1,'Módulo 1'],[2,'Módulo 2']],Number(parts[2])) +
+    '<p>Se o destino estiver ocupado, os dois módulos EaD trocarão de horário.</p>',
+    '<button type="button" class="btn btn-primary" id="eadCardMoveConfirm">Confirmar movimento</button>');
+  document.getElementById('eadCardMoveConfirm').onclick = () => {
+    try {
+      assertProductivityClass();
+      if (plannerDataFingerprint(state) !== fingerprint) throw new Error('Os dados mudaram. Abra o movimento novamente.');
+      const date = chatImportDate(document.getElementById('eadCardMoveDate').value);
+      const day = new Date(date + 'T12:00:00');
+      if ([0,6].includes(day.getDay())) throw new Error('Escolha um dia de segunda a sexta.');
+      const slot = Number(document.getElementById('eadCardMoveSlot').value);
+      if (![1,2].includes(slot)) throw new Error('Escolha o módulo 1 ou 2.');
+      const target = 'ead_' + date + '_' + slot;
+      if (target === key) throw new Error('O módulo já está nesse horário.');
+      const source = state.eadModules[key];
+      if (!source) throw new Error('O módulo de origem foi alterado.');
+      const occupied = state.eadModules[target];
+      if (!commitProductivity('movimentação de módulo EaD', () => {
+        delete state.eadModules[key];
+        state.eadModules[target] = source;
+        if (occupied) state.eadModules[key] = occupied;
+      })) return;
+      const monday = plannerWeekStart(getWeekDates(state.weekOffset)[0]);
+      state.weekOffset += Math.round((plannerWeekStart(day) - monday) / 604800000);
+      closeProductivity();
+      renderEad();
+      showToast(occupied ? 'Os módulos EaD trocaram de horário.' : 'Módulo EaD movido e salvo.');
+    } catch (error) { showToast(error.message,true); }
+  };
+}
+
+const renderCardsPresencial = render;
+render = function(...args) { closePlannerCardMenu(); const result = renderCardsPresencial(...args); simplifyPlannerCards('presencial'); return result; };
+const renderCardsEad = renderEad;
+renderEad = function(...args) { closePlannerCardMenu(); const result = renderCardsEad(...args); simplifyPlannerCards('ead'); return result; };
+render();
+renderEad();
 
 </script>
 </body>
