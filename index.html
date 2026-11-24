@@ -18478,6 +18478,7 @@ function _pwaIconSvg192() {
 #plannerSyncCompare button{font:inherit;cursor:pointer;border:1px solid #cdd3df;border-radius:8px;padding:9px 12px;background:#f5f7fb;color:#24436e}
 #plannerSyncCompare button:disabled{opacity:.5;cursor:wait}.planner-sync-actions{display:flex;flex-wrap:wrap;gap:10px}
 @media(max-width:520px){#plannerSyncCopies{grid-template-columns:1fr}#plannerSyncCompare{padding:16px}}
+.planner-move-button{font:inherit;font-size:11px;border:1px solid #d4dbe6;border-radius:6px;background:#fff;color:#315580;padding:3px 7px;cursor:pointer;margin-left:6px;flex-shrink:0}
 </style><script>
 // Acesso às opções de sincronização pelo indicador do cabeçalho.
 function instalarComparacaoPlanner() {
@@ -18587,6 +18588,101 @@ async function abrirComparacaoPlanner() {
   }
 }
 instalarComparacaoPlanner();
+
+// Movimentação por horário exato, preservando os módulos dos outros horários.
+function moverHorariosPresenciais(keys, targets) {
+  if (isProfessorMode() || keys.some(key => !state.modules[key] || !professorOwnsPlanningModule(key))) return false;
+  if (keys.length === 1 && keys[0] === targets[0]) {
+    showToast('O módulo já está nesse horário.');
+    return false;
+  }
+  if (keys.length > 1 && targets.some(key => state.modules[key] && !keys.includes(key))) {
+    showToast('Escolha horários livres para mover vários módulos juntos.', true);
+    return false;
+  }
+  const items = keys.map(key => state.modules[key]);
+  const troca = keys.length === 1 ? state.modules[targets[0]] : null;
+  const saved = commitProductivity(troca ? 'troca de horários presenciais' : 'movimentação de módulos presenciais', () => {
+    keys.forEach(key => delete state.modules[key]);
+    targets.forEach((key, index) => { state.modules[key] = items[index]; });
+    if (troca) state.modules[keys[0]] = troca;
+  });
+  if (saved) showToast(troca ? 'Os dois módulos trocaram de horário.' : 'Módulo movido para o horário escolhido.');
+  return saved;
+}
+
+openPresencialMove = function(keys = presencialSelectionKeys()) {
+  if (!keys.length || isProfessorMode() || keys.some(key => !state.modules[key])) return;
+  if (keys.length > 8) return showToast('Selecione até 8 módulos para mover juntos.', true);
+  const date = keys[0].slice(0, keys[0].lastIndexOf('_'));
+  const slot = Number(keys[0].slice(keys[0].lastIndexOf('_') + 1));
+  presencialActionDialog('Mover ' + keys.length + ' módulo(s)', keys,
+    '<div class="form-row"><label class="form-group">Data de destino<input type="date" class="form-input" id="presencialMoveDate" value="' + date + '"></label>' +
+    productivitySelect('presencialMoveSlot', keys.length === 1 ? 'Módulo de destino' : 'Primeiro módulo de destino',
+      Array.from({length:9-keys.length}, (_,index) => [index+1, 'Módulo '+(index+1)]),
+      Math.min(slot,9-keys.length)) + '</div>' +
+    '<p>' + (keys.length === 1 ? 'Se o destino estiver ocupado, os dois módulos trocarão de horário.' : 'Os módulos selecionados serão colocados em sequência nos horários livres escolhidos.') + '</p>',
+    '<button class="btn btn-primary" onclick="savePresencialMove()">Confirmar movimento</button>');
+};
+
+savePresencialMove = function() {
+  try {
+    const keys = presencialActionKeys();
+    const date = chatImportDate(document.getElementById('presencialMoveDate').value);
+    const day = new Date(date + 'T12:00:00');
+    if ([0,6].includes(day.getDay())) throw new Error('Escolha um dia de segunda a sexta.');
+    const slot = Number(document.getElementById('presencialMoveSlot').value);
+    if (!Number.isInteger(slot) || slot < 1 || slot+keys.length-1 > 8) throw new Error('Escolha um módulo de destino válido.');
+    const targets = keys.map((_,index) => date+'_'+(slot+index));
+    if (!moverHorariosPresenciais(keys,targets)) return;
+    const monday = plannerWeekStart(getWeekDates(state.weekOffset)[0]);
+    state.weekOffset += Math.round((plannerWeekStart(day)-monday)/604800000);
+    finishPresencialAction('Movimentação salva.');
+  } catch (error) { showToast(error.message,true); }
+};
+
+movePresencialModule = function(sourceKey,dateKey,moduleNumber) {
+  const slot = Number(moduleNumber);
+  if (!sourceKey || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || !Number.isInteger(slot) || slot<1 || slot>8) return;
+  if (moverHorariosPresenciais([sourceKey],[dateKey+'_'+slot])) render();
+};
+
+handlePresencialDrop = function(event,dateKey,targetModule) {
+  event.preventDefault();
+  event.stopPropagation();
+  suppressPresencialClick = true;
+  setTimeout(() => { suppressPresencialClick=false; },500);
+  document.querySelectorAll('.day-col.drag-over,.mod-card.drop-target').forEach(element => element.classList.remove('drag-over','drop-target'));
+  const target = event.target.closest?.('.mod-card[data-key]');
+  const source = event.dataTransfer?.getData('text/plain') || draggedPresencialKey;
+  if (target) {
+    const split = target.dataset.key.lastIndexOf('_');
+    dateKey = target.dataset.key.slice(0,split);
+    targetModule = Number(target.dataset.key.slice(split+1));
+  }
+  if (source) movePresencialModule(source,event.currentTarget?.dataset?.dateKey || dateKey,Number(targetModule));
+  draggedPresencialKey = null;
+};
+
+const renderAntesDoMovimento = render;
+render = function(...args) {
+  const result = renderAntesDoMovimento(...args);
+  if (isProfessorMode() || presencialSelectionMode) return result;
+  document.querySelectorAll('#weekGrid .mod-card[data-key]').forEach(card => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'planner-move-button';
+    button.textContent = 'Mover';
+    button.setAttribute('aria-label','Mover módulo '+card.dataset.key.split('_').pop());
+    button.onclick = event => {
+      event.stopPropagation();
+      openPresencialMove([card.dataset.key]);
+    };
+    card.querySelector('.mod-heading')?.append(button);
+  });
+  return result;
+};
+render();
 
 </script>
 </body>
