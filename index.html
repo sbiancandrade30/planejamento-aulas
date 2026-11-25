@@ -18615,6 +18615,13 @@ function _pwaIconSvg192() {
 .quiz-import-open{margin:8px 0}
 @media(max-width:600px){.quiz-import-options{grid-template-columns:1fr}}
 
+.planner-deadline-control,.planner-delivery-control{margin:6px auto 2px;max-width:205px;text-align:center;font-size:10px;font-weight:400;letter-spacing:0;text-transform:none;color:#53647d}
+.planner-deadline-control summary,.planner-delivery-control summary{cursor:pointer;list-style:revert;font-size:10px}
+.planner-deadline-control input,.planner-delivery-control input,.planner-config-deadline input{box-sizing:border-box;max-width:100%;width:190px;border:1px solid #cad3e1;border-radius:5px;padding:5px;background:#fff;color:#243e62;font-size:11px;margin-top:6px}
+.planner-deadline-control button{font:inherit;font-size:10px;white-space:normal;border:1px solid #ccd4e0;border-radius:6px;background:white;padding:6px;margin-top:6px;color:#294f91;cursor:pointer}
+.planner-delivery-control small{display:block;font-size:9px;white-space:normal;line-height:1.4;margin-top:4px}
+.planner-config-deadline{display:flex;flex-direction:column;font-size:10px;color:#53647d}
+
 </style><script>
 // Acesso às opções de sincronização pelo indicador do cabeçalho.
 function instalarComparacaoPlanner() {
@@ -19355,7 +19362,7 @@ saveNeadConfig=function(...args){
   if(commitProductivity('configuração dos questionários EaD',()=>{
     data.atividades=classClone(neadConfigAtivs,[]);
     for(const activity of data.atividades){for(const student of Object.values(data.alunos)){
-      const entry=student[activity.id];if(!Number.isInteger(entry?.acertos))continue;
+      const entry=student[activity.id];if(entry&&typeof plannerRecalculateDelivery==='function')plannerRecalculateDelivery(activity,entry);if(!Number.isInteger(entry?.acertos))continue;
       if(activity.tipo!=='questionario'||!activity.totalQuestoes)delete entry.acertos;
       else entry.nota=String(quizScore(entry.acertos,Number(activity.totalQuestoes),neadAtivValorMax(activity)));
     }}
@@ -19496,7 +19503,8 @@ function openQuizImport(){
   dialog.querySelector('#quizImportDiscipline').textContent=disc;
   const select=dialog.querySelector('#quizImportActivity');activities.forEach(activity=>select.add(new Option(activity.aula+' · Questionário · '+neadAtivValorMax(activity)+' pts',activity.id)));
   const current=document.getElementById('neadAtivSel').value;if(activities.some(activity=>activity.id===current))select.value=current;
-  select.onchange=quizBuildImportPreview;
+  const loadDeadline=()=>{const activity=activities.find(item=>item.id===select.value);document.getElementById('quizImportDeadline').value=plannerLocalDateTime(activity?.prazoEntrega);};
+  loadDeadline();select.onchange=()=>{loadDeadline();quizBuildImportPreview();};
   dialog.querySelector('#quizImportFile').onchange=event=>quizLoadImportFile(event.target.files[0]);
   dialog.querySelector('#quizCsvChoice').onchange=event=>quizUseImportCsv(Number(event.target.value));
   dialog.querySelector('#quizImportDeadline').onchange=quizApplyImportStatus;
@@ -19584,11 +19592,16 @@ function quizApplyImport(){
     const totals=[...new Set(rows.map(row=>row.total).filter(Boolean))];
     const countsCompatible=rows.every(row=>row.correct!=null)&&totals.length===1&&(!activity.totalQuestoes||Number(activity.totalQuestoes)===totals[0]);
     if(!commitProductivity('importação de questionário CSV/ZIP',()=>{
+      const deadline=document.getElementById('quizImportDeadline').value;
+      activity.prazoEntrega=deadline?new Date(deadline).toISOString():'';
+      for(const student of Object.values(data.alunos)){if(student[activity.id])plannerRecalculateDelivery(activity,student[activity.id]);}
       // Preencha um total ausente, sem mudar a escala de contagens já existentes.
       if(countsCompatible&&!activity.totalQuestoes&&!Object.values(data.alunos).some(student=>Number.isInteger(student[activity.id]?.acertos)))activity.totalQuestoes=totals[0];
       for(const row of rows){
         const student=data.alunos[row.target]||= {},entry=student[activity.id]||= {};
         Object.assign(entry,{status:row.status,nota:String(row.grade)});delete entry.acertos;
+        if(row.time!=null)entry.entregueEm=new Date(row.time).toISOString();else delete entry.entregueEm;
+        entry.statusManual=!deadline||row.time==null||row.status!==(row.time<=new Date(deadline).getTime()?'prazo':'atrasado');
         if(countsCompatible&&Number(activity.totalQuestoes)===row.total)entry.acertos=row.correct;
         entry.importacao={arquivo:session.file,pontuacao:row.score,maximo:row.max,acertos:row.correct,questoes:row.total,respostaEm:row.stamp};
       }
@@ -19620,6 +19633,104 @@ renderNeadLancar=function(id,...args){
   if(activity?.tipo==='resumo')document.querySelectorAll('#neadLancarView tbody tr').forEach((row,i)=>{if(!data.alunos[ALUNOS[i]]?.[id]?.status){const score=row.lastElementChild?.querySelector('span');if(score){score.textContent='A conferir';score.style.color='var(--text3)';}}});
   return result;
 };
+
+function plannerLocalDateTime(value){
+  if(!value)return '';const date=new Date(value);if(!Number.isFinite(date.getTime()))return '';
+  const pad=value=>String(value).padStart(2,'0');return date.getFullYear()+'-'+pad(date.getMonth()+1)+'-'+pad(date.getDate())+'T'+pad(date.getHours())+':'+pad(date.getMinutes());
+}
+function plannerDeliveryInstant(entry){
+  if(entry?.entregueEm)return new Date(entry.entregueEm).getTime();
+  return entry?.importacao?.respostaEm?quizSubmissionTime(entry.importacao.respostaEm):null;
+}
+function plannerRecalculateDelivery(activity,entry){
+  const received=plannerDeliveryInstant(entry),due=activity.prazoEntrega?new Date(activity.prazoEntrega).getTime():null;
+  if(received==null||!Number.isFinite(received)||due==null||!Number.isFinite(due)||entry.statusManual)return;
+  entry.entregueEm=new Date(received).toISOString();entry.status=received<=due?'prazo':'atrasado';
+  if(activity.tipo==='questionario'&&Number.isInteger(entry.acertos)&&Number(activity.totalQuestoes)>0)entry.nota=String(quizScore(entry.acertos,Number(activity.totalQuestoes),neadAtivValorMax(activity)));
+}
+function plannerSetActivityDeadline(disc,id,value){
+  if(isProfessorMode())return;
+  const activity=getNeadDisc(disc).atividades.find(item=>item.id===id);if(!activity)return;
+  const time=value?new Date(value).getTime():null;if(value&&!Number.isFinite(time))return showToast('Informe uma data e um horário válidos.',true);
+  if(commitProductivity('prazo de entrega da atividade',()=>{
+    activity.prazoEntrega=value?new Date(time).toISOString():'';
+    for(const student of Object.values(getNeadDisc(disc).alunos)){const entry=student[id];if(entry)plannerRecalculateDelivery(activity,entry);}
+  }))quizRefresh(disc);
+}
+function plannerSetDelivery(disc,name,id,value){
+  if(!professorCanEditNeadField(disc,name,id,'status')||!professorCanEditNeadField(disc,name,id,'nota'))return showToast('Esse lançamento está bloqueado na versão do professor.',true);
+  const data=getNeadDisc(disc),activity=data.atividades.find(item=>item.id===id);if(!activity)return;
+  const time=value?new Date(value).getTime():null;if(value&&!Number.isFinite(time))return showToast('Confira a data e o horário da entrega.',true);
+  if(value&&!activity.prazoEntrega)return showToast('Defina primeiro o prazo de entrega da atividade.',true);
+  if(commitProductivity('data de entrega do aluno',()=>{
+    const student=data.alunos[name]||= {},entry=student[id]||= {nota:''};
+    if(!value){delete entry.entregueEm;delete entry.importacao;delete entry.statusManual;entry.status='';}
+    else{entry.entregueEm=new Date(time).toISOString();entry.statusManual=false;plannerRecalculateDelivery(activity,entry);}
+  }))quizRefresh(disc);
+}
+function plannerDeadlineControl(activity,disc){
+  const details=document.createElement('details');details.className='planner-deadline-control';
+  const summary=document.createElement('summary');summary.textContent=activity.prazoEntrega?'Prazo: '+new Date(activity.prazoEntrega).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Definir prazo';details.append(summary);
+  const input=document.createElement('input');input.type='datetime-local';input.value=plannerLocalDateTime(activity.prazoEntrega);input.disabled=isProfessorMode();input.setAttribute('aria-label','Prazo de entrega · '+activity.aula+' · '+activity.tipo);input.onchange=()=>plannerSetActivityDeadline(disc,activity.id,input.value);details.append(input);
+  if(!isProfessorMode()){
+    const close=document.createElement('button');close.type='button';close.textContent='Conferir não entregues';close.title='Após conferir as entregas, marque como não fez quem continua sem entrega ou lançamento.';close.onclick=()=>plannerCloseDeliveryCheck(disc,activity.id);details.append(close);
+  }
+  return details;
+}
+function plannerDeliveryControl(activity,disc,name){
+  const entry=getNeadDisc(disc).alunos[name]?.[activity.id],instant=plannerDeliveryInstant(entry),details=document.createElement('details');details.className='planner-delivery-control';
+  const summary=document.createElement('summary');summary.textContent=instant!=null?'Entrega: '+new Date(instant).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Informar entrega';details.append(summary);
+  const input=document.createElement('input');input.type='datetime-local';input.value=instant!=null?plannerLocalDateTime(instant):'';input.disabled=!professorCanEditNeadField(disc,name,activity.id,'status')||!professorCanEditNeadField(disc,name,activity.id,'nota');input.setAttribute('aria-label','Data de entrega de '+name+' · '+activity.aula+' · '+activity.tipo);input.onchange=()=>plannerSetDelivery(disc,name,activity.id,input.value);details.append(input);
+  const note=document.createElement('small');note.textContent=entry?.statusManual?'Situação marcada manualmente. Alterar a data volta ao cálculo automático.':'Use a data real de entrega. O prazo determina a situação e o desconto.';details.append(note);return details;
+}
+function plannerCloseDeliveryCheck(disc,id){
+  if(isProfessorMode())return;
+  const data=getNeadDisc(disc),activity=data.atividades.find(item=>item.id===id);if(!activity?.prazoEntrega)return showToast('Defina o prazo antes de conferir os não entregues.',true);
+  if(Date.now()<=new Date(activity.prazoEntrega).getTime())return showToast('O prazo ainda não venceu. As entregas continuam pendentes.',true);
+  const missing=getNomesAlunos().filter(name=>{
+    const entry=data.alunos[name]?.[id];if(!entry)return true;
+    if(plannerDeliveryInstant(entry)!=null||entry.status==='atrasado'||entry.status==='nao')return false;
+    if(activity.tipo==='resumo')return !entry.status;
+    return (!entry.status||entry.status==='prazo')&&(entry.nota==null||entry.nota==='')&&!Number.isInteger(entry.acertos);
+  });
+  if(!missing.length)return showToast('Não há alunos sem entrega ou lançamento para conferir.');
+  if(!confirm('Você conferiu as entregas desta atividade? Marcar '+missing.length+' aluno(s) sem entrega ou lançamento como “Não fez”, com nota zero:\n\n'+missing.join('\n')))return;
+  if(commitProductivity('conferência dos não entregues',()=>{
+    missing.forEach(name=>{const student=data.alunos[name]||= {};student[id]={...(student[id]||{}),status:'nao',nota:'',statusManual:true};delete student[id].acertos;});
+  }))quizRefresh(disc);
+}
+const deadlineRender=renderNotasEad;
+renderNotasEad=function(...args){
+  const result=deadlineRender(...args),disc=document.getElementById('neadDisc').value;if(!disc)return result;
+  const data=getNeadDisc(disc),table=document.querySelector('#neadNotasView .nead-table');if(!table)return result;
+  data.atividades.forEach((activity,index)=>{
+    table.tHead.rows[0].cells[index+1]?.append(plannerDeadlineControl(activity,disc));
+    [...table.tBodies[0].rows].forEach((row,i)=>row.cells[index+1]?.append(plannerDeliveryControl(activity,disc,ALUNOS[i])));
+  });return result;
+};
+const deadlineLaunch=renderNeadLancar;
+renderNeadLancar=function(id,...args){
+  const result=deadlineLaunch(id,...args),disc=document.getElementById('neadDisc').value,activity=getNeadDisc(disc).atividades.find(item=>item.id===id);if(!activity)return result;
+  const view=document.getElementById('neadLancarView');view.prepend(plannerDeadlineControl(activity,disc));view.querySelectorAll('tbody tr').forEach((row,i)=>row.cells[1]?.append(plannerDeliveryControl(activity,disc,ALUNOS[i])));return result;
+};
+const deadlineConfig=renderNeadAtivList;
+renderNeadAtivList=function(...args){
+  const result=deadlineConfig(...args);
+  [...document.getElementById('neadAtivList').children].forEach((row,i)=>{
+    const activity=neadConfigAtivs[i];if(!activity)return;row.style.flexWrap='wrap';
+    const label=document.createElement('label');label.className='planner-config-deadline';label.textContent='Prazo de entrega';
+    const input=document.createElement('input');input.type='datetime-local';input.value=plannerLocalDateTime(activity.prazoEntrega);input.setAttribute('aria-label','Prazo de entrega · '+activity.aula+' · '+activity.tipo);input.onchange=()=>activity.prazoEntrega=input.value?new Date(input.value).toISOString():'';label.append(input);row.append(label);
+  });return result;
+};
+// A marcação manual continua disponível para entregas antigas sem data registrada.
+for(const launch of [false,true]){
+  const original=launch?setNeadStatusLancar:setNeadStatus;
+  const handler=function(disc,name,id,status){
+    if(professorCanEditNeadField(disc,name,id,'status')){const student=getNeadDisc(disc).alunos[name]||= {},entry=student[id]||= {nota:''};entry.statusManual=true;}
+    return original(disc,name,id,status);
+  };
+  if(launch)setNeadStatusLancar=handler;else setNeadStatus=handler;
+}
 
 </script>
 </body>
