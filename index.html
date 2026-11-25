@@ -18575,6 +18575,29 @@ function _pwaIconSvg192() {
  .planning-summary-label{font-size:9px!important}
 }
 
+.main{min-width:0!important;max-width:100%;box-sizing:border-box}
+#viewNotasEad,#viewNotasPres,#viewFrequencia,#neadNotasView,#npNotasView,#neadLancarView,#npLancarView{min-width:0;max-width:100%;box-sizing:border-box}
+.planner-table-scroll{display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;overflow-x:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x pan-y;scrollbar-width:auto;scrollbar-color:#8a9cbb #edf1f7}
+.planner-table-scroll::-webkit-scrollbar{height:13px}
+.planner-table-scroll::-webkit-scrollbar-thumb{background:#8a9cbb;border-radius:8px;border:2px solid #edf1f7}
+.planner-table-scroll::-webkit-scrollbar-track{background:#edf1f7}
+.planner-table-scroll:focus-visible{outline:2px solid #2659cc;outline-offset:2px}
+.planner-table-scroll-tools{display:flex;align-items:center;gap:10px;padding:6px 10px;background:#f5f7fb;border:1px solid var(--border,#ddd);border-radius:9px;margin:8px 0 5px;box-sizing:border-box;max-width:100%}
+.planner-table-scroll-tools[hidden]{display:none}
+.planner-table-scroll-tools label{display:flex;align-items:center;gap:12px;flex:1;min-width:0;font-size:11px;color:#52627a}
+.planner-table-scroll-tools input{flex:1;min-width:50px;width:100%;accent-color:#2457bb;cursor:ew-resize}
+.planner-table-scroll-tools button{border:1px solid #cbd4e3;background:#fff;color:#244878;border-radius:6px;width:32px;height:28px;cursor:pointer;flex-shrink:0}
+.planner-table-scroll-tools button:disabled{opacity:.4;cursor:default}
+@media(max-width:1100px){
+ .planner-table-scroll .nead-table th:first-child,.planner-table-scroll .nead-table td:first-child{position:sticky;left:0;z-index:2;background:#fff;min-width:145px!important;width:145px;max-width:180px;white-space:normal;box-shadow:2px 0 3px #172b4d0d}
+ .planner-table-scroll .nead-table thead th:first-child{background:#f6f8fc}
+ .planner-table-scroll .nead-aluno{max-width:145px;white-space:normal!important;overflow-wrap:anywhere;line-height:1.4}
+ .nead-toolbar{min-width:0;max-width:100%;flex-wrap:wrap!important}
+ .nead-toolbar .freq-select{min-width:0!important;max-width:100%}
+}
+@media(max-width:540px){.planner-table-scroll-tools label{flex-direction:column;align-items:stretch;gap:0}.main{padding:10px!important}}
+@media print{.planner-table-scroll-tools{display:none!important}.planner-table-scroll{overflow:visible!important}}
+
 </style><script>
 // Acesso às opções de sincronização pelo indicador do cabeçalho.
 function instalarComparacaoPlanner() {
@@ -19190,6 +19213,41 @@ function plannerCompactModuleForm(){
 }
 plannerCompactModuleForm();
 rebuildTagButtons();render();renderEad();
+
+// Controles de rolagem próximos ao cabeçalho, mesmo em tabelas compridas.
+function enhancePlannerTables() {
+  document.querySelectorAll('.nead-table,.freq-table').forEach(table=>{
+    const wrap=table.parentElement;
+    if(wrap.dataset.plannerScrollable)return;
+    wrap.dataset.plannerScrollable='true';wrap.classList.add('planner-table-scroll');
+    wrap.tabIndex=0;wrap.setAttribute('role','region');wrap.setAttribute('aria-label','Tabela com rolagem horizontal');
+    const controls=document.createElement('div');controls.className='planner-table-scroll-tools';
+    controls.innerHTML='<button type="button" aria-label="Ver colunas à esquerda">←</button><label>Arraste para ver as colunas<input type="range" min="0" max="100" value="0" step="1" aria-label="Posição horizontal da tabela"></label><button type="button" aria-label="Ver colunas à direita">→</button>';
+    wrap.before(controls);
+    const range=controls.querySelector('input'),buttons=controls.querySelectorAll('button');
+    const update=()=>{
+      const max=Math.max(0,wrap.scrollWidth-wrap.clientWidth);
+      controls.hidden=max<2;range.max=String(max);range.value=String(wrap.scrollLeft);
+      buttons[0].disabled=wrap.scrollLeft<1;buttons[1].disabled=wrap.scrollLeft>=max-1;
+    };
+    range.addEventListener('input',()=>{wrap.scrollLeft=Number(range.value);});
+    buttons.forEach((button,i)=>button.onclick=()=>wrap.scrollBy({left:(i?1:-1)*Math.max(180,wrap.clientWidth*.65),behavior:'smooth'}));
+    wrap.addEventListener('scroll',update,{passive:true});
+    wrap.addEventListener('keydown',event=>{
+      if(event.target!==wrap||!['ArrowLeft','ArrowRight'].includes(event.key))return;
+      event.preventDefault();wrap.scrollLeft+=(event.key==='ArrowRight'?1:-1)*150;
+    });
+    const resize=new ResizeObserver(update);resize.observe(wrap);resize.observe(table);
+    const cleanup=new MutationObserver(()=>{if(!wrap.isConnected){resize.disconnect();cleanup.disconnect();}});
+    cleanup.observe(wrap.parentElement,{childList:true});
+    requestAnimationFrame(update);
+  });
+}
+const plannerTableObserver=new MutationObserver(enhancePlannerTables);
+for(const id of ['neadNotasView','npNotasView','neadLancarView','npLancarView','viewFrequencia']){
+  const view=document.getElementById(id);if(view)plannerTableObserver.observe(view,{childList:true,subtree:true});
+}
+enhancePlannerTables();
 
 </script>
 </body>
