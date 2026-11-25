@@ -19859,10 +19859,10 @@ function plannerCompactStudentRows(){
         const button=document.createElement('button');button.type='button';button.className='notes-status-icon';button.dataset.status=value;button.innerHTML=plannerFineIcon(value);button.title=label;button.setAttribute('aria-label',label+' · '+name+' · '+activity.aula);button.setAttribute('aria-pressed',String(selected===value));button.disabled=!professorCanEditNeadField(disc,name,activity.id,'status');button.onclick=()=>setNeadStatus(disc,name,activity.id,value);status.append(button);
       }
       const line=document.createElement('div');line.className='notes-student-grade';
-      if(input){input.title=input.getAttribute('aria-label')||'Nota bruta';line.append(input);}
-      if(score){score.className='notes-student-score';score.title='Nota calculada, considerando a situação de entrega';if(score.textContent==='A conferir')score.textContent='—';line.append(score);}
+      if(input&&selected!=='nao'){input.title=input.getAttribute('aria-label')||'Nota bruta antes do desconto por atraso';line.append(input);}
+      if(score){score.className='notes-student-score';score.title='Nota final: integral no prazo, metade com atraso e zero se não entregou. Não exige data de entrega.';if(score.textContent==='A conferir')score.textContent='—';else score.textContent+=' pts';line.append(score);}
       const delivery=document.createElement('button');delivery.type='button';delivery.className='notes-delivery-button';delivery.innerHTML=plannerFineIcon('delivery');delivery.setAttribute('aria-label','Data de entrega de '+name+' · '+activity.aula+' · '+activity.tipo);
-      const instant=plannerDeliveryInstant(entry);delivery.title=instant!=null?'Entrega: '+new Date(instant).toLocaleString('pt-BR'):'Informar data de entrega';delivery.onclick=()=>plannerOpenDeliveryEditor(disc,name,activity.id);line.append(delivery);
+      const instant=plannerDeliveryInstant(entry);delivery.title=instant!=null?'Entrega registrada: '+new Date(instant).toLocaleString('pt-BR'):'';delivery.onclick=()=>plannerOpenDeliveryEditor(disc,name,activity.id);if(instant!=null)line.append(delivery);
       content.append(status,line);cell.replaceChildren(content);
     });
   });
@@ -19870,6 +19870,17 @@ function plannerCompactStudentRows(){
 renderNotasEad=function(...args){const result=compactEadNotes(...args);plannerCompactNotes('ead');plannerCompactStudentRows();return result;};
 const compactPresNotes=renderNpNotas;
 renderNpNotas=function(...args){const result=compactPresNotes(...args);plannerCompactNotes('presencial');return result;};
+// Os ícones definem a situação diretamente; não apague a nota-base ao marcar zero.
+function plannerMarkGradeStatus(disc,name,id,status){
+  if(!['prazo','atrasado','nao'].includes(status))return;
+  if(!professorCanEditNeadField(disc,name,id,'status'))return showToast('Esta situação está bloqueada na versão do professor.',true);
+  if(commitProductivity('situação da entrega',()=>{
+    const data=getNeadDisc(disc),student=data.alunos[name]||= {},entry=student[id]||= {nota:''};
+    entry.status=status;entry.statusManual=true;
+  }))quizRefresh(disc);
+}
+setNeadStatus=plannerMarkGradeStatus;
+setNeadStatusLancar=plannerMarkGradeStatus;
 
 </script>
 </body>
