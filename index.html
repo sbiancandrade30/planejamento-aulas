@@ -18621,6 +18621,10 @@ function _pwaIconSvg192() {
 .planner-deadline-control button{font:inherit;font-size:10px;white-space:normal;border:1px solid #ccd4e0;border-radius:6px;background:white;padding:6px;margin-top:6px;color:#294f91;cursor:pointer}
 .planner-delivery-control small{display:block;font-size:9px;white-space:normal;line-height:1.4;margin-top:4px}
 .planner-config-deadline{display:flex;flex-direction:column;font-size:10px;color:#53647d}
+.planner-deadline-inputs{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.planner-deadline-inputs input[type=date]{width:123px;max-width:100%}
+.planner-deadline-inputs input[type=time]{width:82px;max-width:100%}
+.planner-deadline-control input[hidden],.planner-config-deadline input[hidden]{display:none!important}
 
 </style><script>
 // Acesso às opções de sincronização pelo indicador do cabeçalho.
@@ -19503,7 +19507,7 @@ function openQuizImport(){
   dialog.querySelector('#quizImportDiscipline').textContent=disc;
   const select=dialog.querySelector('#quizImportActivity');activities.forEach(activity=>select.add(new Option(activity.aula+' · Questionário · '+neadAtivValorMax(activity)+' pts',activity.id)));
   const current=document.getElementById('neadAtivSel').value;if(activities.some(activity=>activity.id===current))select.value=current;
-  const loadDeadline=()=>{const activity=activities.find(item=>item.id===select.value);document.getElementById('quizImportDeadline').value=plannerLocalDateTime(activity?.prazoEntrega);};
+  const loadDeadline=()=>{const activity=activities.find(item=>item.id===select.value),input=document.getElementById('quizImportDeadline');input.value=plannerLocalDateTime(activity?.prazoEntrega);plannerPrepareDeadlineInput(input);};
   loadDeadline();select.onchange=()=>{loadDeadline();quizBuildImportPreview();};
   dialog.querySelector('#quizImportFile').onchange=event=>quizLoadImportFile(event.target.files[0]);
   dialog.querySelector('#quizCsvChoice').onchange=event=>quizUseImportCsv(Number(event.target.value));
@@ -19638,6 +19642,20 @@ function plannerLocalDateTime(value){
   if(!value)return '';const date=new Date(value);if(!Number.isFinite(date.getTime()))return '';
   const pad=value=>String(value).padStart(2,'0');return date.getFullYear()+'-'+pad(date.getMonth()+1)+'-'+pad(date.getDate())+'T'+pad(date.getHours())+':'+pad(date.getMinutes());
 }
+// Separe a data do horário para oferecer 23:59 mesmo antes de escolher um dia.
+function plannerPrepareDeadlineInput(input){
+  let fields=input._deadlineFields;
+  if(!fields){
+    const wrap=document.createElement('span');wrap.className='planner-deadline-inputs';
+    const date=document.createElement('input'),time=document.createElement('input');date.type='date';time.type='time';time.step='60';
+    const label=input.getAttribute('aria-label')||'Prazo de entrega';date.setAttribute('aria-label',label+' · data');time.setAttribute('aria-label',label+' · horário');
+    date.disabled=time.disabled=input.disabled;input.hidden=true;input.after(wrap);wrap.append(date,time);
+    const change=()=>{input.value=date.value?date.value+'T'+(time.value||'23:59'):'';input.dispatchEvent(new Event('change',{bubbles:true}));};
+    date.onchange=change;time.onchange=()=>{if(date.value)change();};
+    fields=input._deadlineFields={date,time};
+  }
+  const [date,time]=input.value.split('T');fields.date.value=date||'';fields.time.value=time||'23:59';
+}
 function plannerDeliveryInstant(entry){
   if(entry?.entregueEm)return new Date(entry.entregueEm).getTime();
   return entry?.importacao?.respostaEm?quizSubmissionTime(entry.importacao.respostaEm):null;
@@ -19671,7 +19689,7 @@ function plannerSetDelivery(disc,name,id,value){
 function plannerDeadlineControl(activity,disc){
   const details=document.createElement('details');details.className='planner-deadline-control';
   const summary=document.createElement('summary');summary.textContent=activity.prazoEntrega?'Prazo: '+new Date(activity.prazoEntrega).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Definir prazo';details.append(summary);
-  const input=document.createElement('input');input.type='datetime-local';input.value=plannerLocalDateTime(activity.prazoEntrega);input.disabled=isProfessorMode();input.setAttribute('aria-label','Prazo de entrega · '+activity.aula+' · '+activity.tipo);input.onchange=()=>plannerSetActivityDeadline(disc,activity.id,input.value);details.append(input);
+  const input=document.createElement('input');input.type='datetime-local';input.value=plannerLocalDateTime(activity.prazoEntrega);input.disabled=isProfessorMode();input.setAttribute('aria-label','Prazo de entrega · '+activity.aula+' · '+activity.tipo);input.onchange=()=>plannerSetActivityDeadline(disc,activity.id,input.value);details.append(input);plannerPrepareDeadlineInput(input);
   if(!isProfessorMode()){
     const close=document.createElement('button');close.type='button';close.textContent='Conferir não entregues';close.title='Após conferir as entregas, marque como não fez quem continua sem entrega ou lançamento.';close.onclick=()=>plannerCloseDeliveryCheck(disc,activity.id);details.append(close);
   }
@@ -19719,7 +19737,7 @@ renderNeadAtivList=function(...args){
   [...document.getElementById('neadAtivList').children].forEach((row,i)=>{
     const activity=neadConfigAtivs[i];if(!activity)return;row.style.flexWrap='wrap';
     const label=document.createElement('label');label.className='planner-config-deadline';label.textContent='Prazo de entrega';
-    const input=document.createElement('input');input.type='datetime-local';input.value=plannerLocalDateTime(activity.prazoEntrega);input.setAttribute('aria-label','Prazo de entrega · '+activity.aula+' · '+activity.tipo);input.onchange=()=>activity.prazoEntrega=input.value?new Date(input.value).toISOString():'';label.append(input);row.append(label);
+    const input=document.createElement('input');input.type='datetime-local';input.value=plannerLocalDateTime(activity.prazoEntrega);input.setAttribute('aria-label','Prazo de entrega · '+activity.aula+' · '+activity.tipo);input.onchange=()=>activity.prazoEntrega=input.value?new Date(input.value).toISOString():'';label.append(input);row.append(label);plannerPrepareDeadlineInput(input);
   });return result;
 };
 // A marcação manual continua disponível para entregas antigas sem data registrada.
