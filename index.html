@@ -18634,6 +18634,12 @@ function _pwaIconSvg192() {
 #plannerColumnSettings .planner-deadline-control{max-width:none;margin:0;text-align:left}
 #plannerColumnSettings .planner-deadline-inputs{justify-content:flex-start}
 #plannerColumnSettings .planner-deadline-control button{margin-top:16px}
+.planner-activity-title{display:block;margin:0 auto 3px;padding:3px 2px;background:transparent;border:0;border-radius:4px;color:#52647f;font:inherit;font-size:11px;font-weight:500;text-transform:none;letter-spacing:0;white-space:nowrap;cursor:pointer}
+.planner-activity-title:hover{color:#2457b7;background:#eaf0fa}
+.planner-activity-title:focus-visible{outline:2px solid #2457b7;outline-offset:2px}
+.planner-activity-points{display:block;font-size:9px;letter-spacing:0;text-transform:none;font-weight:400;color:#98a3b5}
+#plannerColumnSettings .planner-dialog-heading button{border:0!important;background:transparent;width:28px;height:28px;min-height:0;padding:0;box-shadow:none;color:#7c899d;font-size:20px}
+#plannerColumnSettings .planner-dialog-heading button:hover{background:#f0f3f8}
 
 #viewNotasEad .notes-page-head,#viewNotasPres .notes-page-head{padding:2px 2px 5px!important;border:0!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;margin:0 0 4px!important;min-height:0!important}
 #viewNotasEad .page-title,#viewNotasPres .page-title{font-size:16px!important;line-height:1.3!important;margin:0!important}
@@ -18662,12 +18668,12 @@ function _pwaIconSvg192() {
 #neadNotasView .notes-student-grade .nead-nota-input{width:44px;height:26px;padding:3px 4px;font-size:11px;min-height:0}
 .notes-student-score{font-size:11px!important;min-width:12px;white-space:nowrap}
 .notes-status-icons{display:flex;align-items:center;justify-content:center;gap:4px}
-.notes-status-icon{width:25px;height:24px;border:1px solid #e0e6ef;border-radius:5px;background:#f7f8fa;color:#8995a7;cursor:pointer;font:17px/1 system-ui,sans-serif;padding:0}
+.notes-status-icon{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:1px solid transparent;border-radius:5px;background:transparent;color:#a0acbc;cursor:pointer;padding:0}
 .notes-status-icon:hover{background:#e9eef6;color:#425573}
 .notes-status-icon[aria-pressed=true][data-status=prazo]{color:#087545;background:#e8f6ed;border-color:#76bd94}
 .notes-status-icon[aria-pressed=true][data-status=atrasado]{color:#a66605;background:#fff4dc;border-color:#d9af5f}
 .notes-status-icon[aria-pressed=true][data-status=nao]{color:#b42324;background:#ffecec;border-color:#df9494}
-.notes-status-icon[aria-pressed=true]{font-weight:700;box-shadow:inset 0 0 0 1px currentColor}
+.notes-status-icon[aria-pressed=true]{box-shadow:none}
 .notes-status-icon:focus-visible{outline:2px solid #2457b7;outline-offset:2px}
 .notes-status-icon:disabled{opacity:.45;cursor:default}
 .notes-delivery-button{border:0;background:transparent;color:#8290a4;font-size:17px;padding:2px 3px;cursor:pointer;border-radius:4px;line-height:1}
@@ -19771,9 +19777,10 @@ function plannerCloseDeliveryCheck(disc,id){
   }))quizRefresh(disc);
 }
 const deadlineRender=renderNotasEad;
+function plannerActivityLabel(activity){const number=String(activity.aula||'').match(/\d+/)?.[0];return (activity.tipo==='resumo'?'Resumo':'Atividade')+(number?' A'+number:' · '+(activity.aula||''));}
 function plannerOpenColumnSettings(disc,id){
   const activity=getNeadDisc(disc).atividades.find(item=>item.id===id);if(!activity)return;
-  const dialog=plannerDialog('plannerColumnSettings',activity.aula+' · '+(activity.tipo==='resumo'?'Resumo':'Questionário'),'<p>'+neadAtivValorMax(activity)+' pontos · alterações salvas automaticamente</p><div class="planner-column-settings-fields"></div>');
+  const dialog=plannerDialog('plannerColumnSettings',plannerActivityLabel(activity),'<p>'+(activity.tipo==='resumo'?'Resumo':'Questionário')+' · '+neadAtivValorMax(activity)+' pontos · salvo automaticamente</p><div class="planner-column-settings-fields"></div>');
   const fields=dialog.querySelector('.planner-column-settings-fields');
   if(activity.tipo==='questionario')fields.append(quizTotalControl(activity,disc));
   const label=document.createElement('p');label.textContent='Prazo de entrega';fields.append(label);
@@ -19786,8 +19793,9 @@ renderNotasEad=function(...args){
     const heading=table.tHead.rows[0].cells[index+1];
     if(heading){
       heading.querySelector('.planner-quiz-total')?.remove();heading.classList.add('planner-minimal-column');
-      const button=document.createElement('button');button.type='button';button.className='planner-column-settings-button';button.textContent='⋯';button.setAttribute('aria-label','Configurar '+activity.aula+' · '+activity.tipo);
-      button.title='Configurar'+(activity.totalQuestoes?' · '+activity.totalQuestoes+' questões':'')+(activity.prazoEntrega?' · prazo '+new Date(activity.prazoEntrega).toLocaleString('pt-BR'):'');button.onclick=()=>plannerOpenColumnSettings(disc,activity.id);heading.append(button);
+      const button=document.createElement('button');button.type='button';button.className='planner-activity-title';button.textContent=plannerActivityLabel(activity);button.setAttribute('aria-label','Abrir '+plannerActivityLabel(activity));
+      button.title='Abrir detalhes'+(activity.totalQuestoes?' · '+activity.totalQuestoes+' questões':'')+(activity.prazoEntrega?' · prazo '+new Date(activity.prazoEntrega).toLocaleString('pt-BR'):'');button.onclick=()=>plannerOpenColumnSettings(disc,activity.id);
+      const points=document.createElement('small');points.className='planner-activity-points';points.textContent=neadAtivValorMax(activity)+' pts';heading.replaceChildren(button,points);
     }
     [...table.tBodies[0].rows].forEach((row,i)=>row.cells[index+1]?.append(plannerDeliveryControl(activity,disc,ALUNOS[i])));
   });return result;
@@ -19831,6 +19839,10 @@ function plannerOpenDeliveryEditor(disc,name,id){
   const dialog=plannerDialog('plannerDeliveryEditor','Entrega · '+activity.aula,'<p class="delivery-editor-name"></p><div class="delivery-editor-fields"></div>');dialog.querySelector('.delivery-editor-name').textContent=name;
   const control=plannerDeliveryControl(activity,disc,name);control.open=true;control.querySelector('summary').hidden=true;dialog.querySelector('.delivery-editor-fields').append(control);
 }
+function plannerFineIcon(kind){
+  const paths={prazo:'<path d="m3 8 3 3 7-7"/>',atrasado:'<circle cx="8" cy="8" r="5.5"/><path d="M8 4.5V8l2.5 1.5"/>',nao:'<path d="m4.5 4.5 7 7m0-7-7 7"/>',delivery:'<rect x="2.5" y="4" width="11" height="9.5" rx="1.5"/><path d="M5 2.5v3m6-3v3M3 7h10"/>'};
+  return '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths[kind]+'</svg>';
+}
 function plannerCompactStudentRows(){
   const disc=document.getElementById('neadDisc').value,table=document.querySelector('#neadNotasView .nead-table');if(!disc||!table)return;
   const data=getNeadDisc(disc);
@@ -19844,12 +19856,12 @@ function plannerCompactStudentRows(){
       const selected=entry?.status||(activity.tipo==='resumo'?'':'prazo');
       const labels=[['prazo','✓',activity.tipo==='resumo'?'Fez / no prazo':'No prazo'],['atrasado','◷','Atrasado · metade da nota'],['nao','×',activity.tipo==='resumo'?'Não fez':'Não entregou']];
       for(const [value,icon,label] of labels){
-        const button=document.createElement('button');button.type='button';button.className='notes-status-icon';button.dataset.status=value;button.textContent=icon;button.title=label;button.setAttribute('aria-label',label+' · '+name+' · '+activity.aula);button.setAttribute('aria-pressed',String(selected===value));button.disabled=!professorCanEditNeadField(disc,name,activity.id,'status');button.onclick=()=>setNeadStatus(disc,name,activity.id,value);status.append(button);
+        const button=document.createElement('button');button.type='button';button.className='notes-status-icon';button.dataset.status=value;button.innerHTML=plannerFineIcon(value);button.title=label;button.setAttribute('aria-label',label+' · '+name+' · '+activity.aula);button.setAttribute('aria-pressed',String(selected===value));button.disabled=!professorCanEditNeadField(disc,name,activity.id,'status');button.onclick=()=>setNeadStatus(disc,name,activity.id,value);status.append(button);
       }
       const line=document.createElement('div');line.className='notes-student-grade';
       if(input){input.title=input.getAttribute('aria-label')||'Nota bruta';line.append(input);}
       if(score){score.className='notes-student-score';score.title='Nota calculada, considerando a situação de entrega';if(score.textContent==='A conferir')score.textContent='—';line.append(score);}
-      const delivery=document.createElement('button');delivery.type='button';delivery.className='notes-delivery-button';delivery.textContent='◷';delivery.setAttribute('aria-label','Data de entrega de '+name+' · '+activity.aula+' · '+activity.tipo);
+      const delivery=document.createElement('button');delivery.type='button';delivery.className='notes-delivery-button';delivery.innerHTML=plannerFineIcon('delivery');delivery.setAttribute('aria-label','Data de entrega de '+name+' · '+activity.aula+' · '+activity.tipo);
       const instant=plannerDeliveryInstant(entry);delivery.title=instant!=null?'Entrega: '+new Date(instant).toLocaleString('pt-BR'):'Informar data de entrega';delivery.onclick=()=>plannerOpenDeliveryEditor(disc,name,activity.id);line.append(delivery);
       content.append(status,line);cell.replaceChildren(content);
     });
