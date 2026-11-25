@@ -18625,6 +18625,15 @@ function _pwaIconSvg192() {
 .planner-deadline-inputs input[type=date]{width:123px;max-width:100%}
 .planner-deadline-inputs input[type=time]{width:82px;max-width:100%}
 .planner-deadline-control input[hidden],.planner-config-deadline input[hidden]{display:none!important}
+.planner-minimal-column{position:relative;padding-top:8px!important;padding-bottom:8px!important}
+.planner-column-settings-button{display:block;margin:3px auto 0;border:0;background:transparent;color:#8491a6;cursor:pointer;font:20px/14px system-ui,sans-serif;padding:2px 8px;border-radius:5px}
+.planner-column-settings-button:hover,.planner-column-settings-button:focus-visible{background:#e9eef8;color:#2457b7}
+#plannerColumnSettings{margin:auto!important;width:min(400px,calc(100vw - 24px));font-family:inherit}
+#plannerColumnSettings [hidden]{display:none!important}
+#plannerColumnSettings .planner-quiz-total{justify-content:flex-start;font-size:12px;margin:12px 0}
+#plannerColumnSettings .planner-deadline-control{max-width:none;margin:0;text-align:left}
+#plannerColumnSettings .planner-deadline-inputs{justify-content:flex-start}
+#plannerColumnSettings .planner-deadline-control button{margin-top:16px}
 
 </style><script>
 // Acesso às opções de sincronização pelo indicador do cabeçalho.
@@ -19718,11 +19727,24 @@ function plannerCloseDeliveryCheck(disc,id){
   }))quizRefresh(disc);
 }
 const deadlineRender=renderNotasEad;
+function plannerOpenColumnSettings(disc,id){
+  const activity=getNeadDisc(disc).atividades.find(item=>item.id===id);if(!activity)return;
+  const dialog=plannerDialog('plannerColumnSettings',activity.aula+' · '+(activity.tipo==='resumo'?'Resumo':'Questionário'),'<p>'+neadAtivValorMax(activity)+' pontos · alterações salvas automaticamente</p><div class="planner-column-settings-fields"></div>');
+  const fields=dialog.querySelector('.planner-column-settings-fields');
+  if(activity.tipo==='questionario')fields.append(quizTotalControl(activity,disc));
+  const label=document.createElement('p');label.textContent='Prazo de entrega';fields.append(label);
+  const deadline=plannerDeadlineControl(activity,disc);deadline.open=true;deadline.querySelector('summary').hidden=true;fields.append(deadline);
+}
 renderNotasEad=function(...args){
   const result=deadlineRender(...args),disc=document.getElementById('neadDisc').value;if(!disc)return result;
   const data=getNeadDisc(disc),table=document.querySelector('#neadNotasView .nead-table');if(!table)return result;
   data.atividades.forEach((activity,index)=>{
-    table.tHead.rows[0].cells[index+1]?.append(plannerDeadlineControl(activity,disc));
+    const heading=table.tHead.rows[0].cells[index+1];
+    if(heading){
+      heading.querySelector('.planner-quiz-total')?.remove();heading.classList.add('planner-minimal-column');
+      const button=document.createElement('button');button.type='button';button.className='planner-column-settings-button';button.textContent='⋯';button.setAttribute('aria-label','Configurar '+activity.aula+' · '+activity.tipo);
+      button.title='Configurar'+(activity.totalQuestoes?' · '+activity.totalQuestoes+' questões':'')+(activity.prazoEntrega?' · prazo '+new Date(activity.prazoEntrega).toLocaleString('pt-BR'):'');button.onclick=()=>plannerOpenColumnSettings(disc,activity.id);heading.append(button);
+    }
     [...table.tBodies[0].rows].forEach((row,i)=>row.cells[index+1]?.append(plannerDeliveryControl(activity,disc,ALUNOS[i])));
   });return result;
 };
