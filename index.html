@@ -5454,7 +5454,184 @@
 
 <script src="artvac-report.js"></script>
 <script src="artvac-planner.js"></script>
-<script src="frequency-images.js"></script>
+<script>
+(function installFrequencyImages(global) {
+  'use strict';
+
+  var MAX_RAW_SIZE = 12 * 1024 * 1024;
+  var MAX_SIZE = 2.5 * 1024 * 1024;
+  var TARGET_SIZE = 800 * 1024;
+  var MAX_PIXELS = 40000000;
+  var MAX_EDGE = 1600;
+  var QUALITIES = [0.82, 0.75, 0.68, 0.61, 0.55];
+
+  function fail(message) { throw new Error(message); }
+
+  function dimensions(bytes, type) {
+    var view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    function ascii(offset, value) {
+      return offset + value.length <= bytes.length &&
+        Array.prototype.every.call(value, function (char, i) {
+          return bytes[offset + i] === char.charCodeAt(0);
+        });
+    }
+    if (type === 'image/png' && bytes.length >= 33 &&
+        bytes[0] === 137 && ascii(1, 'PNG\r\n\x1a\n') &&
+        view.getUint32(8) === 13 && ascii(12, 'IHDR')) {
+      return [view.getUint32(16), view.getUint32(20)];
+    }
+    if (type === 'image/gif' && bytes.length >= 13 &&
+        (ascii(0, 'GIF87a') || ascii(0, 'GIF89a'))) {
+      return [view.getUint16(6, true), view.getUint16(8, true)];
+    }
+    if (type === 'image/jpeg' && bytes[0] === 255 && bytes[1] === 216) {
+      var offset = 2;
+      while (offset < bytes.length) {
+        if (bytes[offset++] !== 255) break;
+        while (bytes[offset] === 255) offset++;
+        var marker = bytes[offset++];
+        if (marker === 217 || marker === 218) break;
+        if (marker === 1 || (marker >= 208 && marker <= 215)) continue;
+        if (offset + 2 > bytes.length) break;
+        var length = view.getUint16(offset);
+        if (length < 2 || offset + length > bytes.length) break;
+        if ([192, 193, 194, 195, 197, 198, 199, 201, 202, 203, 205, 206, 207].indexOf(marker) >= 0) {
+          if (length < 8) break;
+          return [view.getUint16(offset + 5), view.getUint16(offset + 3)];
+        }
+        offset += length;
+      }
+    }
+    if (type === 'image/webp' && bytes.length >= 30 && ascii(0, 'RIFF') && ascii(8, 'WEBP')) {
+      if (ascii(12, 'VP8X')) {
+        return [1 + bytes[24] + bytes[25] * 256 + bytes[26] * 65536,
+          1 + bytes[27] + bytes[28] * 256 + bytes[29] * 65536];
+      }
+      if (ascii(12, 'VP8 ') && bytes[23] === 157 && bytes[24] === 1 && bytes[25] === 42) {
+        return [view.getUint16(26, true) & 16383, view.getUint16(28, true) & 16383];
+      }
+      if (ascii(12, 'VP8L') && bytes[20] === 47) {
+        var bits = view.getUint32(21, true);
+        return [(bits & 16383) + 1, ((bits >>> 14) & 16383) + 1];
+      }
+    }
+    fail('Dados de imagem inv\u00e1lidos ou em formato n\u00e3o suportado.');
+  }
+
+  function checkDimensions(width, height) {
+    if (!width || !height || width * height > MAX_PIXELS) {
+      fail('A imagem deve conter no m\u00e1ximo 40 milh\u00f5es de pixels.');
+    }
+  }
+
+  function dataUrl(blob) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.onerror = reader.onabort = function () { reject(new Error('N\u00e3o foi poss\u00edvel ler o arquivo.')); };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function decode(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var image = new Image();
+      var timer = setTimeout(function () { finish(false); }, 15000);
+      function finish(ok) {
+        clearTimeout(timer);
+        image.onload = image.onerror = null;
+        URL.revokeObjectURL(url);
+        if (ok) resolve(image);
+        else { image.src = ''; reject(new Error('N\u00e3o foi poss\u00edvel decodificar a imagem.')); }
+      }
+      image.onload = function () { finish(true); };
+      image.onerror = function () { finish(false); };
+      image.src = url;
+    });
+  }
+
+  function encode(canvas, quality) {
+    return new Promise(function (resolve, reject) {
+      canvas.toBlob(function (blob) {
+        if (blob && blob.type === 'image/jpeg') resolve(blob);
+        else reject(new Error('N\u00e3o foi poss\u00edvel codificar a imagem.'));
+      }, 'image/jpeg', quality);
+    });
+  }
+
+  async function prepare(file) {
+    if (!(file instanceof Blob) || !file.size) fail('Selecione um arquivo que n\u00e3o esteja vazio.');
+    if (file.size > MAX_RAW_SIZE) fail('O arquivo excede o limite de entrada de 12 MiB.');
+    var type = file.type.toLowerCase();
+    if (['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'].indexOf(type) < 0) {
+      fail('Os formatos suportados s\u00e3o JPEG, PNG, WebP, GIF e PDF.');
+    }
+    var unchanged = type === 'image/gif' || type === 'application/pdf';
+    if (unchanged && file.size > MAX_SIZE) fail('Arquivos GIF e PDF n\u00e3o devem exceder 2,5 MiB.');
+    var bytes = new Uint8Array(await file.arrayBuffer());
+    if (type === 'application/pdf') {
+      if (bytes.length < 5 || String.fromCharCode.apply(null, bytes.subarray(0, 5)) !== '%PDF-') {
+        fail('Dados de PDF inv\u00e1lidos.');
+      }
+    } else {
+      var dims = dimensions(bytes, type);
+      checkDimensions(dims[0], dims[1]);
+    }
+    var name = typeof file.name === 'string' && file.name ? file.name : 'anexo';
+    var output = file;
+    if (type !== 'application/pdf') {
+      var image = await decode(file);
+      checkDimensions(image.naturalWidth, image.naturalHeight);
+      if (!unchanged) {
+        var canvas = document.createElement('canvas');
+        var context = canvas.getContext('2d');
+        if (!context) fail('O processamento de imagens est\u00e1 indispon\u00edvel.');
+        var scale = Math.min(1, MAX_EDGE / Math.max(image.naturalWidth, image.naturalHeight));
+        var best = null;
+        try {
+          // Bound encoding work to five sizes and five quality levels per size.
+          for (var pass = 0; pass < 5; pass++) {
+            canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+            context.fillStyle = '#ffffff';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            for (var q = 0; q < QUALITIES.length; q++) {
+              var candidate = await encode(canvas, QUALITIES[q]);
+              if (!best || candidate.size < best.size) best = candidate;
+              if (candidate.size <= TARGET_SIZE) break;
+            }
+            if (best.size <= TARGET_SIZE) break;
+            scale *= 0.8;
+          }
+          if (file.size > MAX_SIZE || best.size < file.size) {
+            output = best;
+            name = (name.replace(/\.[^.]*$/, '') || 'foto') + '.jpg';
+          }
+        } finally {
+          canvas.width = canvas.height = 1;
+          image.src = '';
+        }
+      } else image.src = '';
+    }
+    if (output.size > MAX_SIZE) fail('O arquivo preparado excede o limite de 2,5 MiB.');
+    return {
+      dataUrl: await dataUrl(output), name: name, size: output.size,
+      originalSize: file.size, compressed: output !== file
+    };
+  }
+
+  global.FrequencyImages = Object.freeze({
+    prepare: prepare,
+    install: installFrequencyImages,
+    constants: Object.freeze({ MAX_RAW_SIZE: MAX_RAW_SIZE, MAX_SIZE: MAX_SIZE,
+      TARGET_SIZE: TARGET_SIZE, MAX_PIXELS: MAX_PIXELS, MAX_EDGE: MAX_EDGE })
+  });
+})(window);
+
+
+</script>
 <script>
 // --- LOGIN ------------------------------------------------
 const DEFAULT_PASSWORD = 'senai2026';
@@ -18685,6 +18862,57 @@ function _pwaIconSvg192() {
 #plannerDeliveryEditor .planner-delivery-control{max-width:none;text-align:left;margin:10px 0}
 #plannerDeliveryEditor input{width:100%;font-size:13px}
 
+#viewFrequencia .freq-page-head{padding:2px 2px 5px!important;margin:0 0 4px!important;background:transparent!important;border:0!important;box-shadow:none!important;min-height:0!important}
+#viewFrequencia .page-title{font-size:16px!important;line-height:1.3}
+#viewFrequencia .freq-control-panel{padding:6px 8px!important;margin-bottom:6px!important;border-radius:10px!important}
+#viewFrequencia .freq-control-top{margin-bottom:5px!important;gap:6px}
+#viewFrequencia .freq-mode-tabs button,#viewFrequencia .btn{font-size:11px!important;min-height:28px!important;height:auto!important;padding:5px 9px!important}
+#viewFrequencia .freq-toolbar{display:flex!important;align-items:center;flex-wrap:wrap;gap:6px!important;padding:0!important;border:0!important;margin:0!important;background:transparent!important}
+#viewFrequencia .freq-select{font-size:12px!important;height:31px!important;min-height:0!important;padding:5px 9px!important}
+#freqDayFilters #freqData{min-width:140px!important;width:145px!important;flex:none!important}
+#freqDayFilters #freqDisc{min-width:170px!important;width:auto!important;flex:0 1 420px!important}
+#viewFrequencia #freqDayFilters[style*="display: none"],#viewFrequencia #freqDayFilters[style*="display:none"]{display:none!important}
+#viewFrequencia .freq-period-toolbar{gap:7px!important;margin:5px 0 0!important}
+#viewFrequencia .freq-period-toolbar label{font-size:9px;gap:2px}
+#viewFrequencia .freq-student-toolbar{margin:6px 0!important;gap:6px}
+.freq-stats-compact{padding:6px 9px!important;display:flex;align-items:center;flex-wrap:wrap;gap:8px;border-radius:8px!important}
+.freq-stats-compact .freq-insight-title{margin:0!important;font-size:10px!important;font-weight:500!important}
+.freq-stats-compact .freq-metric-row{display:flex!important;flex-wrap:wrap;gap:6px!important}
+.freq-stats-compact .freq-mini-metric{display:flex;align-items:center;gap:5px;min-height:0!important;border:0!important;border-radius:0!important;padding:0 8px 0 0!important;background:transparent!important}
+.freq-stats-compact .freq-mini-value{font-size:14px!important;line-height:1!important}
+.freq-stats-compact .freq-mini-label{font-size:9px!important;letter-spacing:0!important;text-transform:none!important}
+.freq-stats-compact .freq-insight-sub{font-size:9px!important;margin-left:auto}
+.freq-advanced-insights{margin:4px 0 6px;font-size:10px;color:#64748b}
+.freq-advanced-insights>summary{cursor:pointer;padding:3px}
+.freq-extra-insights{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:5px}
+.freq-extra-insights .freq-insight-card{padding:10px!important}
+#freqTableWrap .freq-call-actions{padding:7px 9px!important;gap:8px!important;margin-bottom:6px!important;align-items:center!important}
+#freqTableWrap .freq-call-title{font-size:12px!important}
+#freqTableWrap .freq-call-date,#freqTableWrap .freq-call-meta{font-size:10px!important}
+#freqTableWrap .freq-call-sub{font-size:9px!important;margin-top:2px!important}
+#freqTableWrap .freq-call-btn,#freqTableWrap .freq-day-toggle{font-size:10px!important;padding:5px 7px!important;min-height:28px!important}
+#freqTableWrap .freq-call-buttons{gap:5px!important;flex-wrap:wrap}
+#freqTableWrap .freq-exception-actions{font-size:10px}
+#freqTableWrap .freq-exception-actions[open]{display:flex;flex-direction:column;gap:5px}
+#freqTableWrap .freq-table{min-width:700px!important;width:100%}
+#freqTableWrap .freq-table td{padding:5px 6px!important;vertical-align:middle}
+#freqTableWrap .freq-table th{padding:7px 6px!important;font-size:10px!important}
+#freqTableWrap .freq-module-col{min-width:76px!important;width:76px}
+#freqTableWrap .mod-status{display:flex!important;flex-direction:row!important;justify-content:center;gap:3px!important}
+#freqTableWrap .ms-btn{min-width:22px!important;width:23px!important;height:23px!important;padding:0!important;line-height:1!important;font-size:9px!important;font-weight:400!important;border-radius:5px!important;box-shadow:none!important}
+#freqTableWrap .aluno-nome{font-size:11px!important;font-weight:600!important;max-width:240px;white-space:normal}
+.freq-student-details-btn{font:inherit;font-size:10px;background:transparent;border:1px solid #dfe5ee;border-radius:5px;padding:5px 7px;color:#64748b;cursor:pointer}
+.freq-student-details-btn.has-record{color:#2457b7;background:#edf3ff;border-color:#cfdbf0}
+#freqStudentDetails{margin:auto!important;width:min(520px,calc(100vw - 24px));font-family:inherit}
+#freqStudentDetails section{margin:15px 0}#freqStudentDetails h3{font-size:12px;margin:0 0 7px}
+#freqStudentDetails textarea,#freqStudentDetails input:not([type=file]),#freqStudentDetails select{max-width:100%!important;width:100%!important;box-sizing:border-box;font-size:12px}
+#freqStudentDetails textarea{min-height:60px}
+#freqStudentDetails .freq-doc-inline{display:flex;flex-wrap:wrap;gap:6px}
+#viewFrequencia .freq-period-title{font-size:12px;margin:10px 0 6px}
+#viewFrequencia .freq-history-record{padding-top:8px;padding-bottom:8px;font-size:12px}
+#viewFrequencia .planner-table-scroll-tools{padding:3px 7px;margin:4px 0}
+@media(max-width:700px){.freq-extra-insights{grid-template-columns:1fr}.freq-stats-compact .freq-insight-sub{margin-left:0}#freqTableWrap .freq-call-actions{flex-direction:column!important;align-items:stretch!important}#viewFrequencia .freq-student-toolbar{flex-wrap:wrap}#viewFrequencia .freq-student-toolbar>*{flex:1 1 180px}}
+
 </style><script>
 // Acesso às opções de sincronização pelo indicador do cabeçalho.
 function instalarComparacaoPlanner() {
@@ -19881,6 +20109,48 @@ function plannerMarkGradeStatus(disc,name,id,status){
 }
 setNeadStatus=plannerMarkGradeStatus;
 setNeadStatusLancar=plannerMarkGradeStatus;
+
+let freqCompactDetails=new Map(),freqCompactContext=null,freqShowAnalyses=false;
+function openCompactFrequencyDetails(name){
+  const record=freqCompactDetails.get(name);if(!record)return;
+  freqCompactContext={name,disc:record.disc,date:record.date};
+  const dialog=plannerDialog('freqStudentDetails','Detalhes da chamada','<p class="freq-detail-student"></p><div class="freq-detail-fields"></div>');
+  dialog.querySelector('.freq-detail-student').textContent=name;
+  dialog.querySelector('.freq-detail-fields').append(...record.sections);
+  dialog.addEventListener('close',()=>{freqCompactContext=null;});
+}
+function compactFrequencyTable(){
+  const table=document.querySelector('#freqTableWrap .freq-table');freqCompactDetails=new Map();if(!table)return;
+  const disc=document.getElementById('freqDisc').value,date=document.getElementById('freqData').value;
+  const headers=[...table.tHead.rows[0].cells],extraHeaders=headers.slice(-3);
+  const heading=document.createElement('th');heading.textContent='Detalhes';extraHeaders[0].before(heading);extraHeaders.forEach(cell=>cell.remove());
+  table.querySelectorAll('tbody tr').forEach(row=>{
+    const name=row.dataset.freqStudent,cells=[...row.cells].slice(-3),sections=[];
+    cells.forEach((cell,i)=>{const section=document.createElement('section'),title=document.createElement('h3');title.textContent=['Observação','Documento','Justificativa'][i];section.append(title,...cell.childNodes);sections.push(section);cell.remove();});
+    freqCompactDetails.set(name,{disc,date,sections});
+    const cell=document.createElement('td'),button=document.createElement('button');button.type='button';button.className='freq-student-details-btn';button.textContent='Detalhes';button.setAttribute('aria-label','Detalhes da chamada de '+name);
+    const student=state.freq?.[disc]?.[date]?.alunos?.[name];
+    if(student&&(student.obs||student.link||student.docData||student.afastamentoTipo)){button.classList.add('has-record');button.title='Há observação, documento ou justificativa registrada';}
+    button.onclick=()=>openCompactFrequencyDetails(name);cell.append(button);row.append(cell);
+    row.querySelectorAll('.mod-status').forEach(group=>{group.setAttribute('role','group');group.setAttribute('aria-label','Situação do módulo de '+name);group.querySelectorAll('button').forEach(button=>button.setAttribute('aria-pressed',String(button.classList.contains('sel'))));});
+  });
+  const more=document.querySelector('#freqTableWrap .freq-exception-actions');
+  if(more){more.querySelector('summary').textContent='Mais ações';document.querySelectorAll('#freqTableWrap .freq-call-buttons>button').forEach(button=>{if(/adjustFreqModuleCount|openFreqReassign/.test(button.getAttribute('onclick')||''))more.append(button);});}
+  const dialog=document.getElementById('freqStudentDetails');
+  if(dialog?.open&&freqCompactContext){
+    const record=freqCompactDetails.get(freqCompactContext.name);
+    if(record&&record.disc===freqCompactContext.disc&&record.date===freqCompactContext.date)dialog.querySelector('.freq-detail-fields').replaceChildren(...record.sections);
+    else dialog.close();
+  }
+}
+const compactFrequencyRender=renderFreq;
+renderFreq=function(...args){const result=compactFrequencyRender(...args);compactFrequencyTable();return result;};
+const compactFrequencyInsights=renderFreqInsights;
+renderFreqInsights=function(...args){
+  const result=compactFrequencyInsights(...args),wrap=document.getElementById('freqInsightWrap'),grid=wrap.querySelector('.freq-insights-grid');if(!grid)return result;
+  const cards=[...grid.children],primary=cards.shift();primary.classList.add('freq-stats-compact');
+  const details=document.createElement('details');details.className='freq-advanced-insights';details.open=freqShowAnalyses;const summary=document.createElement('summary');summary.textContent='Análises e alunos para acompanhar';const body=document.createElement('div');body.className='freq-extra-insights';body.append(...cards);details.append(summary,body);details.ontoggle=()=>{freqShowAnalyses=details.open;};wrap.replaceChildren(primary,details);return result;
+};
 
 </script>
 </body>
