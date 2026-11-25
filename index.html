@@ -18652,6 +18652,23 @@ function _pwaIconSvg192() {
 #neadNotasView .planner-table-scroll-tools,#npNotasView .planner-table-scroll-tools{padding:3px 7px;margin:4px 0;gap:7px}
 #neadNotasView .planner-table-scroll-tools button,#npNotasView .planner-table-scroll-tools button{height:25px;width:28px}
 @media(max-width:750px){.notes-compact-actions .notes-kpi-grid{margin-left:0!important}#neadDisc,#npDisc{max-width:none!important}}
+#neadNotasView .nead-table td{padding:5px 6px!important;vertical-align:middle}
+.notes-student-cell{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:94px}
+.notes-status-select{height:25px;max-width:108px;width:100%;font:10px/1.2 inherit;font-size:10px;color:#52627a;background:#f5f7fa;border:1px solid #e0e6ef;border-radius:6px;padding:3px 4px;cursor:pointer}
+.notes-status-select[data-status=prazo]{color:#087545;background:#edf8f1;border-color:#c4e6d1}
+.notes-status-select[data-status=atrasado]{color:#a66605;background:#fff6e5;border-color:#f1d7a7}
+.notes-status-select[data-status=nao]{color:#b42324;background:#fff0f0;border-color:#efcaca}
+.notes-student-grade{display:flex;align-items:center;justify-content:center;gap:5px;min-height:26px}
+#neadNotasView .notes-student-grade .nead-nota-input{width:44px;height:26px;padding:3px 4px;font-size:11px;min-height:0}
+.notes-student-score{font-size:11px!important;min-width:12px;white-space:nowrap}
+.notes-delivery-button{border:0;background:transparent;color:#8290a4;font-size:17px;padding:2px 3px;cursor:pointer;border-radius:4px;line-height:1}
+.notes-delivery-button:hover,.notes-delivery-button:focus-visible{background:#e9eff9;color:#2457b7}
+#neadNotasView .nead-total{font-size:12px;line-height:1.2}
+#neadNotasView .nead-total span{font-size:9px!important}
+#plannerDeliveryEditor{margin:auto!important;width:min(410px,calc(100vw - 24px));font-family:inherit}
+#plannerDeliveryEditor [hidden]{display:none!important}
+#plannerDeliveryEditor .planner-delivery-control{max-width:none;text-align:left;margin:10px 0}
+#plannerDeliveryEditor input{width:100%;font-size:13px}
 
 </style><script>
 // Acesso às opções de sincronização pelo indicador do cabeçalho.
@@ -19800,7 +19817,34 @@ function plannerCompactNotes(kind){
   if(actions.childElementCount)view.prepend(actions);
 }
 const compactEadNotes=renderNotasEad;
-renderNotasEad=function(...args){const result=compactEadNotes(...args);plannerCompactNotes('ead');return result;};
+function plannerOpenDeliveryEditor(disc,name,id){
+  const activity=getNeadDisc(disc).atividades.find(item=>item.id===id);if(!activity)return;
+  const dialog=plannerDialog('plannerDeliveryEditor','Entrega · '+activity.aula,'<p class="delivery-editor-name"></p><div class="delivery-editor-fields"></div>');dialog.querySelector('.delivery-editor-name').textContent=name;
+  const control=plannerDeliveryControl(activity,disc,name);control.open=true;control.querySelector('summary').hidden=true;dialog.querySelector('.delivery-editor-fields').append(control);
+}
+function plannerCompactStudentRows(){
+  const disc=document.getElementById('neadDisc').value,table=document.querySelector('#neadNotasView .nead-table');if(!disc||!table)return;
+  const data=getNeadDisc(disc);
+  [...table.tBodies[0].rows].forEach((row,index)=>{
+    const name=ALUNOS[index];
+    data.atividades.forEach((activity,column)=>{
+      const cell=row.cells[column+1],entry=data.alunos[name]?.[activity.id];if(!cell)return;
+      const old=cell.querySelector('div'),input=cell.querySelector('.nead-nota-input'),score=old?.querySelector('span');
+      const content=document.createElement('div');content.className='notes-student-cell';
+      const status=document.createElement('select');status.className='notes-status-select';status.setAttribute('aria-label','Situação de '+name+' · '+activity.aula+' · '+activity.tipo);
+      const labels=activity.tipo==='resumo'?[['','A conferir'],['prazo','Fez'],['atrasado','Atrasado'],['nao','Não fez']]:[['','A conferir'],['prazo','No prazo'],['atrasado','Atrasado'],['nao','Não entregou']];
+      labels.forEach(([value,label])=>status.add(new Option(label,value)));status.value=entry?.status||(activity.tipo==='resumo'?'':'prazo');status.dataset.status=status.value;
+      status.disabled=!professorCanEditNeadField(disc,name,activity.id,'status');status.onchange=()=>setNeadStatus(disc,name,activity.id,status.value);
+      const line=document.createElement('div');line.className='notes-student-grade';
+      if(input){input.title=input.getAttribute('aria-label')||'Nota bruta';line.append(input);}
+      if(score){score.className='notes-student-score';score.title='Nota calculada, considerando a situação de entrega';if(score.textContent==='A conferir')score.textContent='—';line.append(score);}
+      const delivery=document.createElement('button');delivery.type='button';delivery.className='notes-delivery-button';delivery.textContent='◷';delivery.setAttribute('aria-label','Data de entrega de '+name+' · '+activity.aula+' · '+activity.tipo);
+      const instant=plannerDeliveryInstant(entry);delivery.title=instant!=null?'Entrega: '+new Date(instant).toLocaleString('pt-BR'):'Informar data de entrega';delivery.onclick=()=>plannerOpenDeliveryEditor(disc,name,activity.id);line.append(delivery);
+      content.append(status,line);cell.replaceChildren(content);
+    });
+  });
+}
+renderNotasEad=function(...args){const result=compactEadNotes(...args);plannerCompactNotes('ead');plannerCompactStudentRows();return result;};
 const compactPresNotes=renderNpNotas;
 renderNpNotas=function(...args){const result=compactPresNotes(...args);plannerCompactNotes('presencial');return result;};
 
