@@ -18635,6 +18635,24 @@ function _pwaIconSvg192() {
 #plannerColumnSettings .planner-deadline-inputs{justify-content:flex-start}
 #plannerColumnSettings .planner-deadline-control button{margin-top:16px}
 
+#viewNotasEad .notes-page-head,#viewNotasPres .notes-page-head{padding:2px 2px 5px!important;border:0!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;margin:0 0 4px!important;min-height:0!important}
+#viewNotasEad .page-title,#viewNotasPres .page-title{font-size:16px!important;line-height:1.3!important;margin:0!important}
+#viewNotasEad .page-sub,#viewNotasPres .page-sub{display:none!important}
+#viewNotasEad .nead-toolbar,#viewNotasPres .nead-toolbar{padding:6px 8px!important;gap:6px!important;margin-bottom:7px!important;border-radius:10px!important}
+#viewNotasEad .nead-toolbar .freq-select,#viewNotasPres .nead-toolbar .freq-select{height:31px!important;font-size:12px!important;padding:0 10px!important;min-width:130px!important;max-width:100%}
+#neadDisc,#npDisc{flex:1 1 260px;max-width:460px!important}
+#neadAtivSel,#npAtivSel{flex:0 1 190px}
+#viewNotasEad .nead-toolbar .btn,#viewNotasPres .nead-toolbar .btn,.notes-compact-actions>.btn{height:30px!important;padding:5px 10px!important;font-size:11px!important;margin:0!important}
+.notes-compact-actions{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:0 0 6px}
+.notes-compact-actions .quiz-import-open{margin:0}
+.notes-compact-actions .notes-kpi-grid{display:flex!important;align-items:center;flex-wrap:wrap;gap:5px!important;margin:0 0 0 auto!important}
+.notes-compact-actions .notes-kpi{display:flex;align-items:center;gap:5px;padding:5px 8px!important;min-height:0!important;border-radius:6px!important}
+.notes-compact-actions .notes-kpi-value{font-size:14px!important;line-height:1!important;margin:0!important}
+.notes-compact-actions .notes-kpi-label{font-size:10px!important;letter-spacing:0!important;text-transform:none!important}
+#neadNotasView .planner-table-scroll-tools,#npNotasView .planner-table-scroll-tools{padding:3px 7px;margin:4px 0;gap:7px}
+#neadNotasView .planner-table-scroll-tools button,#npNotasView .planner-table-scroll-tools button{height:25px;width:28px}
+@media(max-width:750px){.notes-compact-actions .notes-kpi-grid{margin-left:0!important}#neadDisc,#npDisc{max-width:none!important}}
+
 </style><script>
 // Acesso às opções de sincronização pelo indicador do cabeçalho.
 function instalarComparacaoPlanner() {
@@ -19771,6 +19789,20 @@ for(const launch of [false,true]){
   };
   if(launch)setNeadStatusLancar=handler;else setNeadStatus=handler;
 }
+
+function plannerCompactNotes(kind){
+  const view=document.getElementById(kind==='ead'?'neadNotasView':'npNotasView');if(!view)return;
+  const actions=document.createElement('div');actions.className='notes-compact-actions';
+  const imported=view.querySelector('.quiz-import-open');if(imported)actions.append(imported);
+  const paste=view.querySelector('button[onclick^="openGradePaste("]');
+  if(paste){const old=paste.parentElement;actions.append(paste);if(!old.childElementCount)old.remove();}
+  const indicators=view.querySelector('.notes-kpi-grid');if(indicators)actions.append(indicators);
+  if(actions.childElementCount)view.prepend(actions);
+}
+const compactEadNotes=renderNotasEad;
+renderNotasEad=function(...args){const result=compactEadNotes(...args);plannerCompactNotes('ead');return result;};
+const compactPresNotes=renderNpNotas;
+renderNpNotas=function(...args){const result=compactPresNotes(...args);plannerCompactNotes('presencial');return result;};
 
 </script>
 </body>
