@@ -18661,6 +18661,15 @@ function _pwaIconSvg192() {
 .notes-student-grade{display:flex;align-items:center;justify-content:center;gap:5px;min-height:26px}
 #neadNotasView .notes-student-grade .nead-nota-input{width:44px;height:26px;padding:3px 4px;font-size:11px;min-height:0}
 .notes-student-score{font-size:11px!important;min-width:12px;white-space:nowrap}
+.notes-status-icons{display:flex;align-items:center;justify-content:center;gap:4px}
+.notes-status-icon{width:25px;height:24px;border:1px solid #e0e6ef;border-radius:5px;background:#f7f8fa;color:#8995a7;cursor:pointer;font:17px/1 system-ui,sans-serif;padding:0}
+.notes-status-icon:hover{background:#e9eef6;color:#425573}
+.notes-status-icon[aria-pressed=true][data-status=prazo]{color:#087545;background:#e8f6ed;border-color:#76bd94}
+.notes-status-icon[aria-pressed=true][data-status=atrasado]{color:#a66605;background:#fff4dc;border-color:#d9af5f}
+.notes-status-icon[aria-pressed=true][data-status=nao]{color:#b42324;background:#ffecec;border-color:#df9494}
+.notes-status-icon[aria-pressed=true]{font-weight:700;box-shadow:inset 0 0 0 1px currentColor}
+.notes-status-icon:focus-visible{outline:2px solid #2457b7;outline-offset:2px}
+.notes-status-icon:disabled{opacity:.45;cursor:default}
 .notes-delivery-button{border:0;background:transparent;color:#8290a4;font-size:17px;padding:2px 3px;cursor:pointer;border-radius:4px;line-height:1}
 .notes-delivery-button:hover,.notes-delivery-button:focus-visible{background:#e9eff9;color:#2457b7}
 #neadNotasView .nead-total{font-size:12px;line-height:1.2}
@@ -19831,10 +19840,12 @@ function plannerCompactStudentRows(){
       const cell=row.cells[column+1],entry=data.alunos[name]?.[activity.id];if(!cell)return;
       const old=cell.querySelector('div'),input=cell.querySelector('.nead-nota-input'),score=old?.querySelector('span');
       const content=document.createElement('div');content.className='notes-student-cell';
-      const status=document.createElement('select');status.className='notes-status-select';status.setAttribute('aria-label','Situação de '+name+' · '+activity.aula+' · '+activity.tipo);
-      const labels=activity.tipo==='resumo'?[['','A conferir'],['prazo','Fez'],['atrasado','Atrasado'],['nao','Não fez']]:[['','A conferir'],['prazo','No prazo'],['atrasado','Atrasado'],['nao','Não entregou']];
-      labels.forEach(([value,label])=>status.add(new Option(label,value)));status.value=entry?.status||(activity.tipo==='resumo'?'':'prazo');status.dataset.status=status.value;
-      status.disabled=!professorCanEditNeadField(disc,name,activity.id,'status');status.onchange=()=>setNeadStatus(disc,name,activity.id,status.value);
+      const status=document.createElement('div');status.className='notes-status-icons';status.setAttribute('role','group');status.setAttribute('aria-label','Situação de '+name+' · '+activity.aula+' · '+activity.tipo);
+      const selected=entry?.status||(activity.tipo==='resumo'?'':'prazo');
+      const labels=[['prazo','✓',activity.tipo==='resumo'?'Fez / no prazo':'No prazo'],['atrasado','◷','Atrasado · metade da nota'],['nao','×',activity.tipo==='resumo'?'Não fez':'Não entregou']];
+      for(const [value,icon,label] of labels){
+        const button=document.createElement('button');button.type='button';button.className='notes-status-icon';button.dataset.status=value;button.textContent=icon;button.title=label;button.setAttribute('aria-label',label+' · '+name+' · '+activity.aula);button.setAttribute('aria-pressed',String(selected===value));button.disabled=!professorCanEditNeadField(disc,name,activity.id,'status');button.onclick=()=>setNeadStatus(disc,name,activity.id,value);status.append(button);
+      }
       const line=document.createElement('div');line.className='notes-student-grade';
       if(input){input.title=input.getAttribute('aria-label')||'Nota bruta';line.append(input);}
       if(score){score.className='notes-student-score';score.title='Nota calculada, considerando a situação de entrega';if(score.textContent==='A conferir')score.textContent='—';line.append(score);}
