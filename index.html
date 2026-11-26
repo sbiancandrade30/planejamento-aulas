@@ -6336,7 +6336,7 @@ function suggestPlannerDiscipline(force = false) {
 function onPlannerDayChange() { renderModuleBatchOptions(); suggestPlannerDiscipline(); }
 
 function onFreqDateChange() {
-  setFreqWholeDay(false);
+  setFreqWholeDay(true);
   ensureFreqDisciplineOptions();
   const date=document.getElementById('freqData').value,select=document.getElementById('freqDisc');
   const saved=Object.keys(state.freq||{}).filter(disc=>state.freq[disc]?.[date]&&Object.keys(state.freq[disc][date].alunos||{}).length);
@@ -14465,13 +14465,13 @@ function getFreqEntryStats(entry) {
   return stats;
 }
 
-let freqApplyWholeDay = false;
+let freqApplyWholeDay = true;
 let freqContextClassId='';
 var freqLastSyncStatus='off';
 function setFreqWholeDay(active){
   freqApplyWholeDay=!!active;const input=document.getElementById('freqApplyWholeDay');if(input){input.checked=freqApplyWholeDay;input.closest('label')?.classList.toggle('freq-day-active',freqApplyWholeDay);}const badge=document.getElementById('freqWholeDayBadge');if(badge)badge.textContent=freqApplyWholeDay?'ATIVO':'';
 }
-function onFreqDisciplineChange(){setFreqWholeDay(false);renderFreq();}
+function onFreqDisciplineChange(){setFreqWholeDay(true);renderFreq();}
 function freqStorageText(){
   const date=document.getElementById('freqData')?.value,disc=document.getElementById('freqDisc')?.value;
   if(!state.freq?.[disc]?.[date])return 'Nova chamada · ainda não salva';
@@ -14534,7 +14534,7 @@ function refreshFreqHistory(){
   const value=freqArg(JSON.stringify([document.getElementById('freqData').value,document.getElementById('freqDisc').value]));if([...select.options].some(option=>option.value===value))select.value=value;
 }
 function openFreqHistory(value){
-  if(!value)return;try{const [date,disc]=JSON.parse(decodeURIComponent(value));if(!state.freq?.[disc]?.[date])return;setFreqWholeDay(false);ensureFreqDisciplineOptions();document.getElementById('freqData').value=date;document.getElementById('freqDisc').value=disc;setFreqView('chamada');renderFreq();}catch(_){showToast('Não foi possível abrir esta chamada.',true);}
+  if(!value)return;try{const [date,disc]=JSON.parse(decodeURIComponent(value));if(!state.freq?.[disc]?.[date])return;setFreqWholeDay(true);ensureFreqDisciplineOptions();document.getElementById('freqData').value=date;document.getElementById('freqDisc').value=disc;setFreqView('chamada');renderFreq();}catch(_){showToast('Não foi possível abrir esta chamada.',true);}
 }
 function shiftFreqDate(days){const input=document.getElementById('freqData'),date=new Date((input.value||localDateKey())+'T12:00:00');date.setDate(date.getDate()+days);input.value=localDateKey(date);onFreqDateChange();}
 function freqToday(){document.getElementById('freqData').value=localDateKey();onFreqDateChange();}
@@ -14542,7 +14542,7 @@ function filterFreqRows(){const query=normalizeOccurrenceText(document.getElemen
 function rememberFreqContext(){try{const saved=JSON.parse(localStorage.getItem('planner_freq_context_v1')||'{}');saved[getActiveClassId()]={date:document.getElementById('freqData').value,disc:document.getElementById('freqDisc').value};localStorage.setItem('planner_freq_context_v1',JSON.stringify(saved));}catch(_){} }
 function prepareFreqContext(){
   const id=getActiveClassId();ensureFreqDisciplineOptions();if(freqContextClassId===id)return;freqContextClassId=id;
-  setFreqWholeDay(false);
+  setFreqWholeDay(true);
   const search=document.getElementById('freqStudentSearch');if(search)search.value='';
   let saved;try{saved=JSON.parse(localStorage.getItem('planner_freq_context_v1')||'{}')[id];}catch(_){}
   if(saved){document.getElementById('freqData').value=saved.date;document.getElementById('freqDisc').value=saved.disc;}
@@ -14579,7 +14579,7 @@ function saveFreqReassign(){
       plannerUndoSnapshot.freqSelection={date:source.date,disc:source.disc};
       try{sessionStorage.setItem('planner_undo_v1',JSON.stringify(plannerUndoSnapshot));}catch(_){}
     }
-    closeProductivity();setFreqWholeDay(false);ensureFreqDisciplineOptions();document.getElementById('freqData').value=date;document.getElementById('freqDisc').value=disc;renderFreq();showToast('Chamada movida. Confira e confirme em Salvar e confirmar.');
+    closeProductivity();setFreqWholeDay(true);ensureFreqDisciplineOptions();document.getElementById('freqData').value=date;document.getElementById('freqDisc').value=disc;renderFreq();showToast('Chamada movida. Confira e confirme em Salvar e confirmar.');
   }catch(error){showToast(error.message,true);}
 }
 
@@ -15104,7 +15104,7 @@ function renderNotasEad() {
     html += '<tr><td class="td-l"><div class="nead-aluno">' + nome + '</div></td>';
     ativs.forEach(a => {
       const key = a.id;
-      const entry = alunoData[key] || { status:a.tipo==='resumo'?'':'prazo', nota:'' };
+      const entry = alunoData[key] || { status:'', nota:'' };
       const valorMax = neadAtivValorMax(a);
       const valorPendente = neadQuestionarioSemValor(a);
       totalMax += valorMax;
@@ -15189,7 +15189,7 @@ function renderNeadLancar(atvId) {
 
   ALUNOS.forEach((nome, i) => {
     if (!data.alunos[nome]) data.alunos[nome] = {};
-    const e = data.alunos[nome][atvId] || { status: isResumo?'':'prazo', nota: '' };
+    const e = data.alunos[nome][atvId] || { status: '', nota: '' };
     const bruta = parseFloat(e.nota) || 0;
     let calc = 0;
     if (isResumo) calc = e.status==='prazo'?valorMax:e.status==='atrasado'?valorMax/2:0;
@@ -15322,7 +15322,7 @@ function renderNeadResumo() {
       const alunoData = data.alunos[nome] || {};
       let total = 0;
       data.atividades.forEach(a => {
-        const e = alunoData[a.id] || { status:a.tipo==='resumo'?'':'prazo', nota:'' };
+        const e = alunoData[a.id] || { status:'', nota:'' };
         const bruta = parseFloat(e.nota) || 0;
         if (a.tipo === 'resumo') {
           const valorMax = neadAtivValorMax(a);
@@ -18855,6 +18855,9 @@ function _pwaIconSvg192() {
 .notes-status-icon:disabled{opacity:.45;cursor:default}
 .notes-delivery-button{border:0;background:transparent;color:#8290a4;font-size:17px;padding:2px 3px;cursor:pointer;border-radius:4px;line-height:1}
 .notes-delivery-button:hover,.notes-delivery-button:focus-visible{background:#e9eff9;color:#2457b7}
+.notes-clear-button{display:inline-flex;align-items:center;justify-content:center;width:20px;height:22px;padding:2px;border:0;border-radius:4px;background:transparent;color:#a2aabb;cursor:pointer}
+.notes-clear-button:hover,.notes-clear-button:focus-visible{background:#fff0f0;color:#b42324}
+.notes-clear-button:disabled{opacity:.4;cursor:default}
 #neadNotasView .nead-total{font-size:12px;line-height:1.2}
 #neadNotasView .nead-total span{font-size:9px!important}
 #plannerDeliveryEditor{margin:auto!important;width:min(410px,calc(100vw - 24px));font-family:inherit}
@@ -18872,6 +18875,19 @@ function _pwaIconSvg192() {
 #freqDayFilters #freqData{min-width:140px!important;width:145px!important;flex:none!important}
 #freqDayFilters #freqDisc{min-width:170px!important;width:auto!important;flex:0 1 420px!important}
 #viewFrequencia #freqDayFilters[style*="display: none"],#viewFrequencia #freqDayFilters[style*="display:none"]{display:none!important}
+#viewFrequencia #freqHistory[hidden]{display:none!important}
+.freq-history-open{font:inherit;font-size:11px;text-align:left;color:#475f83;padding:6px 10px;border:1px solid #dfe5ef;border-radius:8px;background:#fff;cursor:pointer;min-height:31px}
+.freq-history-open:hover{background:#f1f5fc}
+#freqHistoryDialog{margin:auto!important;width:min(650px,calc(100vw - 24px));font-family:inherit}
+.freq-history-filters{display:flex;gap:8px;flex-wrap:wrap}
+.freq-history-filters input,.freq-history-filters select{font:inherit;font-size:12px;border:1px solid #ccd5e3;padding:8px 10px;border-radius:7px;min-width:0;background:#fff;color:#344761}
+.freq-history-filters input{flex:1 1 230px}.freq-history-filters select{flex:0 1 170px}
+#freqHistoryResults{max-height:50vh;overflow:auto}
+.freq-history-choice{display:grid;grid-template-columns:90px minmax(0,1fr) 85px;align-items:center;gap:10px;width:100%;text-align:left;border:0;border-bottom:1px solid #e6ebf2;background:transparent;padding:11px 7px;color:#344761;cursor:pointer;font:inherit;font-size:12px}
+.freq-history-choice:hover,.freq-history-choice[aria-current=true]{background:#f0f5fd}
+.freq-history-choice strong{font-size:11px;font-weight:500}.freq-history-choice span{overflow-wrap:anywhere}
+.freq-history-choice small{font-size:10px;text-align:center;border-radius:5px;padding:3px 5px}.freq-history-choice .confirmed{background:#eaf7ef;color:#26734b}.freq-history-choice .pending{background:#fff5df;color:#946518}
+@media(max-width:450px){.freq-history-choice{grid-template-columns:75px minmax(0,1fr);gap:5px}.freq-history-choice small{grid-column:2;justify-self:start}.freq-history-filters select{flex:1}}
 #viewFrequencia .freq-period-toolbar{gap:7px!important;margin:5px 0 0!important}
 #viewFrequencia .freq-period-toolbar label{font-size:9px;gap:2px}
 #viewFrequencia .freq-student-toolbar{margin:6px 0!important;gap:6px}
@@ -19517,10 +19533,11 @@ function plannerCompactModuleForm(){
   const models=section('Modelos e repetição em outros módulos');models.append(group('fTemplate'),document.getElementById('fCopyModuleGroup'),document.getElementById('fBatchGroup'));
   body.append(library,prep,advanced,models);
   const baseGroups=['fDisc','fTitle'].map(group);const tags=document.getElementById('tagButtonsContainer').closest('.form-group');
-  body.querySelector('.form-row').after(...baseGroups,tags);
+  body.querySelector('.form-row').after(models,...baseGroups,tags);
+  models.open=true;
   const observer=new MutationObserver(()=>{
     if(!document.getElementById('modalOverlay').classList.contains('open'))return;
-    body.querySelectorAll('.planner-form-section').forEach(details=>details.open=false);
+    body.querySelectorAll('.planner-form-section').forEach(details=>details.open=details===models);
     body.querySelectorAll('.planner-tag-saved').forEach(note=>note.remove());
     body.scrollTop=0;
   });
@@ -20068,7 +20085,7 @@ function plannerOpenDeliveryEditor(disc,name,id){
   const control=plannerDeliveryControl(activity,disc,name);control.open=true;control.querySelector('summary').hidden=true;dialog.querySelector('.delivery-editor-fields').append(control);
 }
 function plannerFineIcon(kind){
-  const paths={prazo:'<path d="m3 8 3 3 7-7"/>',atrasado:'<circle cx="8" cy="8" r="5.5"/><path d="M8 4.5V8l2.5 1.5"/>',nao:'<path d="m4.5 4.5 7 7m0-7-7 7"/>',delivery:'<rect x="2.5" y="4" width="11" height="9.5" rx="1.5"/><path d="M5 2.5v3m6-3v3M3 7h10"/>'};
+  const paths={prazo:'<path d="m3 8 3 3 7-7"/>',atrasado:'<circle cx="8" cy="8" r="5.5"/><path d="M8 4.5V8l2.5 1.5"/>',nao:'<path d="m4.5 4.5 7 7m0-7-7 7"/>',delivery:'<rect x="2.5" y="4" width="11" height="9.5" rx="1.5"/><path d="M5 2.5v3m6-3v3M3 7h10"/>',clear:'<path d="M3 4.5h10M6 4.5v-2h4v2M4 4.5l.7 9h6.6l.7-9M6.5 7v4M9.5 7v4"/>'};
   return '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths[kind]+'</svg>';
 }
 function plannerCompactStudentRows(){
@@ -20081,16 +20098,19 @@ function plannerCompactStudentRows(){
       const old=cell.querySelector('div'),input=cell.querySelector('.nead-nota-input'),score=old?.querySelector('span');
       const content=document.createElement('div');content.className='notes-student-cell';
       const status=document.createElement('div');status.className='notes-status-icons';status.setAttribute('role','group');status.setAttribute('aria-label','Situação de '+name+' · '+activity.aula+' · '+activity.tipo);
-      const selected=entry?.status||(activity.tipo==='resumo'?'':'prazo');
+      const selected=entry?.status||'';
       const labels=[['prazo','✓',activity.tipo==='resumo'?'Fez / no prazo':'No prazo'],['atrasado','◷','Atrasado · metade da nota'],['nao','×',activity.tipo==='resumo'?'Não fez':'Não entregou']];
       for(const [value,icon,label] of labels){
-        const button=document.createElement('button');button.type='button';button.className='notes-status-icon';button.dataset.status=value;button.innerHTML=plannerFineIcon(value);button.title=label;button.setAttribute('aria-label',label+' · '+name+' · '+activity.aula);button.setAttribute('aria-pressed',String(selected===value));button.disabled=!professorCanEditNeadField(disc,name,activity.id,'status');button.onclick=()=>setNeadStatus(disc,name,activity.id,value);status.append(button);
+        const button=document.createElement('button');button.type='button';button.className='notes-status-icon';button.dataset.status=value;button.innerHTML=plannerFineIcon(value);button.title=label+(selected===value?' · clique novamente para desmarcar':'');button.setAttribute('aria-label',label+' · '+name+' · '+activity.aula);button.setAttribute('aria-pressed',String(selected===value));button.disabled=!professorCanEditNeadField(disc,name,activity.id,'status');button.onclick=()=>setNeadStatus(disc,name,activity.id,value);status.append(button);
       }
       const line=document.createElement('div');line.className='notes-student-grade';
       if(input&&selected!=='nao'){input.title=input.getAttribute('aria-label')||'Nota bruta antes do desconto por atraso';line.append(input);}
-      if(score){score.className='notes-student-score';score.title='Nota final: integral no prazo, metade com atraso e zero se não entregou. Não exige data de entrega.';if(score.textContent==='A conferir')score.textContent='—';else score.textContent+=' pts';line.append(score);}
+      if(score){score.className='notes-student-score';score.title='Nota final: integral no prazo, metade com atraso e zero se não entregou. Não exige data de entrega.';if(!selected||score.textContent==='A conferir')score.textContent='—';else score.textContent+=' pts';line.append(score);}
       const delivery=document.createElement('button');delivery.type='button';delivery.className='notes-delivery-button';delivery.innerHTML=plannerFineIcon('delivery');delivery.setAttribute('aria-label','Data de entrega de '+name+' · '+activity.aula+' · '+activity.tipo);
       const instant=plannerDeliveryInstant(entry);delivery.title=instant!=null?'Entrega registrada: '+new Date(instant).toLocaleString('pt-BR'):'';delivery.onclick=()=>plannerOpenDeliveryEditor(disc,name,activity.id);if(instant!=null)line.append(delivery);
+      if(entry&&(entry.status||entry.nota!==''&&entry.nota!=null||Number.isInteger(entry.acertos)||entry.importacao||entry.entregueEm)){
+        const clear=document.createElement('button');clear.type='button';clear.className='notes-clear-button';clear.innerHTML=plannerFineIcon('clear');clear.title='Limpar registro desta atividade';clear.setAttribute('aria-label','Limpar registro de '+name+' · '+activity.aula+' · '+activity.tipo);clear.disabled=!professorCanEditNeadField(disc,name,activity.id,'status')||!professorCanEditNeadField(disc,name,activity.id,'nota');clear.onclick=()=>plannerClearGradeRecord(disc,name,activity.id);line.append(clear);
+      }
       content.append(status,line);cell.replaceChildren(content);
     });
   });
@@ -20104,11 +20124,18 @@ function plannerMarkGradeStatus(disc,name,id,status){
   if(!professorCanEditNeadField(disc,name,id,'status'))return showToast('Esta situação está bloqueada na versão do professor.',true);
   if(commitProductivity('situação da entrega',()=>{
     const data=getNeadDisc(disc),student=data.alunos[name]||= {},entry=student[id]||= {nota:''};
-    entry.status=status;entry.statusManual=true;
+    entry.status=entry.status===status?'':status;entry.statusManual=true;
   }))quizRefresh(disc);
 }
 setNeadStatus=plannerMarkGradeStatus;
 setNeadStatusLancar=plannerMarkGradeStatus;
+function plannerClearGradeRecord(disc,name,id){
+  if(!professorCanEditNeadField(disc,name,id,'status')||!professorCanEditNeadField(disc,name,id,'nota'))return showToast('Este registro está bloqueado na versão do professor.',true);
+  if(!getNeadDisc(disc).alunos[name]?.[id])return;
+  if(commitProductivity('remoção do registro de nota',()=>{delete getNeadDisc(disc).alunos[name][id];})){
+    quizRefresh(disc);showToast('Registro removido. Você pode desfazer a alteração.');
+  }
+}
 
 let freqCompactDetails=new Map(),freqCompactContext=null,freqShowAnalyses=false;
 function openCompactFrequencyDetails(name){
@@ -20135,7 +20162,7 @@ function compactFrequencyTable(){
     row.querySelectorAll('.mod-status').forEach(group=>{group.setAttribute('role','group');group.setAttribute('aria-label','Situação do módulo de '+name);group.querySelectorAll('button').forEach(button=>button.setAttribute('aria-pressed',String(button.classList.contains('sel'))));});
   });
   const more=document.querySelector('#freqTableWrap .freq-exception-actions');
-  if(more){more.querySelector('summary').textContent='Mais ações';document.querySelectorAll('#freqTableWrap .freq-call-buttons>button').forEach(button=>{if(/adjustFreqModuleCount|openFreqReassign/.test(button.getAttribute('onclick')||''))more.append(button);});}
+  if(more){more.querySelector('summary').textContent='Mais ações';document.querySelectorAll('#freqTableWrap .freq-call-buttons>button').forEach(button=>{if(/adjustFreqModuleCount/.test(button.getAttribute('onclick')||''))more.append(button);});}
   const dialog=document.getElementById('freqStudentDetails');
   if(dialog?.open&&freqCompactContext){
     const record=freqCompactDetails.get(freqCompactContext.name);
@@ -20150,6 +20177,33 @@ renderFreqInsights=function(...args){
   const result=compactFrequencyInsights(...args),wrap=document.getElementById('freqInsightWrap'),grid=wrap.querySelector('.freq-insights-grid');if(!grid)return result;
   const cards=[...grid.children],primary=cards.shift();primary.classList.add('freq-stats-compact');
   const details=document.createElement('details');details.className='freq-advanced-insights';details.open=freqShowAnalyses;const summary=document.createElement('summary');summary.textContent='Análises e alunos para acompanhar';const body=document.createElement('div');body.className='freq-extra-insights';body.append(...cards);details.append(summary,body);details.ontoggle=()=>{freqShowAnalyses=details.open;};wrap.replaceChildren(primary,details);return result;
+};
+function openCompactFrequencyHistory(){
+  const classId=getActiveClassId();
+  const entries=Object.entries(state.freq||{}).flatMap(([disc,dates])=>Object.entries(dates||{}).filter(([,entry])=>Object.keys(entry?.alunos||{}).length).map(([date,entry])=>({date,disc,confirmed:freqCallReady(entry,date,disc)}))).sort((a,b)=>b.date.localeCompare(a.date)||a.disc.localeCompare(b.disc,'pt-BR'));
+  const dialog=plannerDialog('freqHistoryDialog','Chamadas anteriores','<div class="freq-history-filters"><input type="search" id="freqHistorySearch" placeholder="Buscar data ou disciplina…" aria-label="Buscar chamada por data ou disciplina"><select id="freqHistoryStatus" aria-label="Situação das chamadas"><option value="">Todas as situações</option><option value="confirmed">Confirmadas</option><option value="pending">A conferir</option></select></div><p id="freqHistoryCount" role="status"></p><div id="freqHistoryResults"></div>');
+  const search=dialog.querySelector('#freqHistorySearch'),filter=dialog.querySelector('#freqHistoryStatus'),list=dialog.querySelector('#freqHistoryResults');
+  function show(){
+    const query=normalizeOccurrenceText(search.value),status=filter.value;
+    const filtered=entries.filter(item=>(!status||(status==='confirmed')===item.confirmed)&&normalizeOccurrenceText(item.date+' '+formatDateKeyPtBr(item.date)+' '+item.disc).includes(query));
+    list.replaceChildren();dialog.querySelector('#freqHistoryCount').textContent=filtered.length+' de '+entries.length+' chamada(s)';
+    if(!filtered.length){const empty=document.createElement('p');empty.textContent='Nenhuma chamada encontrada.';list.append(empty);}
+    for(const item of filtered){
+      const button=document.createElement('button');button.type='button';button.className='freq-history-choice';
+      const date=document.createElement('strong');date.textContent=formatDateKeyPtBr(item.date);const disc=document.createElement('span');disc.textContent=item.disc;const badge=document.createElement('small');badge.textContent=item.confirmed?'Confirmada':'A conferir';badge.className=item.confirmed?'confirmed':'pending';
+      button.append(date,disc,badge);
+      if(item.date===document.getElementById('freqData').value&&item.disc===document.getElementById('freqDisc').value)button.setAttribute('aria-current','true');
+      button.onclick=()=>{dialog.close();if(classId!==getActiveClassId())return showToast('A turma mudou. Abra o histórico novamente.',true);openFreqHistory(freqArg(JSON.stringify([item.date,item.disc])));};list.append(button);
+    }
+  }
+  search.oninput=show;filter.onchange=show;show();
+}
+const compactFrequencyHistory=refreshFreqHistory;
+refreshFreqHistory=function(...args){
+  const result=compactFrequencyHistory(...args),select=document.getElementById('freqHistory');if(!select)return result;
+  select.hidden=true;select.style.display='none';
+  let button=document.getElementById('freqHistoryButton');if(!button){button=document.createElement('button');button.type='button';button.id='freqHistoryButton';button.className='freq-history-open';button.onclick=openCompactFrequencyHistory;select.after(button);}
+  button.textContent='Chamadas anteriores';button.title='Buscar chamadas por data, disciplina ou situação';return result;
 };
 
 </script>
