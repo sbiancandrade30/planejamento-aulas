@@ -19024,6 +19024,21 @@ function _pwaIconSvg192() {
 .ep-type-legend{font-size:10px;color:#8190a4;line-height:1.5}
 .ep-upcoming{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:10px 0;font-size:10px;color:#75869b}
 .ep-upcoming button{font-size:10px!important}.ep-list,.ep-preview-table{overflow:auto;max-width:100%}
+.ep-card-week{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;align-items:start}
+.ep-card-day{min-width:0}.ep-card-day-head{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:#fff;border:1px solid #dfe5ee;border-radius:13px;padding:12px 6px;margin-bottom:7px}
+.ep-card-day-head strong{font-size:12px;font-weight:500;text-transform:uppercase}.ep-card-day-head>span{font-size:11px;color:#8e9bb0}
+.ep-card-day-today{border-color:#abc2ed;background:#fbfcff}
+#eadPlanningWorkspace .ep-week-task{display:flex;flex-direction:column;gap:7px;text-align:left;min-height:0;padding:10px;border-radius:9px;background:#fff;border:1px solid #dce3ee;border-left:3px solid;margin:0 0 7px}
+.ep-week-lesson{font-size:9px;text-transform:uppercase;color:#8c99ad;letter-spacing:.03em}
+.ep-week-disc{font-size:12px;line-height:1.4;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ep-week-task-footer{display:flex;align-items:center;justify-content:space-between;gap:5px;flex-wrap:wrap;color:#65778e;font-size:9px}
+.ep-week-task-footer>span{padding:3px 5px;background:#f0f3f8;border:1px solid #e3e8f1;border-radius:4px}.ep-week-task-footer small{font-size:9px;color:#94a0b1}
+#eadPlanningWorkspace .ep-week-add{width:100%;padding:12px 6px;border:1px dashed #dce3ee;border-radius:8px;background:transparent;color:#8a99af;font-size:10px}
+.ep-card-day-warning{font-size:10px;padding:8px;background:#fff4e7;color:#a05c22;border-radius:7px;margin:0 0 6px}
+.ep-week-message{margin:13px 0;padding:13px 15px;border:1px solid #d3e0f5;border-radius:12px;background:#eaf1ff}
+.ep-week-message>div{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;margin-bottom:9px}
+.ep-week-message pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:12px;line-height:1.7;color:#273e60}
+@media(max-width:700px){.ep-card-week{grid-template-columns:repeat(5,minmax(155px,1fr));overflow-x:auto;padding-bottom:9px;gap:7px}.ep-card-day-head{padding:9px 5px}}
 .ep-list table,.ep-preview-table table{width:100%;border-collapse:collapse;font-size:11px;min-width:650px;background:#fff}
 .ep-list th,.ep-list td,.ep-preview-table th,.ep-preview-table td{padding:8px 9px;border-bottom:1px solid #e1e7ef;text-align:left}
 .ep-list th,.ep-preview-table th{background:#f3f6fb;font-weight:500}
@@ -20374,7 +20389,7 @@ const EP_STATUS={planejado:'Planejado',disponibilizado:'Disponibilizado aos alun
 const EP_DISCIPLINES=[
   ['Relações Socioprofissionais, Cidadania e Ética','#86b96b','relacoes'],['Planejamento','#e28b35','planejamento'],['Eletromecânica EAD','#244583','eletromecanica'],['Plásticos EAD','#d85353','plastico'],['Raciocínio Lógico','#287c50','raciocinio'],['Transformação Digital','#65b4dd','transformacao digital'],['Ensaios','#e2ba35','ensaios'],['Processos','#dd83ac','processos']
 ];
-let epAnchor=localDateKey(),epMode='mensal',epDiscFilter='',epStatusFilter='',epLegacy=false,epPreview=null,epClassContext='';
+let epAnchor=localDateKey(),epMode='semanal',epDiscFilter='',epStatusFilter='',epLegacy=false,epPreview=null,epClassContext='';
 const epEscape=value=>escapeHtml(String(value??''));
 const epNormalize=value=>normalizeOccurrenceText(String(value||''));
 function epStemMatches(name,stem){const value=epNormalize(name);return stem.includes(' ')?value.includes(stem):value.split(/[^a-z0-9]+/).some(word=>word.startsWith(stem));}
@@ -20492,6 +20507,15 @@ function epMonthDates(month){
   for(let date=start;date<=end;date=epShift(date,1))if(![0,6].includes(epDay(date).getDay()))result.push(date);return result;
 }
 function epMonthHtml(month,rows){return '<section class="ep-month"><h3>'+epDay(month+'-01').toLocaleDateString('pt-BR',{month:'long',year:'numeric'})+'</h3><div class="ep-weekday-labels"><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span></div><div class="ep-month-grid">'+epMonthDates(month).map(date=>epCalendarCell(date,month,rows)).join('')+'</div></section>';}
+function epWeekHtml(dates,rows){
+  return '<div class="ep-card-week">'+dates.map(date=>{
+    const info=epDayInfo(date),items=rows.filter(row=>row.date===date);
+    return '<section class="ep-card-day"><div class="ep-card-day-head'+(date===localDateKey()?' ep-card-day-today':'')+'"><strong>'+epDay(date).toLocaleDateString('pt-BR',{weekday:'long'})+'</strong><span>'+fmtDate(epDay(date))+'</span></div>'+
+      (info?'<p class="ep-card-day-warning">'+epEscape(info.type==='X'?'Sem aula · '+info.label:'Presencial, sem EAD')+'</p>':'')+
+      items.map(row=>'<button class="ep-task-tile ep-week-task ep-status-'+row.status+'" data-ep-key="'+row.key+'" style="border-left-color:'+epColor(row.disc)+'" title="'+epEscape(row.disc+' · Aula '+row.lesson+' · '+EP_STATUS[row.status])+'"><span class="ep-week-lesson">Aula '+epEscape(row.lesson||'—')+'</span><strong class="ep-week-disc">'+epEscape(row.disc)+'</strong><span class="ep-week-task-footer"><span>'+epEscape(EP_TYPES[row.type])+'</span><small>'+EP_STATUS[row.status]+'</small></span></button>').join('')+
+      (!info&&!isProfessorMode()?'<button class="ep-week-add" data-ep-add-date="'+date+'">+ '+(items.length?'Adicionar tarefa':'Nova tarefa')+'</button>':'')+'</section>';
+  }).join('')+'</div>';
+}
 function epMonths(start,end){const result=[];let current=start.slice(0,7);while(current<=end.slice(0,7)){result.push(current);const date=epDay(current+'-01');date.setMonth(date.getMonth()+1);current=localDateKey(date).slice(0,7);if(result.length>120)break;}return result;}
 function epLegendHtml(rows){const names=[...new Set(rows.map(row=>row.disc))];return '<div class="ep-legend">'+(names.length?names:EP_DISCIPLINES.map(([name])=>epResolveDisc(name))).map(name=>'<span><i style="background:'+epColor(name)+'"></i>'+epEscape(name)+'</span>').join('')+'</div><div class="ep-type-legend">R: leitura + resumo · A: atividade · LER: leitura · LER/A: leitura + atividade · X: sem aula · <span class="ep-purple-line"></span> presencial sem EAD</div>';}
 function epRender(){
@@ -20508,12 +20532,16 @@ function epRender(){
     '<div class="ep-indicators"><span><b>'+lessons.size+'</b> aulas planejadas</span><span><b>'+completedLessons+'</b> aulas concluídas</span><span><b>'+(lessons.size-completedLessons)+'</b> aulas pendentes</span><span><b>'+done.length+'/'+active.length+'</b> tarefas concluídas</span><span><b>'+percent+'%</b> concluído</span><details><summary>Progresso por disciplina</summary>'+epDiscNames().map(disc=>{const items=active.filter(row=>row.disc===disc),count=items.filter(row=>row.status==='concluido').length;return items.length?'<p>'+epEscape(disc)+': '+count+'/'+items.length+' tarefas · '+Math.round(count/items.length*100)+'%</p>':'';}).join('')+'</details></div>'+ 
     '<div class="ep-toolbar"><div class="ep-view-tabs">'+['semanal','mensal','completo','lista'].map((mode,i)=>'<button data-ep-mode="'+mode+'" aria-pressed="'+(mode===epMode)+'">'+['Semanal','Mensal','Turma completa','Lista'][i]+'</button>').join('')+'</div><button data-ep-action="prev" aria-label="Período anterior">‹</button><input type="date" id="epAnchor" aria-label="Data de referência" value="'+epAnchor+'"><button data-ep-action="next" aria-label="Próximo período">›</button><button data-ep-action="today">Hoje</button><select id="epDiscFilter" aria-label="Filtrar disciplina"><option value="">Todas as disciplinas</option>'+epDiscOptions(epDiscFilter)+'</select><select id="epStatusFilter" aria-label="Filtrar status"><option value="">Todos os status</option>'+epOptions(EP_STATUS,epStatusFilter)+'</select><button data-ep-action="day">Calendário da turma</button></div>'+ 
     '<p class="ep-range-note">Período: '+formatDateKeyPtBr(period.start)+' a '+formatDateKeyPtBr(period.end)+' · último dia EAD: '+formatDateKeyPtBr(period.last)+'. Dias vazios ainda não foram planejados.</p><div id="epCalendarContent">'+
-    (epMode==='mensal'?epMonthHtml(epMonth(epAnchor),rows):epMode==='semanal'?'<div class="ep-weekday-labels"><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span></div><div class="ep-month-grid ep-week-grid">'+dates.map(date=>epCalendarCell(date,null,rows)).join('')+'</div>':epMode==='completo'?'<div class="ep-full-months">'+epMonths(period.start,period.end).map(month=>epMonthHtml(month,rows)).join('')+'</div>':epListHtml(rows))+'</div>'+epLegendHtml(rows)+
+    (epMode==='mensal'?epMonthHtml(epMonth(epAnchor),rows):epMode==='semanal'?epWeekHtml(dates,rows):epMode==='completo'?'<div class="ep-full-months">'+epMonths(period.start,period.end).map(month=>epMonthHtml(month,rows)).join('')+'</div>':epListHtml(rows))+'</div>'+epLegendHtml(rows)+
     '<div class="ep-upcoming"><strong>Próximas atividades</strong> '+(active.filter(row=>row.date>=localDateKey()&&row.status!=='concluido').slice(0,5).map(row=>'<button data-ep-key="'+row.key+'">'+formatDateKeyPtBr(row.date)+' · '+epEscape(row.disc)+' · '+row.type+' '+epEscape(row.lesson)+'</button>').join('')||'<span>Nenhuma atividade pendente futura.</span>')+'</div>';
   root.querySelector('#epDiscFilter').value=epDiscFilter;root.querySelector('#epStatusFilter').value=epStatusFilter;
   root.querySelector('#epDiscFilter').onchange=event=>{epDiscFilter=event.target.value;epRender();};root.querySelector('#epStatusFilter').onchange=event=>{epStatusFilter=event.target.value;epRender();};root.querySelector('#epAnchor').onchange=event=>{if(epValidDate(event.target.value)){epAnchor=event.target.value;epRender();}};
   root.querySelectorAll('[data-ep-mode]').forEach(button=>button.onclick=()=>{epMode=button.dataset.epMode;epRender();});
   root.querySelectorAll('[data-ep-day]').forEach(button=>button.onclick=()=>epOpenDay(button.dataset.epDay));root.querySelectorAll('[data-ep-key]').forEach(button=>button.onclick=()=>epOpenTask(epRows().find(row=>row.key===button.dataset.epKey)?.date||epAnchor,button.dataset.epKey));
+  root.querySelectorAll('[data-ep-add-date]').forEach(button=>button.onclick=()=>epOpenTask(button.dataset.epAddDate));
+  if(epMode==='semanal'){
+    const panel=document.createElement('section');panel.className='ep-week-message';panel.innerHTML='<div><strong>Comunicado semanal</strong><button type="button">Editar e copiar</button></div><pre></pre>';panel.querySelector('pre').textContent=epBuildMessage(epAnchor);panel.querySelector('button').onclick=epOpenMessage;root.append(panel);
+  }
   root.querySelectorAll('.ep-calendar-cell').forEach(cell=>cell.onclick=event=>{if(!event.target.closest('button'))epOpenDay(cell.querySelector('[data-ep-day]').dataset.epDay);});
   const actions={legacy:()=>{epLegacy=true;epRender();},settings:epOpenSettings,communicate:epOpenMessage,exports:epOpenExport,import:epOpenImport,sequence:epOpenSequence,new:()=>epOpenTask(),day:()=>epDaySettings(epAnchor),today:()=>{epAnchor=localDateKey();epRender();},prev:()=>epNavigate(-1),next:()=>epNavigate(1)};
   root.querySelectorAll('[data-ep-action]').forEach(button=>button.onclick=actions[button.dataset.epAction]);
@@ -20573,21 +20601,32 @@ function epOpenSequence(){
   }catch(error){dialog.querySelector('#epSequenceError').textContent=error.message;}};
 }
 function epTemplates(){return {read:'leia o material e assista aos vídeos da Aula {aula}',onlyRead:'leia o material da Aula {aula}',summary:'faça o resumo e envie foto da Aula {aula}',activity:'realize a ATIVIDADE AVALIATIVA da Aula {aula}',...(epMeta().messageTemplates||{})};}
+function epMessageFormats(){
+  const defaults={R:'Leia o material, assista aos vídeos da AULA {aula} da disciplina de {disciplina}, faça o resumo e envie foto.',A:'Finalize a AULA {aula} da disciplina de {disciplina} realizando a ATIVIDADE AVALIATIVA.',LER:'Leia o material da AULA {aula} da disciplina de {disciplina}.','LER/A':'Leia o material da AULA {aula} da disciplina de {disciplina} e realize a ATIVIDADE AVALIATIVA.'};
+  if(epMeta().messageTemplates){const previous=epTemplates();Object.assign(defaults,{R:'{disciplina}: '+previous.read+'; '+previous.summary,A:'{disciplina}: '+previous.activity,LER:'{disciplina}: '+previous.onlyRead,'LER/A':'{disciplina}: '+previous.onlyRead+'; '+previous.activity});}
+  return {...defaults,...(epMeta().messageFormats||{})};
+}
 function epBuildMessage(week){
-  const start=epMonday(week),end=epShift(start,4),templates=epTemplates(),lines=[];
-  for(const row of epRows().filter(row=>row.date>=start&&row.date<=end&&row.status!=='cancelado'&&epAvailable(row.date))){
-    const actions=row.type==='R'?[templates.read,templates.summary]:row.type==='A'?[templates.activity]:row.type==='LER/A'?[templates.onlyRead,templates.activity]:[templates.onlyRead];
-    for(const template of actions)lines.push('• '+row.disc+' - '+fmtDate(epDay(row.date))+' '+['dom','seg','ter','qua','qui','sex','sáb'][epDay(row.date).getDay()]+': '+template.replaceAll('{aula}',row.lesson||'—')+(row.materialUrl&&[templates.read,templates.onlyRead].includes(template)?'\n  Material: '+row.materialUrl:'')+(row.activityUrl&&template===templates.activity?'\n  Atividade: '+row.activityUrl:''));
+  const start=epMonday(week),end=epShift(start,4),formats=epMessageFormats(),lines=[],groups=new Map();
+  for(const row of epRows().filter(row=>row.date>=start&&row.date<=end&&row.status!=='cancelado'&&epAvailable(row.date))){const key=[row.date,row.disc,row.lesson].join('|');if(!groups.has(key))groups.set(key,[]);groups.get(key).push(row);}
+  for(const rows of groups.values()){
+    const row=rows[0],types=new Set(rows.map(item=>item.type)),read=types.has('R')||types.has('LER')||types.has('LER/A'),summary=types.has('R'),activity=types.has('A')||types.has('LER/A');
+    let text=summary?formats.R:read&&activity?formats['LER/A']:activity?formats.A:formats.LER;
+    if(summary&&activity)text+=' '+formats.A;
+    text=text.replaceAll('{aula}',row.lesson||'—').replaceAll('{disciplina}',row.disc);
+    let line='• '+fmtDate(epDay(row.date))+' '+['dom','seg','ter','qua','qui','sex','sáb'][epDay(row.date).getDay()]+': '+text;
+    const materials=[...new Set(rows.map(item=>item.materialUrl).filter(Boolean))],activities=[...new Set(rows.map(item=>item.activityUrl).filter(Boolean))];if(read&&materials.length)line+='\n  Material: '+materials.join(' ');if(activity&&activities.length)line+='\n  Atividade: '+activities.join(' ');lines.push(line);
   }
-  return 'Boa tarde, segue o cronograma das atividades EAD dessa semana ('+fmtDate(epDay(start))+' a '+fmtDate(epDay(end))+'):\n\n'+(lines.length?lines.join('\n'):'Nenhuma atividade EAD cadastrada nesta semana.');
+  return 'Boa tarde, segue o cronograma das atividades EAD dessa semana ('+fmtDate(epDay(start))+' a '+fmtDate(epDay(end))+'):\n\n'+(lines.length?lines.join('\n'):'Nenhuma atividade EAD cadastrada nesta semana.')+'\n\nAs atividades estão disponíveis no Classroom. Qualquer dúvida, me chamem por aqui.';
 }
 function epOpenMessage(){
-  const classId=getActiveClassId(),templates=epTemplates();
+  const classId=getActiveClassId(),templates=epMessageFormats();
   const dialog=plannerDialog('eadMessage','Gerar comunicado semanal','<p id="epMessageClass"></p><label>Turma<select id="epMessageClassSelect">'+epClassOptions()+'</select></label>'+epDateInput('epMessageWeek','Semana que contém a data',epAnchor)+'<button class="btn btn-outline" id="epMessageGenerate">Gerar / atualizar mensagem</button><textarea id="epMessageText" rows="13" aria-label="Mensagem editável para os alunos"></textarea><details><summary>Personalizar textos</summary><p>Use {aula} para inserir o número da aula.</p><label>Leitura e vídeos (R)<input id="epTextRead"></label><label>Somente leitura (LER)<input id="epTextOnlyRead"></label><label>Resumo<input id="epTextSummary"></label><label>Atividade<input id="epTextActivity"></label><button class="btn btn-outline" id="epSaveTexts">Salvar textos desta turma</button></details><p id="epMessageFeedback" role="status"></p><button class="btn btn-primary" id="epCopyMessage">Copiar comunicado completo</button>');
-  dialog.querySelector('#epMessageClass').textContent='Turma: '+(getActiveClass()?.nome||classId);dialog.querySelector('#epTextRead').value=templates.read;dialog.querySelector('#epTextOnlyRead').value=templates.onlyRead;dialog.querySelector('#epTextSummary').value=templates.summary;dialog.querySelector('#epTextActivity').value=templates.activity;
+  dialog.querySelector('#epMessageClass').textContent='Turma: '+(getActiveClass()?.nome||classId);dialog.querySelector('#epTextRead').value=templates.R;dialog.querySelector('#epTextOnlyRead').value=templates.LER;dialog.querySelector('#epTextSummary').value=templates['LER/A'];dialog.querySelector('#epTextActivity').value=templates.A;
+  dialog.querySelectorAll('details label').forEach((label,i)=>label.firstChild.textContent=['Leitura e resumo (R)','Somente leitura (LER)','Leitura e atividade (LER/A)','Atividade (A)'][i]);dialog.querySelector('details p').textContent='Use {aula} e {disciplina}. A data será colocada automaticamente no começo de cada item.';
   dialog.querySelector('#epMessageClassSelect').onchange=event=>{const id=event.target.value;dialog.close();changeActiveClass(id);epOpenMessage();};
   const generate=()=>{if(getActiveClassId()!==classId)return;const date=dialog.querySelector('#epMessageWeek').value;if(epValidDate(date))dialog.querySelector('#epMessageText').value=epBuildMessage(date);};generate();dialog.querySelector('#epMessageGenerate').onclick=generate;
-  dialog.querySelector('#epSaveTexts').onclick=()=>{if(getActiveClassId()!==classId)return;const read=dialog.querySelector('#epTextRead').value.trim(),onlyRead=dialog.querySelector('#epTextOnlyRead').value.trim(),summary=dialog.querySelector('#epTextSummary').value.trim(),activity=dialog.querySelector('#epTextActivity').value.trim();if(!read||!onlyRead||!summary||!activity)return;epMutation('textos do comunicado EAD',()=>{epWriteMeta().messageTemplates={read,onlyRead,summary,activity};});generate();};
+  dialog.querySelector('#epSaveTexts').onclick=()=>{if(getActiveClassId()!==classId)return;const read=dialog.querySelector('#epTextRead').value.trim(),onlyRead=dialog.querySelector('#epTextOnlyRead').value.trim(),summary=dialog.querySelector('#epTextSummary').value.trim(),activity=dialog.querySelector('#epTextActivity').value.trim();if(!read||!onlyRead||!summary||!activity)return;epMutation('textos do comunicado EAD',()=>{epWriteMeta().messageFormats={R:read,LER:onlyRead,'LER/A':summary,A:activity};});generate();};
   if(isProfessorMode())dialog.querySelector('#epSaveTexts').disabled=true;
   dialog.querySelector('#epCopyMessage').onclick=async()=>{const field=dialog.querySelector('#epMessageText');try{await navigator.clipboard.writeText(field.value);dialog.querySelector('#epMessageFeedback').textContent='Comunicado copiado.';}catch(_){field.focus();field.select();const copied=document.execCommand('copy');dialog.querySelector('#epMessageFeedback').textContent=copied?'Comunicado copiado.':'Texto selecionado. Use Ctrl+C para copiar.';}};
 }
