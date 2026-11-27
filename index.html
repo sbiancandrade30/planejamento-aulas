@@ -18976,6 +18976,74 @@ function _pwaIconSvg192() {
 #viewTarefas .bulk-action-bar{padding:7px 9px!important;margin-bottom:7px!important;font-size:11px}
 @media(max-width:700px){#viewTarefas .tasks-head{flex-direction:row!important;flex-wrap:wrap}#viewTarefas .tasks-head-actions{justify-content:flex-start!important}#compactTaskSearch{max-width:none;flex-basis:100%}#compactTaskCategory{width:100%}#viewTarefas .task-controls-group:has(#compactTaskCategory){flex:1 1 170px}#viewTarefas .task-agenda-head{flex-wrap:wrap}}
 
+.ep-modern>#eadPlanningWorkspace{display:block}
+.ep-modern>:not(#eadPlanningWorkspace):not(#epReturnModern){display:none!important}
+#epReturnModern[hidden],#eadPlanningWorkspace[hidden]{display:none!important}
+.ep-modern-active #workspaceToolbar #weekToolbarNav,.ep-modern-active #workspaceToolbar .planner-quick-tools{display:none!important}
+#eadPlanningWorkspace{font-size:12px;min-width:0}
+.ep-heading{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:5px 0 8px}
+.ep-heading h2{font-size:17px;margin:0}.ep-heading>span{color:var(--text3);font-size:10px}
+.ep-actions{display:flex;flex-wrap:wrap;gap:5px;margin-left:auto}
+#eadPlanningWorkspace button,.ep-dialog-actions button{font:inherit;font-size:11px;border:1px solid #dce3ee;border-radius:6px;background:#fff;color:#425979;padding:6px 8px;cursor:pointer}
+#eadPlanningWorkspace button:hover{background:#f0f4fc}
+#eadPlanningWorkspace button.ep-primary{background:#2049a2;color:white;border-color:#2049a2}
+.ep-indicators{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:7px}
+.ep-indicators>span{background:#fff;border:1px solid #e0e6ef;border-radius:6px;padding:5px 8px;font-size:10px;color:#718097}
+.ep-indicators b{color:#213852;font-size:13px;margin-right:3px}.ep-indicators details{font-size:10px;color:#64748b}
+.ep-indicators summary{cursor:pointer}.ep-indicators details p{font-size:10px;margin:5px}
+.ep-toolbar{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:7px;border:1px solid #dfe5ee;background:#fff;border-radius:9px}
+.ep-view-tabs{display:flex;gap:3px;margin-right:4px}.ep-view-tabs button[aria-pressed=true]{background:#eaf1ff!important;border-color:#b9cdf6!important;color:#2457b7!important}
+.ep-toolbar input,.ep-toolbar select{font:inherit;font-size:11px;padding:5px 6px;height:29px;border:1px solid #dce3ee;border-radius:5px;max-width:100%;min-width:0}
+#epDiscFilter{max-width:240px}.ep-range-note{font-size:10px;color:#8491a5;margin:7px 0}
+.ep-month{border:1px solid #dfe5ee;background:#fff;border-radius:10px;padding:10px;min-width:0}
+.ep-month h3{font-size:13px;font-weight:600;text-transform:capitalize;margin:0 0 7px}
+.ep-weekday-labels,.ep-month-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.ep-weekday-labels{text-align:center;font-size:10px;color:#8b98ad;margin:0 0 5px}
+.ep-calendar-cell{position:relative;min-height:89px;border:1px solid #e6ebf2;border-radius:5px;background:#fff;padding:21px 5px 5px;min-width:0;cursor:pointer}
+.ep-calendar-cell:hover{border-color:#b4c6e5}.ep-calendar-cell.ep-today{border-color:#507cda;background:#fbfcff}
+.ep-calendar-cell.ep-outside{opacity:.35}
+#eadPlanningWorkspace .ep-date-hit{position:absolute;top:2px;right:3px;font-size:10px;padding:1px 4px;border:0;background:transparent;color:#8594ab}
+#eadPlanningWorkspace .ep-task-tile{position:relative;display:block;width:100%;min-height:50px;padding:0;margin:0 0 4px;border:1px solid #d6dfee;border-radius:4px;background:#f9fbff}
+.ep-corner-type{position:absolute;top:4px;left:5px;font-size:12px;font-weight:600;color:#273e65}
+.ep-corner-date{position:absolute;top:4px;right:5px;font-size:9px;color:#8b98aa}
+.ep-corner-lesson{position:absolute;bottom:4px;left:5px;font-size:12px;color:#435a7d}
+.ep-disc-dot{position:absolute;bottom:5px;right:5px;width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 1px #0000000c}
+#eadPlanningWorkspace .ep-status-concluido{border-color:#81b39b;background:#f3faf6}
+#eadPlanningWorkspace .ep-status-disponibilizado{border-color:#88a8d4}
+#eadPlanningWorkspace .ep-status-reprogramado{border-style:dashed}
+#eadPlanningWorkspace .ep-status-cancelado{opacity:.4;border-style:dashed}
+#eadPlanningWorkspace .ep-day-flag{display:block;border:0;width:100%;min-height:30px;background:transparent;font-size:17px;font-weight:500}
+.ep-purple-line{display:inline-block;vertical-align:middle;width:19px;height:3px;border-radius:2px;background:#9957c6}
+.ep-conflict{display:block;font-size:9px;color:#b45309;line-height:1.3}
+.ep-full-months{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:9px}
+.ep-full-months .ep-calendar-cell{min-height:65px;padding:16px 3px 3px}.ep-full-months .ep-task-tile{min-height:37px!important}
+.ep-full-months .ep-corner-type,.ep-full-months .ep-corner-lesson{font-size:10px}.ep-full-months .ep-disc-dot{width:8px;height:8px}
+.ep-full-months .ep-corner-type{font-size:9px;left:3px}.ep-full-months .ep-corner-date{font-size:7px;right:3px}
+.ep-legend{display:flex;align-items:center;flex-wrap:wrap;gap:5px 12px;margin:10px 0 5px;font-size:10px;color:#667991}
+.ep-legend>span{display:inline-flex;align-items:center;gap:4px}.ep-legend i,.ep-inline-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+.ep-type-legend{font-size:10px;color:#8190a4;line-height:1.5}
+.ep-upcoming{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:10px 0;font-size:10px;color:#75869b}
+.ep-upcoming button{font-size:10px!important}.ep-list,.ep-preview-table{overflow:auto;max-width:100%}
+.ep-list table,.ep-preview-table table{width:100%;border-collapse:collapse;font-size:11px;min-width:650px;background:#fff}
+.ep-list th,.ep-list td,.ep-preview-table th,.ep-preview-table td{padding:8px 9px;border-bottom:1px solid #e1e7ef;text-align:left}
+.ep-list th,.ep-preview-table th{background:#f3f6fb;font-weight:500}
+dialog[id^=ead]{margin:auto!important;width:min(740px,calc(100vw - 24px));max-height:90vh;font:13px/1.5 inherit;color:#253b5a}
+dialog[id^=ead] [hidden]{display:none!important}
+dialog[id^=ead] label{display:block;margin:9px 0;font-size:11px;color:#62738c}
+dialog[id^=ead] input:not([type=checkbox]):not([type=color]),dialog[id^=ead] select,dialog[id^=ead] textarea{font:inherit;font-size:12px;width:100%;min-width:0;box-sizing:border-box;padding:8px 9px;border:1px solid #d1dbe9;border-radius:6px;background:#fff;color:#273e61}
+dialog[id^=ead] .ep-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
+dialog[id^=ead] .planner-dialog-heading{position:sticky;top:-22px;z-index:5;background:#fff;padding:10px 0}
+dialog[id^=ead] .planner-dialog-heading h2{font-size:18px}
+dialog[id^=ead] .planner-dialog-heading button{padding:2px 8px;border:0;background:transparent;font-size:21px}
+dialog[id^=ead] details{margin:12px 0}dialog[id^=ead] summary{cursor:pointer;font-size:12px}
+.ep-dialog-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:12px 0 0}
+.ep-day-task{display:block;width:100%;text-align:left;font:inherit;font-size:12px;padding:10px;border:1px solid #dbe3ee;border-radius:7px;background:#f8faff;margin:5px 0;color:#3b5679;cursor:pointer}
+.ep-checkbox{display:flex!important;align-items:center;gap:7px}
+.ep-discipline-setting{display:grid;grid-template-columns:minmax(0,1fr) 40px;gap:8px;margin:6px 0}.ep-discipline-setting input[type=color]{width:40px;height:32px;padding:2px;border:1px solid #d1dbe9;border-radius:5px}
+#eadPreview{width:min(1000px,calc(100vw - 24px))}.ep-preview-table{max-height:45vh}
+dialog[id^=ead] [role=status]{color:#9a3412;font-size:11px}
+@media(max-width:650px){.ep-heading{align-items:flex-start}.ep-actions{margin-left:0}#epDiscFilter{max-width:100%}.ep-view-tabs{width:100%;flex-wrap:wrap}.ep-calendar-cell{min-height:68px;padding:17px 3px 3px}.ep-weekday-labels,.ep-month-grid{gap:3px}.ep-corner-type{font-size:10px;left:3px}.ep-corner-lesson{font-size:10px;left:3px}.ep-corner-date{font-size:8px;right:3px}.ep-disc-dot{width:8px;height:8px;right:3px}.ep-full-months{grid-template-columns:1fr}dialog[id^=ead] .ep-fields{grid-template-columns:1fr}}
+
 </style><script>
 // Acesso às opções de sincronização pelo indicador do cabeçalho.
 function instalarComparacaoPlanner() {
@@ -20300,6 +20368,347 @@ renderTasks=function(...args){
 };
 installCompactTaskControls();
 
+// Planejamento EAD: os registros continuam no eadModules da turma ativa.
+const EP_TYPES={R:'Leitura e resumo',A:'Atividade',LER:'Somente leitura','LER/A':'Leitura e atividade'};
+const EP_STATUS={planejado:'Planejado',disponibilizado:'Disponibilizado aos alunos',concluido:'Concluído',reprogramado:'Reprogramado',cancelado:'Cancelado'};
+const EP_DISCIPLINES=[
+  ['Relações Socioprofissionais, Cidadania e Ética','#86b96b','relacoes'],['Planejamento','#e28b35','planejamento'],['Eletromecânica EAD','#244583','eletromecanica'],['Plásticos EAD','#d85353','plastico'],['Raciocínio Lógico','#287c50','raciocinio'],['Transformação Digital','#65b4dd','transformacao digital'],['Ensaios','#e2ba35','ensaios'],['Processos','#dd83ac','processos']
+];
+let epAnchor=localDateKey(),epMode='mensal',epDiscFilter='',epStatusFilter='',epLegacy=false,epPreview=null,epClassContext='';
+const epEscape=value=>escapeHtml(String(value??''));
+const epNormalize=value=>normalizeOccurrenceText(String(value||''));
+function epStemMatches(name,stem){const value=epNormalize(name);return stem.includes(' ')?value.includes(stem):value.split(/[^a-z0-9]+/).some(word=>word.startsWith(stem));}
+function epDay(key){return new Date(key+'T12:00:00');}
+function epShift(key,days){const date=epDay(key);date.setDate(date.getDate()+days);return localDateKey(date);}
+function epMonday(key){const date=epDay(key);return epShift(key,-((date.getDay()+6)%7));}
+function epMonth(key){return key.slice(0,7);}
+function epMeta(){return state.eadPlanningByClass?.[getActiveClassId()]||{};}
+function epWriteMeta(){const all=state.eadPlanningByClass||= {};return all[getActiveClassId()]||= {};}
+function epPeriod(){const meta=epMeta();return {start:meta.start||'2026-11-23',end:meta.end||'2027-03-31',last:meta.lastEadDate||'2027-02-19'};}
+function epResolveDisc(name){
+  const all=[...new Set([...getDiscs('ead'),...getDiscs('presEad'),...getDiscs('presencial'),...Object.values(state.eadModules||{}).map(m=>m.disc)].filter(Boolean))];
+  const exact=all.find(value=>epNormalize(value)===epNormalize(name));if(exact)return exact;
+  const base=EP_DISCIPLINES.find(([label,,stem])=>epNormalize(name)===epNormalize(label)||epStemMatches(name,stem));
+  return base?all.find(value=>epStemMatches(value,base[2]))||base[0]:name;
+}
+function epDiscNames(){return [...new Set([...getDiscs('ead'),...Object.values(state.eadModules||{}).map(m=>m.disc),...EP_DISCIPLINES.map(([name])=>epResolveDisc(name))].filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));}
+function epColor(disc){
+  const custom=state.disciplineAppearance?.[disc]?.color;if(/^#[0-9a-f]{6}$/i.test(custom||''))return custom;
+  return (EP_DISCIPLINES.find(([label])=>epNormalize(epResolveDisc(label))===epNormalize(disc))||EP_DISCIPLINES.find(([label,,stem])=>epStemMatches(disc,stem)||epNormalize(disc)===epNormalize(label)))?.[1]||plannerDisciplineStyle(disc).color;
+}
+function epLegacyType(mod){
+  if(EP_TYPES[mod.eadType])return mod.eadType;
+  const types=getEadTipos(mod);if(types.includes('resumo'))return 'R';
+  const activity=types.some(value=>['atividade','avaliativa','questionario'].includes(value));
+  return activity&&(types.includes('leitura')||types.includes('video'))?'LER/A':activity?'A':'LER';
+}
+function epRows(){return Object.entries(state.eadModules||{}).map(([key,mod])=>{
+  const match=key.match(/^ead_(\d{4}-\d{2}-\d{2})_(\d+)$/);return match?{key,date:match[1],slot:Number(match[2]),...mod,type:epLegacyType(mod),status:EP_STATUS[mod.planningStatus]?mod.planningStatus:'planejado',lesson:String(mod.aula||'').match(/\d+/)?.[0]||''}:null;
+}).filter(Boolean).sort((a,b)=>a.date.localeCompare(b.date)||a.slot-b.slot);}
+function epMatches(row){return (!epDiscFilter||row.disc===epDiscFilter)&&(!epStatusFilter||row.status===epStatusFilter);}
+function epDayInfo(date){
+  const own=epMeta().flags?.[date];if(own)return own;
+  const existing=plannerDayEvents(date);return existing.blocked?{type:'X',label:existing.labels.join(' · ')||'Sem aula'}:null;
+}
+function epAvailable(date){return ![0,6].includes(epDay(date).getDay())&&!epDayInfo(date);}
+function epEnsureDiscipline(name){
+  if(!getDiscs('ead').includes(name))saveDiscs('ead',[...getDiscs('ead'),name]);
+  if(!state.disciplineAppearance?.[name]?.color){const color=epColor(name);(state.disciplineAppearance||= {})[name]={...plannerDisciplineStyle(name),color};}
+}
+function epRecordKey(date){let slot=1;while(state.eadModules['ead_'+date+'_'+slot])slot++;return 'ead_'+date+'_'+slot;}
+function epData(row){return {disc:row.disc,aula:row.lesson?'Aula '+row.lesson:'',eadType:row.type,tipos:row.type==='R'?['leitura','video','resumo']:row.type==='A'?['avaliativa']:row.type==='LER/A'?['leitura','avaliativa']:['leitura'],tipo:row.type==='A'?'avaliativa':'leitura',planningStatus:row.status||'planejado',obs:row.obs||'',desc:row.desc||'',materialUrl:row.materialUrl||'',activityUrl:row.activityUrl||''};}
+function epFingerprint(row){return [row.date,epNormalize(row.disc),String(row.lesson),row.type].join('|');}
+function epMutation(label,apply){if(isProfessorMode())return showToast('Esta área de edição é do administrador.',true);if(commitProductivity(label,apply)){rebuildAllDiscSelects();renderEad();return true;}return false;}
+function epOptions(map,value){return Object.entries(map).map(([key,label])=>'<option value="'+epEscape(key)+'"'+(key===value?' selected':'')+'>'+epEscape(label)+'</option>').join('');}
+function epDiscOptions(value){return epDiscNames().map(name=>'<option'+(name===value?' selected':'')+'>'+epEscape(name)+'</option>').join('');}
+function epClassOptions(){return getOccurrenceClasses().map(item=>'<option value="'+epEscape(item.id)+'"'+(item.id===getActiveClassId()?' selected':'')+'>'+epEscape(item.nome)+'</option>').join('');}
+function epDateInput(id,label,value){return '<label>'+label+'<input type="date" id="'+id+'" value="'+epEscape(value)+'" required></label>';}
+function epValidDate(value){return /^\d{4}-\d{2}-\d{2}$/.test(value)&&localDateKey(epDay(value))===value;}
+function epSafeLink(value){if(!value)return '';const url=new URL(value);if(!['https:','http:'].includes(url.protocol))throw Error('Os links devem começar com https:// ou http://.');return url.href;}
+
+function epOpenTask(date=epAnchor,key=null,duplicate=false){
+  const row=key?epRows().find(item=>item.key===key):null;if(key&&!row)return;
+  if(isProfessorMode()){
+    if(!row)return;const dialog=plannerDialog('eadTaskReadOnly',EP_TYPES[row.type]+' · Aula '+row.lesson,'<p>'+epEscape(row.disc)+' · '+formatDateKeyPtBr(row.date)+' · '+EP_STATUS[row.status]+'</p><p>'+epEscape(row.obs||row.desc||'')+'</p>');
+    for(const [label,url] of [['Material',row.materialUrl],['Atividade',row.activityUrl]])if(url){try{const link=document.createElement('a');link.href=epSafeLink(url);link.textContent='Abrir '+label;link.target='_blank';link.rel='noopener noreferrer';dialog.append(link);}catch(_){}}
+    return;
+  }
+  const dialog=plannerDialog('eadTaskDialog',duplicate?'Duplicar tarefa EAD':row?'Editar tarefa EAD':'Nova tarefa EAD',
+    '<p class="ep-class-name"></p><form id="epTaskForm"><div class="ep-fields"><label>Turma<select id="epTaskClass"'+(row?' disabled':'')+'>'+epClassOptions()+'</select></label>'+epDateInput('epTaskDate','Data',date)+
+    '<label>Disciplina<select id="epTaskDisc">'+epDiscOptions(row?.disc||epDiscFilter)+'</select></label><label>Número da aula<input id="epTaskLesson" type="number" min="1" step="1" value="'+epEscape(row?.lesson||'')+'" required></label><label>Tipo<select id="epTaskType">'+epOptions(EP_TYPES,row?.type||'R')+'</select></label><label>Status<select id="epTaskStatus">'+epOptions(EP_STATUS,row?.status||'planejado')+'</select></label></div>'+ 
+    '<details><summary>Observações e links</summary><label>Observações<textarea id="epTaskObs" rows="2"></textarea></label><label>Link do material<input type="url" id="epTaskMaterial"></label><label>Link da atividade<input type="url" id="epTaskActivity"></label></details><p id="epTaskError" role="status"></p><div class="ep-dialog-actions"><button class="btn btn-primary" type="submit">Salvar tarefa</button>'+
+    (row&&!duplicate?'<button type="button" class="btn btn-outline" id="epDuplicate">Duplicar</button><button type="button" class="btn btn-outline" id="epDelete">Excluir tarefa</button>':'')+'</div></form>');
+  dialog.querySelector('.ep-class-name').textContent='Turma: '+(getActiveClass()?.nome||getActiveClassId())+' · para mover, altere a data';
+  dialog.querySelector('#epTaskClass').onchange=event=>{const id=event.target.value;dialog.close();changeActiveClass(id);epOpenTask(date);};
+  dialog.querySelector('#epTaskObs').value=row?.obs||row?.desc||'';dialog.querySelector('#epTaskMaterial').value=row?.materialUrl||'';dialog.querySelector('#epTaskActivity').value=row?.activityUrl||'';
+  const classId=getActiveClassId(),before=row?JSON.stringify(state.eadModules[key]):null;
+  dialog.querySelector('#epTaskForm').onsubmit=event=>{
+    event.preventDefault();try{
+      if(getActiveClassId()!==classId)throw Error('A turma mudou. Abra o cadastro novamente.');
+      const targetDate=dialog.querySelector('#epTaskDate').value,lesson=dialog.querySelector('#epTaskLesson').value,disc=dialog.querySelector('#epTaskDisc').value;
+      if(!epValidDate(targetDate)||!Number.isInteger(Number(lesson))||Number(lesson)<1||!disc)throw Error('Confira a data, a disciplina e o número da aula.');
+      if(!epAvailable(targetDate)&&(!row||row.date!==targetDate||dialog.querySelector('#epTaskStatus').value!=='cancelado'))throw Error('Esta data é fim de semana, feriado, sem aula ou sem EAD. Ajuste o calendário, mova ou cancele a tarefa existente.');
+      if(targetDate>epPeriod().last&&(!row||row.date!==targetDate))throw Error('A data está depois do último dia EAD configurado. Ajuste o período se necessário.');
+      const data={date:targetDate,lesson,disc,type:dialog.querySelector('#epTaskType').value,status:dialog.querySelector('#epTaskStatus').value,obs:dialog.querySelector('#epTaskObs').value,desc:row?.desc||'',materialUrl:epSafeLink(dialog.querySelector('#epTaskMaterial').value.trim()),activityUrl:epSafeLink(dialog.querySelector('#epTaskActivity').value.trim())};
+      if(epRows().some(item=>(duplicate||item.key!==key)&&epFingerprint(item)===epFingerprint(data)))throw Error('Esta tarefa já existe nesta data.');
+      if(row&&!duplicate&&JSON.stringify(state.eadModules[key])!==before)throw Error('O registro foi alterado. Reabra o formulário.');
+      if(epMutation('cadastro ou alteração do planejamento EAD',()=>{
+        epEnsureDiscipline(disc);const target=row&&!duplicate&&row.date===targetDate?key:epRecordKey(targetDate);
+        const payload={...(row?state.eadModules[key]:{}),...epData(data)};
+        if(row&&data.type===row.type){payload.tipos=getEadTipos(row);payload.tipo=row.tipo||payload.tipo;}
+        state.eadModules[target]=payload;if(row&&!duplicate&&target!==key)delete state.eadModules[key];
+      })){dialog.close();}
+    }catch(error){dialog.querySelector('#epTaskError').textContent=error.message;}
+  };
+  dialog.querySelector('#epDuplicate')?.addEventListener('click',()=>{dialog.close();epOpenTask(row.date,key,true);});
+  dialog.querySelector('#epDelete')?.addEventListener('click',()=>{
+    if(getActiveClassId()!==classId)return;
+    if(confirm('Excluir '+EP_TYPES[row.type]+' · '+row.disc+' · Aula '+row.lesson+'?'))if(epMutation('exclusão de tarefa EAD',()=>{delete state.eadModules[key];}))dialog.close();
+  });
+}
+function epOpenDay(date){
+  const rows=epRows().filter(row=>row.date===date),info=epDayInfo(date);
+  const dialog=plannerDialog('eadDayDialog',epDay(date).toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}),'<p class="ep-day-description"></p><div id="epDayTasks"></div><div class="ep-dialog-actions"><button class="btn btn-primary" id="epAddDayTask">+ Tarefa</button><button class="btn btn-outline" id="epDayCalendar">Configurar este dia</button></div>');
+  dialog.querySelector('.ep-day-description').textContent=info?(info.type==='X'?'Sem aula':'Presencial, sem EAD')+' · '+info.label:'Clique em uma tarefa para editar, duplicar, excluir ou transferir.';
+  for(const row of rows){const button=document.createElement('button');button.className='ep-day-task';button.textContent=row.type+' · '+row.disc+' · Aula '+row.lesson+' · '+EP_STATUS[row.status];button.onclick=()=>{dialog.close();epOpenTask(date,row.key);};dialog.querySelector('#epDayTasks').append(button);}
+  dialog.querySelector('#epAddDayTask').onclick=()=>{dialog.close();epOpenTask(date);};dialog.querySelector('#epDayCalendar').onclick=()=>{dialog.close();epDaySettings(date);};
+  if(isProfessorMode())dialog.querySelectorAll('.ep-dialog-actions button').forEach(button=>button.remove());
+}
+function epDaySettings(date){
+  if(isProfessorMode())return;const current=epMeta().flags?.[date];
+  const dialog=plannerDialog('eadDaySettings','Calendário da turma',epDateInput('epFlagDate','Data',date)+'<label>Funcionamento<select id="epFlagType"><option value="">Dia disponível para EAD</option><option value="X">X · Dia sem aula</option><option value="presencial">Traço roxo · Presencial, sem EAD</option></select></label><label>Descrição<input id="epFlagLabel" placeholder="Ex.: recesso, feriado local, aula presencial"></label><p>Os feriados já cadastrados no Planner continuam respeitados. Nenhuma tarefa existente será apagada.</p><button class="btn btn-primary" id="epFlagSave">Salvar dia</button>');
+  dialog.querySelector('#epFlagType').value=current?.type||'';dialog.querySelector('#epFlagLabel').value=current?.label||'';const classId=getActiveClassId();
+  dialog.querySelector('#epFlagSave').onclick=()=>{const key=dialog.querySelector('#epFlagDate').value,type=dialog.querySelector('#epFlagType').value;if(!epValidDate(key)||getActiveClassId()!==classId)return;if(epMutation('calendário de dias EAD',()=>{const flags=epWriteMeta().flags||= {};if(type)flags[key]={type,label:dialog.querySelector('#epFlagLabel').value.trim()|| (type==='X'?'Sem aula':'Presencial sem EAD')};else delete flags[key];}))dialog.close();};
+}
+
+function epCalendarCell(date,month,rows){
+  const outside=!!month&&epMonth(date)!==month,info=outside?null:epDayInfo(date),items=outside?[]:rows.filter(row=>row.date===date);
+  return '<div class="ep-calendar-cell'+(outside?' ep-outside':'')+(date===localDateKey()?' ep-today':'')+'"><button type="button" class="ep-date-hit" data-ep-day="'+date+'" aria-label="Abrir '+date+'">'+epDay(date).getDate()+'</button>'+
+    (info?'<button type="button" class="ep-day-flag" data-ep-day="'+date+'" title="'+epEscape(info.label)+'">'+(info.type==='X'?'X':'<span class="ep-purple-line"></span>')+'</button>':'')+
+    items.map(row=>'<button type="button" class="ep-task-tile ep-status-'+row.status+'" data-ep-key="'+epEscape(row.key)+'" title="'+epEscape(row.disc+' · Aula '+row.lesson+' · '+EP_TYPES[row.type]+' · '+EP_STATUS[row.status])+'"><span class="ep-corner-type">'+row.type+'</span><span class="ep-corner-date">'+epDay(date).getDate()+'</span><span class="ep-corner-lesson">'+epEscape(row.lesson||'—')+'</span><span class="ep-disc-dot" style="background:'+epColor(row.disc)+'"></span></button>').join('')+(info&&items.length?'<small class="ep-conflict">Revisar tarefas neste dia</small>':'')+'</div>';
+}
+function epMonthDates(month){
+  const first=month+'-01',lastDate=new Date(Number(month.slice(0,4)),Number(month.slice(5)),0,12),last=localDateKey(lastDate),start=epMonday(first),end=epShift(epMonday(last),4),result=[];
+  for(let date=start;date<=end;date=epShift(date,1))if(![0,6].includes(epDay(date).getDay()))result.push(date);return result;
+}
+function epMonthHtml(month,rows){return '<section class="ep-month"><h3>'+epDay(month+'-01').toLocaleDateString('pt-BR',{month:'long',year:'numeric'})+'</h3><div class="ep-weekday-labels"><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span></div><div class="ep-month-grid">'+epMonthDates(month).map(date=>epCalendarCell(date,month,rows)).join('')+'</div></section>';}
+function epMonths(start,end){const result=[];let current=start.slice(0,7);while(current<=end.slice(0,7)){result.push(current);const date=epDay(current+'-01');date.setMonth(date.getMonth()+1);current=localDateKey(date).slice(0,7);if(result.length>120)break;}return result;}
+function epLegendHtml(rows){const names=[...new Set(rows.map(row=>row.disc))];return '<div class="ep-legend">'+(names.length?names:EP_DISCIPLINES.map(([name])=>epResolveDisc(name))).map(name=>'<span><i style="background:'+epColor(name)+'"></i>'+epEscape(name)+'</span>').join('')+'</div><div class="ep-type-legend">R: leitura + resumo · A: atividade · LER: leitura · LER/A: leitura + atividade · X: sem aula · <span class="ep-purple-line"></span> presencial sem EAD</div>';}
+function epRender(){
+  const parent=document.getElementById('viewEad');if(!parent)return;
+  if(epClassContext!==getActiveClassId()){epClassContext=getActiveClassId();epDiscFilter='';epStatusFilter='';}
+  document.querySelector('main.main').classList.toggle('ep-modern-active',state.view==='ead'&&!epLegacy);
+  let root=document.getElementById('eadPlanningWorkspace');if(!root){root=document.createElement('section');root.id='eadPlanningWorkspace';parent.prepend(root);}
+  parent.classList.toggle('ep-modern',!epLegacy);root.hidden=epLegacy;
+  if(epLegacy){let back=document.getElementById('epReturnModern');if(!back){back=document.createElement('button');back.id='epReturnModern';back.className='btn btn-outline';back.textContent='Voltar ao planejamento EAD';back.onclick=()=>{epLegacy=false;epRender();};parent.prepend(back);}back.hidden=false;return;}
+  document.getElementById('epReturnModern')?.setAttribute('hidden','');
+  const all=epRows(),rows=all.filter(epMatches),active=all.filter(row=>row.status!=='cancelado'),done=active.filter(row=>row.status==='concluido'),lessons=new Set(active.map(row=>epNormalize(row.disc)+'|'+row.lesson)),completedLessons=[...lessons].filter(key=>active.filter(row=>epNormalize(row.disc)+'|'+row.lesson===key).every(row=>row.status==='concluido')).length;
+  const period=epPeriod(),percent=active.length?Math.round(done.length/active.length*100):0,dates=epMode==='semanal'?Array.from({length:5},(_,i)=>epShift(epMonday(epAnchor),i)):[];
+  root.innerHTML='<div class="ep-heading"><h2>Planejamento EAD</h2><span>'+epEscape(getActiveClass()?.nome||getActiveClassId())+'</span><div class="ep-actions"><button data-ep-action="legacy">Visão anterior</button><button data-ep-action="settings">Disciplinas e período</button><button data-ep-action="communicate">Gerar comunicado semanal</button><button data-ep-action="exports">Imprimir / exportar</button><button data-ep-action="import">Importar</button><button data-ep-action="sequence">Cadastro em sequência</button><button data-ep-action="new" class="ep-primary">+ Tarefa</button></div></div>'+ 
+    '<div class="ep-indicators"><span><b>'+lessons.size+'</b> aulas planejadas</span><span><b>'+completedLessons+'</b> aulas concluídas</span><span><b>'+(lessons.size-completedLessons)+'</b> aulas pendentes</span><span><b>'+done.length+'/'+active.length+'</b> tarefas concluídas</span><span><b>'+percent+'%</b> concluído</span><details><summary>Progresso por disciplina</summary>'+epDiscNames().map(disc=>{const items=active.filter(row=>row.disc===disc),count=items.filter(row=>row.status==='concluido').length;return items.length?'<p>'+epEscape(disc)+': '+count+'/'+items.length+' tarefas · '+Math.round(count/items.length*100)+'%</p>':'';}).join('')+'</details></div>'+ 
+    '<div class="ep-toolbar"><div class="ep-view-tabs">'+['semanal','mensal','completo','lista'].map((mode,i)=>'<button data-ep-mode="'+mode+'" aria-pressed="'+(mode===epMode)+'">'+['Semanal','Mensal','Turma completa','Lista'][i]+'</button>').join('')+'</div><button data-ep-action="prev" aria-label="Período anterior">‹</button><input type="date" id="epAnchor" aria-label="Data de referência" value="'+epAnchor+'"><button data-ep-action="next" aria-label="Próximo período">›</button><button data-ep-action="today">Hoje</button><select id="epDiscFilter" aria-label="Filtrar disciplina"><option value="">Todas as disciplinas</option>'+epDiscOptions(epDiscFilter)+'</select><select id="epStatusFilter" aria-label="Filtrar status"><option value="">Todos os status</option>'+epOptions(EP_STATUS,epStatusFilter)+'</select><button data-ep-action="day">Calendário da turma</button></div>'+ 
+    '<p class="ep-range-note">Período: '+formatDateKeyPtBr(period.start)+' a '+formatDateKeyPtBr(period.end)+' · último dia EAD: '+formatDateKeyPtBr(period.last)+'. Dias vazios ainda não foram planejados.</p><div id="epCalendarContent">'+
+    (epMode==='mensal'?epMonthHtml(epMonth(epAnchor),rows):epMode==='semanal'?'<div class="ep-weekday-labels"><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span></div><div class="ep-month-grid ep-week-grid">'+dates.map(date=>epCalendarCell(date,null,rows)).join('')+'</div>':epMode==='completo'?'<div class="ep-full-months">'+epMonths(period.start,period.end).map(month=>epMonthHtml(month,rows)).join('')+'</div>':epListHtml(rows))+'</div>'+epLegendHtml(rows)+
+    '<div class="ep-upcoming"><strong>Próximas atividades</strong> '+(active.filter(row=>row.date>=localDateKey()&&row.status!=='concluido').slice(0,5).map(row=>'<button data-ep-key="'+row.key+'">'+formatDateKeyPtBr(row.date)+' · '+epEscape(row.disc)+' · '+row.type+' '+epEscape(row.lesson)+'</button>').join('')||'<span>Nenhuma atividade pendente futura.</span>')+'</div>';
+  root.querySelector('#epDiscFilter').value=epDiscFilter;root.querySelector('#epStatusFilter').value=epStatusFilter;
+  root.querySelector('#epDiscFilter').onchange=event=>{epDiscFilter=event.target.value;epRender();};root.querySelector('#epStatusFilter').onchange=event=>{epStatusFilter=event.target.value;epRender();};root.querySelector('#epAnchor').onchange=event=>{if(epValidDate(event.target.value)){epAnchor=event.target.value;epRender();}};
+  root.querySelectorAll('[data-ep-mode]').forEach(button=>button.onclick=()=>{epMode=button.dataset.epMode;epRender();});
+  root.querySelectorAll('[data-ep-day]').forEach(button=>button.onclick=()=>epOpenDay(button.dataset.epDay));root.querySelectorAll('[data-ep-key]').forEach(button=>button.onclick=()=>epOpenTask(epRows().find(row=>row.key===button.dataset.epKey)?.date||epAnchor,button.dataset.epKey));
+  root.querySelectorAll('.ep-calendar-cell').forEach(cell=>cell.onclick=event=>{if(!event.target.closest('button'))epOpenDay(cell.querySelector('[data-ep-day]').dataset.epDay);});
+  const actions={legacy:()=>{epLegacy=true;epRender();},settings:epOpenSettings,communicate:epOpenMessage,exports:epOpenExport,import:epOpenImport,sequence:epOpenSequence,new:()=>epOpenTask(),day:()=>epDaySettings(epAnchor),today:()=>{epAnchor=localDateKey();epRender();},prev:()=>epNavigate(-1),next:()=>epNavigate(1)};
+  root.querySelectorAll('[data-ep-action]').forEach(button=>button.onclick=actions[button.dataset.epAction]);
+  if(isProfessorMode())root.querySelectorAll('[data-ep-action]').forEach(button=>{if(['settings','import','sequence','new','day'].includes(button.dataset.epAction))button.hidden=true;});
+}
+function epListHtml(rows){return '<div class="ep-list"><table><thead><tr><th>Data</th><th>Disciplina</th><th>Aula</th><th>Tipo</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(row=>'<tr><td>'+formatDateKeyPtBr(row.date)+'</td><td><i class="ep-inline-dot" style="background:'+epColor(row.disc)+'"></i>'+epEscape(row.disc)+'</td><td>'+epEscape(row.lesson)+'</td><td>'+row.type+'</td><td>'+EP_STATUS[row.status]+'</td><td><button data-ep-key="'+row.key+'">Abrir</button></td></tr>').join('')+'</tbody></table>'+(!rows.length?'<p>Nenhuma tarefa neste filtro.</p>':'')+'</div>';}
+function epNavigate(direction){if(epMode==='semanal')epAnchor=epShift(epAnchor,direction*7);else{const date=epDay(epAnchor);date.setDate(1);date.setMonth(date.getMonth()+direction);epAnchor=localDateKey(date);}epRender();}
+const epRenderLegacy=renderEad;
+renderEad=function(...args){const result=epRenderLegacy(...args);if(state.view==='ead')epRender();return result;};
+const epSetViewLegacy=setView;
+setView=function(...args){const result=epSetViewLegacy(...args);document.querySelector('main.main').classList.toggle('ep-modern-active',state.view==='ead'&&!epLegacy);return result;};
+
+function epOpenSettings(){
+  if(isProfessorMode())return;const period=epPeriod(),classId=getActiveClassId();
+  const dialog=plannerDialog('eadSettings','Disciplinas, cores e período',
+    '<p>Reutiliza o cadastro atual da turma. Nomes e cores são compartilhados com as outras áreas do Planner.</p><div class="ep-fields">'+epDateInput('epPeriodStart','Início do planejamento',period.start)+epDateInput('epPeriodEnd','Fim da visualização completa',period.end)+epDateInput('epLastEad','Último dia de EAD',period.last)+'</div><div id="epDisciplineSettings"></div><button class="btn btn-outline" id="epAddDiscipline">+ Disciplina</button><p id="epSettingsError" role="status"></p><button class="btn btn-primary" id="epSaveSettings">Salvar configurações</button>');
+  const wrap=dialog.querySelector('#epDisciplineSettings');
+  function add(name=''){const row=document.createElement('div');row.className='ep-discipline-setting';row.dataset.original=name;const input=document.createElement('input');input.value=name;input.placeholder='Nome da disciplina';input.setAttribute('aria-label','Nome da disciplina');const color=document.createElement('input');color.type='color';color.value=name?epColor(name):'#7485a8';color.setAttribute('aria-label','Cor da disciplina');row.append(input,color);wrap.append(row);}
+  epDiscNames().forEach(add);dialog.querySelector('#epAddDiscipline').onclick=()=>add();
+  dialog.querySelector('#epSaveSettings').onclick=()=>{try{
+    if(getActiveClassId()!==classId)throw Error('A turma mudou. Abra as configurações novamente.');
+    const start=dialog.querySelector('#epPeriodStart').value,end=dialog.querySelector('#epPeriodEnd').value,last=dialog.querySelector('#epLastEad').value;
+    if(![start,end,last].every(epValidDate)||start>end||last<start||last>end)throw Error('Confira o início, o fim e o último dia de EAD.');
+    const rows=[...wrap.children].map(row=>({old:row.dataset.original,name:row.querySelector('input').value.trim(),color:row.querySelector('input[type=color]').value})).filter(row=>row.name);
+    if(new Set(rows.map(row=>epNormalize(row.name))).size!==rows.length)throw Error('Há disciplinas com nomes repetidos.');
+    const existing=[...getDiscs('presencial'),...getDiscs('ead'),...getDiscs('presEad')];
+    for(const row of rows)if(row.old!==row.name&&existing.some(name=>name!==row.old&&epNormalize(name)===epNormalize(row.name)))throw Error('A disciplina '+row.name+' já existe. Use o cadastro existente.');
+    if(epMutation('configurações do planejamento EAD',()=>{
+      Object.assign(epWriteMeta(),{start,end,lastEadDate:last});
+      for(const row of rows){
+        if(row.old&&row.old!==row.name){
+          for(const type of ['presencial','ead','presEad'])saveDiscs(type,getDiscs(type).map(name=>name===row.old?row.name:name));
+          for(const bucket of [state.modules,state.eadModules])for(const mod of Object.values(bucket||{}))if(mod.disc===row.old)mod.disc=row.name;
+          for(const key of ['freq','notasEad','notasPres']){const bucket=state[key];if(bucket?.[row.old]){if(bucket[row.name])throw Error('Já há registros com o novo nome.');bucket[row.name]=bucket[row.old];delete bucket[row.old];}}
+          for(const event of state.eventos||[])if(event.disc===row.old)event.disc=row.name;
+          const extras=state.classData?.[classId]?.discExtras;if(extras?.[row.old]){extras[row.name]=extras[row.old];delete extras[row.old];}
+        }
+        epEnsureDiscipline(row.name);(state.disciplineAppearance||= {})[row.name]={...plannerDisciplineStyle(row.old||row.name),color:row.color};
+      }
+    }))dialog.close();
+  }catch(error){dialog.querySelector('#epSettingsError').textContent=error.message;}};
+}
+function epOpenSequence(){
+  if(isProfessorMode())return;const period=epPeriod();
+  const dialog=plannerDialog('eadSequence','Cadastro em sequência',
+    '<p>Distribui somente nos dias úteis disponíveis, respeitando feriados, dias sem aula e sem EAD. Nada é salvo antes da prévia.</p><form id="epSequenceForm"><div class="ep-fields"><label>Disciplina<select id="epSeqDisc">'+epDiscOptions(epDiscFilter)+'</select></label>'+epDateInput('epSeqStart','Começar em',epAnchor<period.start?period.start:epAnchor)+'<label>Primeira aula<input id="epSeqFirst" type="number" min="1" step="1" value="1" required></label><label>Quantidade de aulas<input id="epSeqCount" type="number" min="1" step="1" value="3" required></label><label>Distribuição<select id="epSeqPattern"><option value="R,A">Leitura e resumo (R), depois atividade (A)</option><option value="LER,A">Leitura (LER), depois atividade (A)</option><option value="LER/A">Leitura e atividade no mesmo dia (LER/A)</option><option value="R">Somente leitura e resumo (R)</option></select></label></div><label class="ep-checkbox"><input type="checkbox" id="epSeqOccupied"> Permitir usar dias que já têm tarefas EAD</label><p id="epSequenceError" role="status"></p><button type="submit" class="btn btn-primary">Conferir distribuição</button></form>');
+  dialog.querySelector('form').onsubmit=event=>{event.preventDefault();try{
+    const start=dialog.querySelector('#epSeqStart').value,count=Number(dialog.querySelector('#epSeqCount').value),first=Number(dialog.querySelector('#epSeqFirst').value),disc=dialog.querySelector('#epSeqDisc').value,pattern=dialog.querySelector('#epSeqPattern').value.split(','),occupied=dialog.querySelector('#epSeqOccupied').checked;
+    if(!epValidDate(start)||!Number.isInteger(count)||count<1||!Number.isInteger(first)||first<1)throw Error('Confira as datas e a quantidade de aulas.');
+    const occupiedDates=new Set(epRows().filter(row=>row.status!=='cancelado').map(row=>row.date)),records=[];let cursor=start;
+    for(let lesson=first;lesson<first+count;lesson++)for(const type of pattern){
+      while(cursor<=period.last&&(!epAvailable(cursor)||(!occupied&&occupiedDates.has(cursor))))cursor=epShift(cursor,1);
+      if(cursor>period.last)throw Error('Não há dias disponíveis até '+formatDateKeyPtBr(period.last)+'. Reduza a quantidade ou ajuste o período.');
+      records.push({date:cursor,disc,lesson:String(lesson),type,status:'planejado'});cursor=epShift(cursor,1);
+    }
+    dialog.close();epShowPreview(records,'Conferir cadastro em sequência');
+  }catch(error){dialog.querySelector('#epSequenceError').textContent=error.message;}};
+}
+function epTemplates(){return {read:'leia o material e assista aos vídeos da Aula {aula}',onlyRead:'leia o material da Aula {aula}',summary:'faça o resumo e envie foto da Aula {aula}',activity:'realize a ATIVIDADE AVALIATIVA da Aula {aula}',...(epMeta().messageTemplates||{})};}
+function epBuildMessage(week){
+  const start=epMonday(week),end=epShift(start,4),templates=epTemplates(),lines=[];
+  for(const row of epRows().filter(row=>row.date>=start&&row.date<=end&&row.status!=='cancelado'&&epAvailable(row.date))){
+    const actions=row.type==='R'?[templates.read,templates.summary]:row.type==='A'?[templates.activity]:row.type==='LER/A'?[templates.onlyRead,templates.activity]:[templates.onlyRead];
+    for(const template of actions)lines.push('• '+row.disc+' - '+fmtDate(epDay(row.date))+' '+['dom','seg','ter','qua','qui','sex','sáb'][epDay(row.date).getDay()]+': '+template.replaceAll('{aula}',row.lesson||'—')+(row.materialUrl&&[templates.read,templates.onlyRead].includes(template)?'\n  Material: '+row.materialUrl:'')+(row.activityUrl&&template===templates.activity?'\n  Atividade: '+row.activityUrl:''));
+  }
+  return 'Boa tarde, segue o cronograma das atividades EAD dessa semana ('+fmtDate(epDay(start))+' a '+fmtDate(epDay(end))+'):\n\n'+(lines.length?lines.join('\n'):'Nenhuma atividade EAD cadastrada nesta semana.');
+}
+function epOpenMessage(){
+  const classId=getActiveClassId(),templates=epTemplates();
+  const dialog=plannerDialog('eadMessage','Gerar comunicado semanal','<p id="epMessageClass"></p><label>Turma<select id="epMessageClassSelect">'+epClassOptions()+'</select></label>'+epDateInput('epMessageWeek','Semana que contém a data',epAnchor)+'<button class="btn btn-outline" id="epMessageGenerate">Gerar / atualizar mensagem</button><textarea id="epMessageText" rows="13" aria-label="Mensagem editável para os alunos"></textarea><details><summary>Personalizar textos</summary><p>Use {aula} para inserir o número da aula.</p><label>Leitura e vídeos (R)<input id="epTextRead"></label><label>Somente leitura (LER)<input id="epTextOnlyRead"></label><label>Resumo<input id="epTextSummary"></label><label>Atividade<input id="epTextActivity"></label><button class="btn btn-outline" id="epSaveTexts">Salvar textos desta turma</button></details><p id="epMessageFeedback" role="status"></p><button class="btn btn-primary" id="epCopyMessage">Copiar comunicado completo</button>');
+  dialog.querySelector('#epMessageClass').textContent='Turma: '+(getActiveClass()?.nome||classId);dialog.querySelector('#epTextRead').value=templates.read;dialog.querySelector('#epTextOnlyRead').value=templates.onlyRead;dialog.querySelector('#epTextSummary').value=templates.summary;dialog.querySelector('#epTextActivity').value=templates.activity;
+  dialog.querySelector('#epMessageClassSelect').onchange=event=>{const id=event.target.value;dialog.close();changeActiveClass(id);epOpenMessage();};
+  const generate=()=>{if(getActiveClassId()!==classId)return;const date=dialog.querySelector('#epMessageWeek').value;if(epValidDate(date))dialog.querySelector('#epMessageText').value=epBuildMessage(date);};generate();dialog.querySelector('#epMessageGenerate').onclick=generate;
+  dialog.querySelector('#epSaveTexts').onclick=()=>{if(getActiveClassId()!==classId)return;const read=dialog.querySelector('#epTextRead').value.trim(),onlyRead=dialog.querySelector('#epTextOnlyRead').value.trim(),summary=dialog.querySelector('#epTextSummary').value.trim(),activity=dialog.querySelector('#epTextActivity').value.trim();if(!read||!onlyRead||!summary||!activity)return;epMutation('textos do comunicado EAD',()=>{epWriteMeta().messageTemplates={read,onlyRead,summary,activity};});generate();};
+  if(isProfessorMode())dialog.querySelector('#epSaveTexts').disabled=true;
+  dialog.querySelector('#epCopyMessage').onclick=async()=>{const field=dialog.querySelector('#epMessageText');try{await navigator.clipboard.writeText(field.value);dialog.querySelector('#epMessageFeedback').textContent='Comunicado copiado.';}catch(_){field.focus();field.select();const copied=document.execCommand('copy');dialog.querySelector('#epMessageFeedback').textContent=copied?'Comunicado copiado.':'Texto selecionado. Use Ctrl+C para copiar.';}};
+}
+function epReferenceRecords(){
+  const source=[['2026-11-23','Relações Socioprofissionais, Cidadania e Ética',1,'R'],['2026-11-24','Relações Socioprofissionais, Cidadania e Ética',1,'A'],['2026-11-25','Relações Socioprofissionais, Cidadania e Ética',2,'R'],['2026-11-26','Relações Socioprofissionais, Cidadania e Ética',2,'A'],['2026-11-30','Relações Socioprofissionais, Cidadania e Ética',3,'A'],['2026-12-21','',0,'presencial'],['2027-02-03','Processos',1,'LER'],['2027-02-04','Processos',1,'A'],['2027-02-05','Processos',2,'LER'],['2027-02-08','',0,'X'],['2027-02-09','',0,'X'],['2027-02-10','Processos',2,'A'],['2027-02-11','Processos',3,'LER'],['2027-02-12','Processos',3,'A'],['2027-02-15','Ensaios',1,'LER'],['2027-02-16','Ensaios',1,'A'],['2027-02-17','Ensaios',2,'LER'],['2027-02-18','Ensaios',2,'A'],['2027-02-19','Ensaios',3,'LER/A']];
+  return source.map(([date,disc,lesson,type])=>({date,disc:disc?epResolveDisc(disc):'',lesson:lesson?String(lesson):'',type,status:'planejado',flag:['X','presencial'].includes(type),label:type==='presencial'?'Aula presencial, sem EAD':type==='X'?'Sem aula':''}));
+}
+function epStateSignature(){return JSON.stringify({classId:getActiveClassId(),modules:state.eadModules,meta:epMeta()});}
+function epShowPreview(records,title='Conferir importação'){ 
+  const classId=getActiveClassId(),seen=new Set(epRows().map(epFingerprint));let duplicates=0;
+  const blockedDates=new Set(records.filter(record=>record.flag).map(record=>record.date));
+  const parsed=records.map(record=>{
+    const row={...record,disc:record.disc?epResolveDisc(record.disc):'',status:record.status||'planejado'},errors=[];
+    if(record.importError)errors.push(record.importError);
+    if(!epValidDate(row.date))errors.push('Data inválida');
+    if(!row.flag){
+      if(!EP_TYPES[row.type])errors.push('Tipo desconhecido');if(!row.disc)errors.push('Sem disciplina');if(!Number.isInteger(Number(row.lesson))||Number(row.lesson)<1)errors.push('Aula inválida');if(!EP_STATUS[row.status])errors.push('Status inválido');
+      if(epValidDate(row.date)&&!epAvailable(row.date))errors.push('Dia não disponível para EAD');
+      if(blockedDates.has(row.date))errors.push('A planilha também marca esta data como dia sem EAD');
+      if(epValidDate(row.date)&&row.date>epPeriod().last)errors.push('Data após o último dia EAD configurado');
+      try{row.materialUrl=epSafeLink(row.materialUrl||'');row.activityUrl=epSafeLink(row.activityUrl||'');}catch(error){errors.push(error.message);}
+    }else{if(!['X','presencial'].includes(row.type))errors.push('Marcação desconhecida');const existing=epMeta().flags?.[row.date];if(existing&&existing.type!==row.type)errors.push('Já existe outra marcação neste dia; altere no calendário da turma');}
+    const fingerprint=row.flag?'flag|'+row.date:epFingerprint(row),existingFlag=row.flag&&epMeta().flags?.[row.date]?.type===row.type;
+    const duplicate=seen.has(fingerprint)||existingFlag;if(duplicate)duplicates++;seen.add(fingerprint);
+    return {...row,errors,duplicate,selected:!errors.length&&!duplicate};
+  });
+  epPreview={classId,signature:epStateSignature(),rows:parsed};
+  const dialog=plannerDialog('eadPreview',title,'<p id="epPreviewContext"></p><p>Confira os nomes, as datas e os tipos. Registros duvidosos ficam bloqueados; corrija a origem antes de importar. Tarefas existentes não serão substituídas.</p><div class="ep-preview-table"><table><thead><tr><th>Importar</th><th>Data</th><th>Disciplina</th><th>Aula</th><th>Tipo</th><th>Situação</th></tr></thead><tbody></tbody></table></div><p id="epPreviewError" role="status"></p><button class="btn btn-primary" id="epConfirmPreview">Salvar selecionados</button>');
+  dialog.querySelector('#epPreviewContext').textContent='Turma: '+(getActiveClass()?.nome||classId)+' · '+parsed.length+' registros · '+duplicates+' repetidos ignorados';
+  parsed.forEach(row=>{const tr=document.createElement('tr'),cell=document.createElement('td'),check=document.createElement('input');check.type='checkbox';check.checked=row.selected;check.disabled=!!row.errors.length||row.duplicate;check.setAttribute('aria-label','Importar '+row.date+' '+row.type);check.onchange=()=>row.selected=check.checked;cell.append(check);tr.append(cell);for(const text of [row.date,row.disc||row.label||'—',row.lesson||'—',row.type,row.errors.join(' · ')||(row.duplicate?'Já cadastrado':row.flag?'Marcação de calendário':EP_STATUS[row.status])]){const td=document.createElement('td');td.textContent=text;tr.append(td);}dialog.querySelector('tbody').append(tr);});
+  dialog.querySelector('#epConfirmPreview').onclick=()=>{
+    try{if(classId!==getActiveClassId()||epPreview.signature!==epStateSignature())throw Error('O planejamento mudou. Gere a prévia novamente.');
+      const chosen=parsed.filter(row=>row.selected&&!row.errors.length&&!row.duplicate);if(!chosen.length)throw Error('Nenhum registro novo foi selecionado.');
+      if(epMutation('distribuição ou importação do planejamento EAD',()=>{
+        for(const row of chosen){if(row.flag){(epWriteMeta().flags||= {})[row.date]={type:row.type,label:row.label|| (row.type==='X'?'Sem aula':'Presencial sem EAD')};}else{epEnsureDiscipline(row.disc);state.eadModules[epRecordKey(row.date)]=epData(row);}}
+      })){dialog.close();epPreview=null;showToast(chosen.length+' registros cadastrados.');}
+    }catch(error){dialog.querySelector('#epPreviewError').textContent=error.message;}
+  };
+}
+function epOpenImport(){
+  if(isProfessorMode())return;
+  const dialog=plannerDialog('eadImport','Importar planejamento EAD','<p>Importe Excel (.xlsx) ou CSV com as colunas Data, Disciplina, Aula, Tipo, Status, Observações, Material e Atividade. Tipos: R, A, LER, LER/A, X ou PRESENCIAL. Se houver coluna Turma, ela deve corresponder à turma selecionada.</p><input id="epImportFile" type="file" accept=".xlsx,.csv"><p id="epImportError" role="status"></p><div class="ep-dialog-actions"><button class="btn btn-outline" id="epDownloadTemplate">Baixar modelo Excel</button><button class="btn btn-outline" id="epLoadReference">Conferir datas informadas (2026–2027)</button></div><p>O manuscrito não foi recebido. A referência inclui somente as 19 linhas explicitamente conferidas, incluindo três marcações de calendário. Nenhum outro dia será preenchido por suposição.</p>');
+  dialog.querySelector('#epDownloadTemplate').onclick=()=>epDownloadWorkbook([],true);
+  dialog.querySelector('#epLoadReference').onclick=()=>{dialog.close();epShowPreview(epReferenceRecords(),'Conferir datas já informadas');};
+  const classId=getActiveClassId();dialog.querySelector('#epImportFile').onchange=async event=>{const file=event.target.files[0];if(!file)return;try{const records=await epReadPlanningFile(file);if(getActiveClassId()!==classId)throw Error('A turma mudou. Abra a importação novamente.');dialog.close();epShowPreview(records);}catch(error){dialog.querySelector('#epImportError').textContent=error.message;}};
+}
+
+function epXml(value){return String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&apos;');}
+function epXmlDocument(text){const doc=new DOMParser().parseFromString(text,'application/xml');if(doc.getElementsByTagName('parsererror').length)throw Error('A planilha contém XML inválido. Salve novamente em .xlsx.');return doc;}
+function epNodes(node,name){return [...node.getElementsByTagNameNS('*',name)];}
+async function epReadXlsx(buffer){
+  const zip=await JSZip.loadAsync(buffer),workbookFile=zip.file('xl/workbook.xml'),relsFile=zip.file('xl/_rels/workbook.xml.rels');if(!workbookFile||!relsFile)throw Error('Este arquivo não é uma planilha .xlsx válida.');
+  const workbook=epXmlDocument(await workbookFile.async('string')),rels=epXmlDocument(await relsFile.async('string'));
+  const sheets=epNodes(workbook,'sheet'),sheet=sheets.find(item=>epNormalize(item.getAttribute('name')).includes('planejamento'))||sheets[0];if(!sheet)throw Error('A planilha não tem abas.');
+  const id=sheet.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id')||sheet.getAttribute('r:id'),relationship=epNodes(rels,'Relationship').find(item=>item.getAttribute('Id')===id);
+  if(!relationship)throw Error('Não foi possível localizar a aba do planejamento.');
+  const target=relationship.getAttribute('Target');let path=target.startsWith('/')?target.slice(1):'xl/'+target;const parts=[];for(const part of path.split('/')){if(part==='..')parts.pop();else if(part&&part!=='.')parts.push(part);}path=parts.join('/');
+  const file=zip.file(path);if(!file)throw Error('Não foi possível abrir a aba '+sheet.getAttribute('name')+'.');
+  let shared=[];if(zip.file('xl/sharedStrings.xml'))shared=epNodes(epXmlDocument(await zip.file('xl/sharedStrings.xml').async('string')),'si').map(item=>epNodes(item,'t').map(text=>text.textContent).join(''));
+  return epNodes(epXmlDocument(await file.async('string')),'row').map(row=>{const values=[];epNodes(row,'c').forEach(cell=>{const address=cell.getAttribute('r')||'',letters=address.match(/^[A-Z]+/i)?.[0]||'A';let index=0;for(const char of letters.toUpperCase())index=index*26+char.charCodeAt(0)-64;const type=cell.getAttribute('t'),value=epNodes(cell,'v')[0]?.textContent||'';values[index-1]=type==='s'?shared[Number(value)]||'':type==='inlineStr'?epNodes(cell,'t').map(text=>text.textContent).join(''):value;});return values;});
+}
+function epParseDate(value){
+  const text=String(value||'').trim();if(epValidDate(text))return text;
+  const br=text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(br)return br[3]+'-'+br[2].padStart(2,'0')+'-'+br[1].padStart(2,'0');
+  const numeric=Number(text);if(Number.isFinite(numeric)&&numeric>20000&&numeric<100000)return new Date(Date.UTC(1899,11,30)+Math.floor(numeric)*86400000).toISOString().slice(0,10);
+  return text;
+}
+function epPlanningRecords(rows){
+  rows=rows.filter(row=>row.some(value=>String(value||'').trim()));const headers=(rows.shift()||[]).map(value=>epNormalize(value).replace(/[º°]/g,''));
+  function column(names){return headers.findIndex(header=>names.some(name=>header===epNormalize(name)));}
+  const map={date:column(['Data','Date']),disc:column(['Disciplina']),lesson:column(['Aula','Numero da aula','N da aula']),type:column(['Tipo','Tipo de tarefa']),status:column(['Status','Situacao']),obs:column(['Observacoes','Observacao']),materialUrl:column(['Material','Link do material']),activityUrl:column(['Atividade','Link da atividade']),classId:column(['Turma'])};
+  if(map.date<0||map.type<0||map.disc<0)throw Error('Use as colunas Data, Disciplina, Aula e Tipo. Baixe o modelo para conferir o formato.');
+  const classNames=[getActiveClassId(),getActiveClass()?.nome].map(epNormalize);
+  return rows.map(row=>{
+    const type=String(row[map.type]||'').trim().toUpperCase(),flag=['X','PRESENCIAL','SEM EAD'].includes(type),statusText=String(row[map.status]||'').trim();
+    const status=Object.keys(EP_STATUS).find(key=>epNormalize(key)===epNormalize(statusText)||epNormalize(EP_STATUS[key])===epNormalize(statusText))||(statusText||'planejado');
+    const lessonText=String(row[map.lesson]||'').trim(),record={date:epParseDate(row[map.date]),disc:String(row[map.disc]||'').trim(),lesson:lessonText.match(/^(?:Aula\s*|A\s*)?(\d+)$/i)?.[1]||lessonText,type:type==='PRESENCIAL'||type==='SEM EAD'?'presencial':type,flag,status,obs:String(row[map.obs]||''),materialUrl:String(row[map.materialUrl]||'').trim(),activityUrl:String(row[map.activityUrl]||'').trim()};
+    if(map.classId>=0&&String(row[map.classId]||'').trim()&&!classNames.includes(epNormalize(row[map.classId])))record.importError='A turma da linha é diferente da turma selecionada';
+    if(flag)record.label=record.obs|| (type==='X'?'Sem aula':'Presencial sem EAD');return record;
+  });
+}
+async function epReadPlanningFile(file){
+  const buffer=await file.arrayBuffer();if(/\.xlsx$/i.test(file.name))return epPlanningRecords(await epReadXlsx(buffer));
+  if(!/\.csv$/i.test(file.name))throw Error('Use uma planilha .xlsx ou um arquivo .csv.');
+  const bytes=new Uint8Array(buffer);let encoding=bytes[0]===255&&bytes[1]===254?'utf-16le':bytes[0]===254&&bytes[1]===255?'utf-16be':'utf-8',text;
+  try{text=new TextDecoder(encoding,{fatal:true}).decode(buffer);}catch(_){text=new TextDecoder('windows-1252').decode(buffer);}
+  return epPlanningRecords(quizParseCsv(text));
+}
+function epExportData(){
+  const className=getActiveClass()?.nome||getActiveClassId();
+  const result=epRows().map(row=>[row.date,row.disc,row.lesson,row.type,EP_STATUS[row.status],row.obs||row.desc||'',row.materialUrl||'',row.activityUrl||'',className]);
+  for(const [date,flag] of Object.entries(epMeta().flags||{}))result.push([date,'','',flag.type==='presencial'?'PRESENCIAL':'X','',flag.label||'','','',className]);
+  return result.sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+}
+function epDownloadBlob(blob,name){const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=name;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);}
+async function epWorkbookBlob(data){
+  const header=['Data','Disciplina','Aula','Tipo','Status','Observações','Material','Atividade','Turma'],rows=[header,...data],zip=new JSZip(),ns='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+  const names=[...new Set(data.map(row=>row[1]).filter(Boolean))],fills=names.map(name=>epColor(name).slice(1).toUpperCase());
+  const cells=rows.map((row,r)=>'<row r="'+(r+1)+'">'+row.map((value,c)=>'<c r="'+String.fromCharCode(65+c)+(r+1)+'" t="inlineStr" s="'+(r===0?1:c===1&&value?2+names.indexOf(value):0)+'"><is><t xml:space="preserve">'+epXml(value)+'</t></is></c>').join('')+'</row>').join('');
+  zip.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>');
+  zip.file('_rels/.rels','<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
+  zip.file('xl/workbook.xml','<workbook xmlns="'+ns+'" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Planejamento EAD" sheetId="1" r:id="rId1"/></sheets></workbook>');
+  zip.file('xl/_rels/workbook.xml.rels','<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>');
+  zip.file('xl/styles.xml','<styleSheet xmlns="'+ns+'"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="'+(3+fills.length)+'"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE9EFF9"/><bgColor indexed="64"/></patternFill></fill>'+fills.map(color=>'<fill><patternFill patternType="solid"><fgColor rgb="FF'+color+'"/><bgColor indexed="64"/></patternFill></fill>').join('')+'</fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="'+(2+fills.length)+'"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFill="1"/>'+fills.map((_,i)=>'<xf numFmtId="0" fontId="0" fillId="'+(3+i)+'" borderId="0" xfId="0" applyFill="1"/>').join('')+'</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>');
+  zip.file('xl/worksheets/sheet1.xml','<worksheet xmlns="'+ns+'"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>'+[14,50,10,14,32,55,42,42,35].map((width,i)=>'<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+width+'" customWidth="1"/>').join('')+'</cols><sheetData>'+cells+'</sheetData><autoFilter ref="A1:I'+Math.max(1,rows.length)+'"/></worksheet>');
+  return zip.generateAsync({type:'blob',compression:'DEFLATE',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+async function epDownloadWorkbook(data=epExportData(),template=false){try{epDownloadBlob(await epWorkbookBlob(data),(template?'modelo':'planejamento')+'-ead.xlsx');}catch(error){showToast('Não foi possível exportar: '+error.message,true);}}
+function epDownloadCsv(){const rows=[['Data','Disciplina','Aula','Tipo','Status','Observações','Material','Atividade','Turma'],...epExportData()];const text='\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replaceAll('"','""')+'"').join(';')).join('\r\n');epDownloadBlob(new Blob([text],{type:'text/csv;charset=utf-8'}),'planejamento-ead.csv');}
+function epPrint(mode){
+  const popup=window.open('','_blank');if(!popup)return showToast('Permita a abertura da janela de impressão.',true);popup.opener=null;
+  const period=epPeriod(),rows=epRows(),months=mode==='mensal'?[epMonth(epAnchor)]:epMonths(period.start,period.end);
+  const css='@page{size:A4 landscape;margin:8mm}*{box-sizing:border-box}body{font:9px Arial,sans-serif;color:#172b4d;margin:0}h1{font-size:16px;margin:0 0 4px}p{margin:3px 0}button{font:inherit;color:inherit;cursor:default} .ep-print-months{display:grid;grid-template-columns:repeat('+ (months.length>1?3:1)+',minmax(0,1fr));gap:8px;margin-top:7px}.ep-month{break-inside:avoid;border:1px solid #d1d8e5;padding:5px;border-radius:4px}.ep-month h3{font-size:10px;margin:0 0 4px;text-transform:capitalize}.ep-weekday-labels,.ep-month-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px}.ep-weekday-labels{text-align:center;font-size:7px;margin:3px 0}.ep-calendar-cell{border:1px solid #e4e7ed;min-height:25px;position:relative;padding:2px;padding-top:10px}.ep-date-hit{position:absolute;top:0;right:1px;border:0;background:transparent;font-size:7px;padding:0}.ep-outside{opacity:.25}.ep-task-tile{display:block;position:relative;width:100%;min-height:25px;border:1px solid #d8deea;background:#fff;border-radius:2px;margin-bottom:2px}.ep-corner-type{position:absolute;left:2px;top:1px;font-size:8px;font-weight:bold}.ep-corner-date{position:absolute;right:2px;top:1px;font-size:6px}.ep-corner-lesson{position:absolute;left:2px;bottom:1px;font-size:8px}.ep-disc-dot{position:absolute;right:2px;bottom:2px;width:6px;height:6px;border-radius:50%;print-color-adjust:exact;-webkit-print-color-adjust:exact}.ep-day-flag{border:0;background:transparent;width:100%;padding:0;font-weight:bold}.ep-purple-line{display:inline-block;width:14px;height:2px;background:#8b4ac7;vertical-align:middle;print-color-adjust:exact;-webkit-print-color-adjust:exact}.ep-legend{display:flex;gap:4px 10px;flex-wrap:wrap;margin-top:7px;font-size:7px}.ep-legend span{display:inline-flex;align-items:center;gap:3px}.ep-legend i{display:inline-block;width:6px;height:6px;border-radius:50%;print-color-adjust:exact;-webkit-print-color-adjust:exact}.ep-type-legend{font-size:7px;margin-top:4px}.ep-conflict{font-size:6px;color:#9a3412}.ep-status-cancelado{opacity:.45;border-style:dashed}.ep-status-concluido{border-color:#228457}.ep-status-reprogramado{border-style:dashed}';
+  popup.document.open();popup.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Planejamento EAD</title><style>'+css+'</style></head><body><h1>Planejamento EAD · '+epEscape(getActiveClass()?.nome||getActiveClassId())+'</h1><p>Último dia EAD: '+formatDateKeyPtBr(period.last)+' · '+rows.length+' tarefas cadastradas</p><div class="ep-print-months">'+months.map(month=>epMonthHtml(month,rows)).join('')+'</div>'+epLegendHtml(rows)+'<p style="font-size:7px">Dias vazios: sem informação cadastrada. Tarefas canceladas: borda tracejada e esmaecida.</p></body></html>');popup.document.close();setTimeout(()=>{popup.focus();popup.print();},400);
+}
+function epOpenExport(){
+  const dialog=plannerDialog('eadExport','Impressão e exportação','<p>O planejamento completo usa todos os registros da turma e os meses do período configurado. O formato compacto tenta acomodar o conteúdo em A4 paisagem; páginas extras podem ser necessárias quando houver muitas tarefas.</p><div class="ep-dialog-actions"><button id="epPrintMonth" class="btn btn-outline">Imprimir mês</button><button id="epPrintFull" class="btn btn-outline">Imprimir turma completa</button><button id="epPdf" class="btn btn-outline">Exportar PDF</button><button id="epExcel" class="btn btn-outline">Exportar Excel (.xlsx)</button><button id="epCsv" class="btn btn-outline">Exportar CSV</button></div><p>Para PDF, escolha “Salvar como PDF” na janela de impressão. Ative os gráficos de fundo para preservar todas as cores.</p>');
+  dialog.querySelector('#epPrintMonth').onclick=()=>epPrint('mensal');dialog.querySelector('#epPrintFull').onclick=()=>epPrint('completo');dialog.querySelector('#epPdf').onclick=()=>epPrint('completo');dialog.querySelector('#epExcel').onclick=()=>epDownloadWorkbook();dialog.querySelector('#epCsv').onclick=epDownloadCsv;
+}
+
+if(state.view==='ead')epRender();
 </script>
 </body>
 </html>
